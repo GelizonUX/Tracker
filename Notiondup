@@ -1,1 +1,4335 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#fbfbfa" />
+    <meta name="description" content="Tracker — a local-first, block-based workspace for notes, databases, finance and workflow boards." />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23111111'/%3E%3Cpath d='M9 9h14M9 16h14M9 23h9' stroke='%23ffffff' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E" />
+    <title>Tracker</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
+    <style>
+/* ==========================================================================
+   Tracker — global stylesheet
+   A single, token-driven sheet. Light + dark themes, fluid spacing, and a
+   calm, paper-like writing surface.
+   ========================================================================== */
+
+:root {
+  /* color tokens — light */
+  --bg: #ffffff;
+  --bg-app: #fbfbfa;
+  --bg-sidebar: #f7f7f5;
+  --bg-elev: #ffffff;
+  --bg-hover: rgba(55, 53, 47, 0.06);
+  --bg-active: rgba(55, 53, 47, 0.09);
+  --bg-sunken: rgba(55, 53, 47, 0.035);
+
+  --text: #37352f;
+  --text-strong: #1d1b16;
+  --text-muted: rgba(55, 53, 47, 0.62);
+  --text-faint: rgba(55, 53, 47, 0.38);
+
+  --border: rgba(55, 53, 47, 0.1);
+  --border-strong: rgba(55, 53, 47, 0.18);
+
+  --accent: #2f6fed;
+  --accent-soft: rgba(47, 111, 237, 0.12);
+  --danger: #e0584f;
+  --danger-soft: rgba(224, 88, 79, 0.12);
+
+  --callout-bg: rgba(55, 53, 47, 0.045);
+
+  /* shape + motion */
+  --radius-sm: 4px;
+  --radius: 6px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+
+  --shadow-sm: 0 1px 2px rgba(15, 15, 15, 0.06), 0 1px 1px rgba(15, 15, 15, 0.04);
+  --shadow-md: 0 4px 14px rgba(15, 15, 15, 0.1), 0 1px 3px rgba(15, 15, 15, 0.06);
+  --shadow-lg: 0 12px 40px rgba(15, 15, 15, 0.16), 0 2px 8px rgba(15, 15, 15, 0.08);
+
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --fast: 110ms;
+  --med: 180ms;
+
+  /* layout */
+  --sidebar-w: 264px;
+  --editor-w: 740px;
+
+  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --bg: #202020;
+  --bg-app: #191919;
+  --bg-sidebar: #202020;
+  --bg-elev: #2a2a2a;
+  --bg-hover: rgba(255, 255, 255, 0.055);
+  --bg-active: rgba(255, 255, 255, 0.09);
+  --bg-sunken: rgba(255, 255, 255, 0.03);
+
+  --text: rgba(255, 255, 255, 0.82);
+  --text-strong: rgba(255, 255, 255, 0.95);
+  --text-muted: rgba(255, 255, 255, 0.46);
+  --text-faint: rgba(255, 255, 255, 0.3);
+
+  --border: rgba(255, 255, 255, 0.094);
+  --border-strong: rgba(255, 255, 255, 0.18);
+
+  --accent: #5b8def;
+  --accent-soft: rgba(91, 141, 239, 0.18);
+  --danger: #ed6b62;
+  --danger-soft: rgba(237, 107, 98, 0.16);
+
+  --callout-bg: rgba(255, 255, 255, 0.045);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 14px 44px rgba(0, 0, 0, 0.6);
+
+  color-scheme: dark;
+}
+
+/* --- reset ---------------------------------------------------------------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--bg-app);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+input,
+textarea,
+select {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+a {
+  color: var(--accent);
+}
+
+/* custom scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 8px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-faint);
+  background-clip: content-box;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-radius: var(--radius-sm);
+}
+
+/* --- shared atoms --------------------------------------------------------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  transition: background var(--fast) var(--ease), border-color var(--fast) var(--ease),
+    transform var(--fast) var(--ease);
+}
+.btn:hover {
+  background: var(--bg-hover);
+}
+.btn:active {
+  transform: translateY(1px);
+}
+.btn--primary {
+  background: var(--accent);
+  border-color: transparent;
+  color: #fff;
+}
+.btn--primary:hover {
+  filter: brightness(1.06);
+  background: var(--accent);
+}
+.btn--danger {
+  color: #fff;
+  background: var(--danger);
+  border-color: transparent;
+}
+.btn--danger:hover {
+  filter: brightness(1.05);
+  background: var(--danger);
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  transition: background var(--fast) var(--ease), color var(--fast) var(--ease);
+}
+.icon-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px;
+  border-radius: 20px;
+  background: var(--bg-active);
+  color: var(--text);
+  font-size: 12px;
+  white-space: nowrap;
+  line-height: 1.6;
+}
+.chip--removable button {
+  margin-left: 2px;
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1;
+}
+.chip--removable button:hover {
+  color: var(--danger);
+}
+
+/* dropdown menus */
+.menu {
+  position: absolute;
+  z-index: 60;
+  min-width: 180px;
+  padding: 5px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  animation: pop var(--med) var(--ease);
+}
+.menu__item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 7px 9px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  color: var(--text);
+  text-align: left;
+  transition: background var(--fast) var(--ease);
+}
+.menu__item:hover {
+  background: var(--bg-hover);
+}
+.menu__item.is-active {
+  background: var(--accent-soft);
+}
+.menu__item--danger {
+  color: var(--danger);
+}
+.menu__item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.menu__sep {
+  height: 1px;
+  margin: 5px 2px;
+  background: var(--border);
+}
+.menu__label {
+  padding: 6px 9px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+/* ==========================================================================
+   App shell
+   ========================================================================== */
+
+.app {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+}
+
+.app__sidebar {
+  flex: 0 0 auto;
+  width: var(--sidebar-w);
+  height: 100%;
+  transition: width var(--med) var(--ease), transform var(--med) var(--ease);
+  will-change: width;
+}
+.app--collapsed .app__sidebar {
+  width: 0;
+  overflow: hidden;
+}
+
+.app__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg);
+}
+
+.app__content {
+  flex: 1;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+}
+
+.app__scrim {
+  display: none;
+}
+
+.app__no-page {
+  max-width: 380px;
+  margin: 18vh auto 0;
+  text-align: center;
+  color: var(--text-muted);
+}
+.app__no-page h2 {
+  color: var(--text);
+}
+.app__no-page .btn {
+  margin-top: 12px;
+}
+
+/* ==========================================================================
+   Sidebar
+   ========================================================================== */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  width: var(--sidebar-w);
+  height: 100%;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.sidebar__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 8px 6px 12px;
+}
+.sidebar__brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+.sidebar__logo {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #2c2c2c, #000);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+}
+[data-theme="dark"] .sidebar__logo {
+  background: linear-gradient(135deg, #fff, #c9c9c9);
+  color: #000;
+}
+.sidebar__brand-name {
+  font-size: 15px;
+}
+
+.sidebar__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px 8px 8px;
+}
+.sidebar__btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-size: 14px;
+  transition: background var(--fast) var(--ease), color var(--fast) var(--ease);
+}
+.sidebar__btn:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+.sidebar__btn-icon {
+  width: 18px;
+  text-align: center;
+  font-size: 13px;
+}
+.sidebar__kbd {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.sidebar__nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 8px 20px;
+}
+.sidebar__section {
+  margin-top: 12px;
+}
+.sidebar__section-title {
+  padding: 4px 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-faint);
+}
+.sidebar__flat {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 5px 8px;
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 14px;
+  text-align: left;
+  transition: background var(--fast) var(--ease);
+}
+.sidebar__flat:hover {
+  background: var(--bg-hover);
+}
+.sidebar__flat.is-active {
+  background: var(--bg-active);
+  font-weight: 500;
+}
+.sidebar__star {
+  margin-left: auto;
+  color: #e6b800;
+  font-size: 12px;
+}
+.sidebar__empty {
+  padding: 6px 9px;
+  font-size: 13px;
+  color: var(--text-faint);
+}
+
+.sidebar__foot {
+  padding: 8px;
+  border-top: 1px solid var(--border);
+}
+.sidebar__foot-btn {
+  width: 100%;
+  padding: 7px;
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-size: 13.5px;
+  transition: background var(--fast) var(--ease), color var(--fast) var(--ease);
+}
+.sidebar__foot-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+/* page tree */
+.tree__row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  padding-right: 6px;
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 14px;
+  cursor: pointer;
+  transition: background var(--fast) var(--ease);
+}
+.tree__row:hover {
+  background: var(--bg-hover);
+}
+.tree__row.is-active {
+  background: var(--bg-active);
+  font-weight: 500;
+}
+.tree__caret {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+  color: var(--text-faint);
+  font-size: 10px;
+  transition: transform var(--fast) var(--ease), background var(--fast) var(--ease);
+}
+.tree__caret:hover {
+  background: var(--bg-active);
+}
+.tree__caret.is-open {
+  transform: rotate(90deg);
+}
+.tree__caret.is-hidden {
+  visibility: hidden;
+}
+.tree__emoji {
+  flex: 0 0 auto;
+  width: 18px;
+  text-align: center;
+  font-size: 14px;
+}
+.tree__title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tree__rename {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 1px 5px;
+  background: var(--bg-elev);
+}
+.tree__actions {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  opacity: 0;
+  transition: opacity var(--fast) var(--ease);
+}
+.tree__action {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.tree__action:hover {
+  background: var(--bg-active);
+  color: var(--text);
+}
+.tree__menu-wrap {
+  position: relative;
+}
+.tree__menu {
+  top: 26px;
+  right: 0;
+}
+
+/* ==========================================================================
+   Top bar
+   ========================================================================== */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  height: 46px;
+  padding: 0 12px;
+  background: color-mix(in srgb, var(--bg) 86%, transparent);
+  backdrop-filter: saturate(180%) blur(8px);
+  border-bottom: 1px solid var(--border);
+}
+.topbar__left,
+.topbar__right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.topbar__menu {
+  display: none;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  overflow: hidden;
+}
+.breadcrumb__seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+.breadcrumb__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 240px;
+  padding: 4px 7px;
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: background var(--fast) var(--ease), color var(--fast) var(--ease);
+}
+.breadcrumb__item:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+.breadcrumb__seg:last-child .breadcrumb__item {
+  color: var(--text);
+  font-weight: 500;
+}
+.breadcrumb__sep {
+  color: var(--text-faint);
+  font-size: 13px;
+}
+.topbar__menu-wrap {
+  position: relative;
+}
+.topbar__dropdown {
+  top: 36px;
+  right: 0;
+}
+.topbar__fav.is-fav {
+  color: #e6b800;
+}
+
+/* ==========================================================================
+   Editor
+   ========================================================================== */
+
+.editor {
+  padding: clamp(20px, 4vw, 56px) 0 30vh;
+}
+.editor__inner {
+  width: 100%;
+  max-width: var(--editor-w);
+  margin: 0 auto;
+  padding: 0 clamp(18px, 5vw, 60px);
+}
+.editor__icon-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+.editor__emoji {
+  font-size: 52px;
+  line-height: 1;
+  border-radius: var(--radius);
+  padding: 4px;
+  transition: background var(--fast) var(--ease);
+}
+.editor__emoji:hover {
+  background: var(--bg-hover);
+}
+.editor__save {
+  margin-left: auto;
+  font-size: 12.5px;
+  color: var(--text-faint);
+  transition: color var(--med) var(--ease);
+}
+.editor__save--saving {
+  color: var(--accent);
+}
+
+.editor__title {
+  display: block;
+  width: 100%;
+  margin: 2px 0 10px;
+  border: none;
+  background: none;
+  resize: none;
+  overflow: hidden;
+  font-size: clamp(28px, 4vw, 40px);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text-strong);
+  letter-spacing: -0.01em;
+}
+.editor__title::placeholder {
+  color: var(--text-faint);
+}
+.editor__title:focus {
+  outline: none;
+}
+
+.editor__empty {
+  padding: 24px 0;
+  color: var(--text-muted);
+}
+.editor__add-block {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px 6px;
+  border-radius: var(--radius);
+  color: var(--text-faint);
+  font-size: 14px;
+  text-align: left;
+  opacity: 0;
+  transition: opacity var(--fast) var(--ease), background var(--fast) var(--ease),
+    color var(--fast) var(--ease);
+}
+.editor:hover .editor__add-block {
+  opacity: 1;
+}
+.editor__add-block:hover {
+  background: var(--bg-hover);
+  color: var(--text-muted);
+}
+
+/* ==========================================================================
+   Blocks
+   ========================================================================== */
+
+.block {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  margin-left: -46px;
+  padding-left: 46px;
+  border-radius: var(--radius);
+  transition: background var(--fast) var(--ease);
+}
+.block.is-drop-target {
+  box-shadow: 0 -2px 0 var(--accent);
+}
+.block--embed {
+  margin-left: 0;
+  padding-left: 0;
+}
+
+.block__gutter {
+  position: absolute;
+  left: 8px;
+  top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  opacity: 0;
+  transition: opacity var(--fast) var(--ease);
+}
+.block--embed .block__gutter {
+  left: -36px;
+}
+.block__handle-btn {
+  width: 20px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+  color: var(--text-faint);
+  font-size: 14px;
+  transition: background var(--fast) var(--ease), color var(--fast) var(--ease);
+}
+.block__handle-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-muted);
+}
+.block__drag {
+  cursor: grab;
+}
+.block__drag:active {
+  cursor: grabbing;
+}
+.block-actions {
+  position: absolute;
+  top: 28px;
+  left: 0;
+  z-index: 50;
+  min-width: 150px;
+  padding: 5px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  animation: pop var(--med) var(--ease);
+}
+.block-actions__item {
+  display: block;
+  width: 100%;
+  padding: 7px 9px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  text-align: left;
+}
+.block-actions__item:hover {
+  background: var(--bg-hover);
+}
+.block-actions__item--danger {
+  color: var(--danger);
+}
+.block-actions__item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.block__body {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  padding: 3px 2px;
+}
+
+.block__text {
+  outline: none;
+  white-space: pre-wrap;
+  word-break: break-word;
+  min-height: 1.5em;
+}
+.block__text:empty::before {
+  content: attr(data-placeholder);
+  color: var(--text-faint);
+  pointer-events: none;
+}
+.block__h1,
+.block__h2,
+.block__h3 {
+  margin: 0;
+  font-weight: 700;
+  color: var(--text-strong);
+  letter-spacing: -0.01em;
+}
+.block__h1 {
+  font-size: 1.7em;
+  padding-top: 0.3em;
+}
+.block__h2 {
+  font-size: 1.38em;
+  padding-top: 0.25em;
+}
+.block__h3 {
+  font-size: 1.15em;
+  padding-top: 0.2em;
+}
+
+.block__list {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.block__bullet {
+  width: 16px;
+  text-align: center;
+  line-height: 1.6;
+  color: var(--text);
+}
+.block__number {
+  min-width: 18px;
+  text-align: right;
+  line-height: 1.6;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.block__list .block__text {
+  flex: 1;
+}
+
+.block__todo {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+}
+.block__check {
+  margin-top: 4px;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.block__todo.is-done .block__text {
+  color: var(--text-faint);
+  text-decoration: line-through;
+}
+
+.block__quote {
+  margin: 0;
+  padding-left: 14px;
+  border-left: 3px solid var(--border-strong);
+  color: var(--text);
+  font-style: normal;
+}
+
+.block__callout {
+  display: flex;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background: var(--callout-bg);
+  border: 1px solid var(--border);
+}
+.block__callout-emoji {
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.block__toggle {
+  width: 100%;
+}
+.block__toggle-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+.block__toggle-arrow {
+  margin-top: 2px;
+  width: 18px;
+  height: 22px;
+  color: var(--text-muted);
+  font-size: 11px;
+  transition: transform var(--fast) var(--ease);
+}
+.block__toggle-arrow.is-open {
+  transform: rotate(90deg);
+}
+.block__toggle-body {
+  width: 100%;
+  margin: 4px 0 2px 24px;
+  padding: 6px 8px;
+  border: none;
+  border-left: 2px solid var(--border);
+  border-radius: 0;
+  background: none;
+  resize: none;
+  color: var(--text);
+  outline: none;
+}
+.block__toggle-body::placeholder {
+  color: var(--text-faint);
+}
+
+.block__divider {
+  width: 100%;
+  margin: 8px 0;
+  border: none;
+  border-top: 1px solid var(--border-strong);
+}
+
+.block__code {
+  width: 100%;
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.block__code-lang {
+  display: block;
+  width: 100%;
+  padding: 6px 12px 0;
+  border: none;
+  background: none;
+  color: var(--text-faint);
+  font-size: 12px;
+  outline: none;
+}
+.block__code-area {
+  display: block;
+  width: 100%;
+  min-height: 40px;
+  padding: 6px 12px 12px;
+  border: none;
+  background: none;
+  resize: none;
+  font-family: var(--mono);
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text);
+  outline: none;
+}
+
+.block__image-empty {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  border: 1px dashed var(--border-strong);
+}
+.block__image-icon {
+  font-size: 18px;
+}
+.block__image-input {
+  flex: 1;
+  border: none;
+  background: none;
+  outline: none;
+}
+.block__image {
+  margin: 0;
+  position: relative;
+}
+.block__image img {
+  max-width: 100%;
+  border-radius: var(--radius);
+  display: block;
+}
+.block__image-caption {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  outline: none;
+}
+.block__image-replace {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 3px 9px;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--bg) 80%, transparent);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  opacity: 0;
+  transition: opacity var(--fast) var(--ease);
+}
+.block__image:hover .block__image-replace {
+  opacity: 1;
+}
+
+.embed-missing {
+  padding: 16px;
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  color: var(--text-muted);
+  font-size: 14px;
+  text-align: center;
+}
+
+/* ==========================================================================
+   Slash menu
+   ========================================================================== */
+
+.slash-menu {
+  position: absolute;
+  z-index: 70;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  width: 300px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 6px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  animation: pop var(--med) var(--ease);
+}
+.slash-menu__empty {
+  padding: 14px;
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 14px;
+}
+.slash-menu__group-label {
+  padding: 6px 8px 3px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.slash-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: var(--radius);
+  text-align: left;
+  transition: background var(--fast) var(--ease);
+}
+.slash-menu__item.is-active {
+  background: var(--bg-hover);
+}
+.slash-menu__hint {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  font-size: 14px;
+  color: var(--text);
+}
+.slash-menu__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.slash-menu__label {
+  font-size: 14px;
+  color: var(--text);
+}
+.slash-menu__desc {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+/* ==========================================================================
+   Emoji picker
+   ========================================================================== */
+
+.emoji-picker {
+  position: absolute;
+  z-index: 70;
+  top: 64px;
+  left: 0;
+  width: 280px;
+  padding: 8px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  animation: pop var(--med) var(--ease);
+}
+.emoji-picker__search {
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 6px 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  outline: none;
+}
+.emoji-picker__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.emoji-picker__item {
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius);
+  font-size: 20px;
+  transition: background var(--fast) var(--ease);
+}
+.emoji-picker__item:hover {
+  background: var(--bg-hover);
+}
+.emoji-picker__empty {
+  grid-column: 1 / -1;
+  padding: 12px;
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 13px;
+}
+
+/* ==========================================================================
+   Database table
+   ========================================================================== */
+
+.db {
+  width: 100%;
+  margin: 6px 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.db__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.db__name {
+  border: none;
+  background: none;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-strong);
+  outline: none;
+}
+.db__toolbar-right {
+  margin-left: auto;
+}
+.db__search,
+.wf__search {
+  width: 180px;
+  max-width: 40vw;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  font-size: 13px;
+  outline: none;
+  transition: border-color var(--fast) var(--ease);
+}
+.db__search:focus,
+.wf__search:focus {
+  border-color: var(--accent);
+}
+
+.db__scroll {
+  overflow-x: auto;
+}
+.db__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.db__table th,
+.db__table td {
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+.db__th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bg-sunken);
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.db__th-inner {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 4px 2px 10px;
+}
+.db__th-name {
+  flex: 1;
+  min-width: 80px;
+  border: none;
+  background: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  outline: none;
+}
+.db__sort-mark {
+  color: var(--accent);
+  font-size: 12px;
+}
+.db__th-menu {
+  width: 20px;
+  height: 22px;
+  border-radius: 4px;
+  color: var(--text-faint);
+  opacity: 0;
+  transition: opacity var(--fast) var(--ease), background var(--fast) var(--ease);
+}
+.db__th:hover .db__th-menu {
+  opacity: 1;
+}
+.db__th-menu:hover {
+  background: var(--bg-active);
+}
+.db__th-dropdown {
+  top: 32px;
+  left: 6px;
+}
+.db__type-sub {
+  position: static;
+  margin: 4px 0;
+  box-shadow: none;
+  border: none;
+  background: var(--bg-sunken);
+  animation: none;
+}
+.db__rownum-head {
+  width: 40px;
+  background: var(--bg-sunken);
+}
+.db__rownum {
+  position: relative;
+  width: 40px;
+  padding: 7px 6px;
+  color: var(--text-faint);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  background: var(--bg-sunken);
+}
+.db__rowdel {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--text-faint);
+  opacity: 0;
+  background: var(--bg-sunken);
+  transition: opacity var(--fast) var(--ease), color var(--fast) var(--ease);
+}
+.db__row:hover .db__rowdel {
+  opacity: 1;
+}
+.db__rowdel:hover {
+  color: var(--danger);
+}
+.db__cell {
+  min-width: 120px;
+  padding: 0;
+}
+.db__cell--pad {
+  min-width: 0;
+  width: auto;
+  border-right: none;
+}
+.db__input {
+  width: 100%;
+  padding: 7px 10px;
+  border: none;
+  background: none;
+  outline: none;
+  font-size: 14px;
+}
+.db__input:focus {
+  background: var(--accent-soft);
+}
+.db__checkbox {
+  margin: 9px 12px;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
+.db__url {
+  display: flex;
+  align-items: center;
+}
+.db__url-link {
+  padding: 0 8px;
+  text-decoration: none;
+}
+.db__addcol {
+  width: 44px;
+  background: var(--bg-sunken);
+}
+.db__addcol-wrap {
+  position: relative;
+}
+.db__addcol-btn {
+  width: 100%;
+  padding: 6px;
+  color: var(--text-faint);
+  transition: background var(--fast) var(--ease), color var(--fast) var(--ease);
+}
+.db__addcol-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+.db__addcol-menu {
+  top: 34px;
+  right: 0;
+}
+.db__empty {
+  padding: 18px;
+  text-align: center;
+  color: var(--text-faint);
+}
+.db__addrow {
+  display: block;
+  width: 100%;
+  padding: 9px 12px;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 13.5px;
+  text-align: left;
+  transition: background var(--fast) var(--ease);
+}
+.db__addrow:hover {
+  background: var(--bg-hover);
+}
+
+/* select cell */
+.db__select {
+  position: relative;
+}
+.db__select-trigger {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  width: 100%;
+  min-height: 33px;
+  padding: 6px 10px;
+  text-align: left;
+}
+.db__select-trigger:hover {
+  background: var(--bg-hover);
+}
+.db__select-placeholder {
+  color: var(--text-faint);
+  font-size: 13px;
+}
+.db__select-pop {
+  position: absolute;
+  z-index: 60;
+  top: 100%;
+  left: 0;
+  width: 220px;
+  padding: 8px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  animation: pop var(--med) var(--ease);
+}
+.db__select-input {
+  width: 100%;
+  margin-bottom: 6px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  outline: none;
+}
+.db__select-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+.db__select-opt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px;
+  border-radius: var(--radius);
+  text-align: left;
+}
+.db__select-opt:hover {
+  background: var(--bg-hover);
+}
+.db__select-check {
+  margin-left: auto;
+  color: var(--accent);
+}
+.db__select-create {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.db__select-empty {
+  padding: 8px 6px;
+  color: var(--text-faint);
+  font-size: 13px;
+}
+
+/* ==========================================================================
+   Workflow board
+   ========================================================================== */
+
+.wf {
+  width: 100%;
+  margin: 6px 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-sunken);
+  overflow: hidden;
+}
+.wf__toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+.wf__name {
+  border: none;
+  background: none;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-strong);
+  outline: none;
+}
+.wf__views {
+  display: flex;
+  gap: 1px;
+  padding: 2px;
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+}
+.wf__view-btn {
+  padding: 4px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 13px;
+  transition: background var(--fast) var(--ease), color var(--fast) var(--ease);
+}
+.wf__view-btn.is-active {
+  background: var(--bg-elev);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+}
+.wf__filters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+.wf__priority-filter {
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  font-size: 13px;
+  outline: none;
+}
+
+.wf__board {
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+  overflow-x: auto;
+  align-items: flex-start;
+}
+.wf__col {
+  flex: 0 0 264px;
+  width: 264px;
+  border-radius: var(--radius-lg);
+}
+.wf__col-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px 8px;
+}
+.wf__stage-name {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  outline: none;
+}
+.wf__count {
+  color: var(--text-faint);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.wf__stage-del {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  color: var(--text-faint);
+  font-size: 11px;
+  opacity: 0;
+  transition: opacity var(--fast) var(--ease), color var(--fast) var(--ease);
+}
+.wf__col:hover .wf__stage-del {
+  opacity: 1;
+}
+.wf__stage-del:hover {
+  color: var(--danger);
+  background: var(--bg-active);
+}
+.wf__cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 12px;
+}
+.wf__card {
+  padding: 10px 12px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: box-shadow var(--fast) var(--ease), transform var(--fast) var(--ease),
+    border-color var(--fast) var(--ease);
+}
+.wf__card:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-md);
+}
+.wf__card.is-dragging {
+  opacity: 0.4;
+}
+.wf__card.is-drop-before {
+  box-shadow: 0 -2px 0 var(--accent), var(--shadow-sm);
+}
+.wf__card-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+.wf__card-desc {
+  margin-top: 3px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.wf__card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+.wf__card-due,
+.wf__card-assignee {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.wf__card-assignee {
+  padding: 1px 7px;
+  border-radius: 20px;
+  background: var(--bg-active);
+}
+.wf__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+.wf__add-card {
+  padding: 7px 10px;
+  border-radius: var(--radius);
+  color: var(--text-faint);
+  font-size: 13px;
+  text-align: left;
+  transition: background var(--fast) var(--ease), color var(--fast) var(--ease);
+}
+.wf__add-card:hover {
+  background: var(--bg-hover);
+  color: var(--text-muted);
+}
+.wf__add-stage-col {
+  flex: 0 0 200px;
+}
+.wf__add-stage {
+  width: 100%;
+  padding: 9px;
+  border-radius: var(--radius-lg);
+  border: 1px dashed var(--border-strong);
+  color: var(--text-faint);
+  font-size: 13px;
+  transition: background var(--fast) var(--ease), color var(--fast) var(--ease);
+}
+.wf__add-stage:hover {
+  background: var(--bg-hover);
+  color: var(--text-muted);
+}
+
+/* priority chips */
+.prio {
+  padding: 1px 8px;
+  border-radius: 20px;
+  font-size: 11.5px;
+  font-weight: 500;
+}
+.prio--none {
+  color: var(--text-faint);
+  background: var(--bg-active);
+}
+.prio--low {
+  color: #2f7d63;
+  background: rgba(47, 125, 99, 0.14);
+}
+.prio--medium {
+  color: #9a6b00;
+  background: rgba(154, 107, 0, 0.14);
+}
+.prio--high {
+  color: #b4561c;
+  background: rgba(180, 86, 28, 0.15);
+}
+.prio--urgent {
+  color: #c0392f;
+  background: var(--danger-soft);
+}
+.prio-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+.prio-dot--none {
+  background: var(--border-strong);
+}
+.prio-dot--low {
+  background: #2f7d63;
+}
+.prio-dot--medium {
+  background: #c79100;
+}
+.prio-dot--high {
+  background: #d2691e;
+}
+.prio-dot--urgent {
+  background: var(--danger);
+}
+
+/* workflow table + list */
+.wf__table-scroll {
+  overflow-x: auto;
+  background: var(--bg);
+}
+.wf__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.wf__table th {
+  padding: 9px 12px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-sunken);
+}
+.wf__table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.wf__trow {
+  cursor: pointer;
+  transition: background var(--fast) var(--ease);
+}
+.wf__trow:hover {
+  background: var(--bg-hover);
+}
+.wf__inline-select {
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  font-size: 13px;
+  outline: none;
+}
+.wf__empty {
+  padding: 18px;
+  text-align: center;
+  color: var(--text-faint);
+}
+
+.wf__list {
+  padding: 12px;
+  background: var(--bg);
+}
+.wf__list-group {
+  margin-bottom: 14px;
+}
+.wf__list-head {
+  padding: 4px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.wf__list-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  text-align: left;
+  transition: background var(--fast) var(--ease);
+}
+.wf__list-item:hover {
+  background: var(--bg-hover);
+}
+.wf__list-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wf__list-due {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.wf__list-empty {
+  padding: 6px 10px;
+  color: var(--text-faint);
+  font-size: 13px;
+}
+
+/* ==========================================================================
+   Forms (card editor, etc.)
+   ========================================================================== */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.form__row {
+  display: flex;
+  gap: 12px;
+}
+.form__row .form__field {
+  flex: 1;
+}
+.form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.form__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.form__input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  outline: none;
+  transition: border-color var(--fast) var(--ease);
+}
+.form__input:focus {
+  border-color: var(--accent);
+}
+.form__textarea {
+  resize: vertical;
+  min-height: 44px;
+}
+.form__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+}
+.form__tag-input {
+  flex: 1;
+  min-width: 90px;
+  border: none;
+  background: none;
+  outline: none;
+}
+
+/* ==========================================================================
+   Modals + overlays
+   ========================================================================== */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 15, 15, 0.4);
+  backdrop-filter: blur(2px);
+  animation: fade var(--med) var(--ease);
+}
+.overlay--top {
+  align-items: flex-start;
+  padding-top: 12vh;
+}
+.modal {
+  width: 100%;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  animation: rise var(--med) var(--ease);
+  overflow: hidden;
+}
+.modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.modal__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+.modal__body {
+  padding: 18px;
+}
+.modal__message {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+.modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 18px;
+  border-top: 1px solid var(--border);
+}
+
+/* ==========================================================================
+   Search modal
+   ========================================================================== */
+
+.search {
+  width: 100%;
+  max-width: 560px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  animation: rise var(--med) var(--ease);
+}
+.search__input-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.search__icon {
+  color: var(--text-faint);
+}
+.search__input {
+  flex: 1;
+  border: none;
+  background: none;
+  font-size: 16px;
+  outline: none;
+}
+.search__esc {
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.search__results {
+  max-height: 56vh;
+  overflow-y: auto;
+  padding: 8px;
+}
+.search__empty {
+  padding: 28px;
+  text-align: center;
+  color: var(--text-faint);
+}
+.search__group-label {
+  padding: 8px 8px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.search__result {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  text-align: left;
+  transition: background var(--fast) var(--ease);
+}
+.search__result.is-active {
+  background: var(--bg-hover);
+}
+.search__result-icon {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  font-size: 14px;
+}
+.search__result-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.search__result-title {
+  font-size: 14px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.search__result-sub {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+.search__result-warn {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+/* ==========================================================================
+   Toasts
+   ========================================================================== */
+
+.toast-container {
+  position: fixed;
+  z-index: 200;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  pointer-events: none;
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-radius: 30px;
+  background: var(--text-strong);
+  color: var(--bg);
+  font-size: 13.5px;
+  box-shadow: var(--shadow-lg);
+  pointer-events: auto;
+  animation: toastin var(--med) var(--ease);
+}
+[data-theme="dark"] .toast {
+  background: #f2f2f2;
+  color: #1a1a1a;
+}
+.toast__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #4caf7d;
+}
+.toast--error .toast__dot {
+  background: var(--danger);
+}
+.toast--info .toast__dot {
+  background: var(--accent);
+}
+
+/* ==========================================================================
+   Animations
+   ========================================================================== */
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(-4px);
+  }
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.99);
+  }
+}
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes toastin {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+/* ==========================================================================
+   Resizable embed frame
+   ========================================================================== */
+
+.embed-frame {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 320px;
+  min-height: 200px;
+  margin: 8px 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  overflow: hidden;
+  resize: both;
+  box-shadow: var(--shadow-sm);
+}
+.embed-frame.is-full {
+  resize: vertical;
+  width: min(1240px, calc(100vw - var(--sidebar-w) - 64px));
+  margin-left: 50%;
+  transform: translateX(-50%);
+  max-width: none;
+}
+.app--collapsed .embed-frame.is-full {
+  width: min(1240px, calc(100vw - 96px));
+}
+.embed-frame__bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-sunken);
+}
+.embed-frame__btn {
+  padding: 3px 9px;
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-size: 12px;
+  transition: background var(--fast) var(--ease), color var(--fast) var(--ease);
+}
+.embed-frame__btn:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+.embed-frame__hint {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.embed-frame__content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+/* embeds inside a frame shed their own outer chrome — the frame provides it */
+.embed-frame__content > .db,
+.embed-frame__content > .wf,
+.embed-frame__content > .fin {
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  min-height: 100%;
+}
+
+/* roomier kanban so it breathes */
+.wf__board {
+  gap: 16px;
+  padding: 18px;
+}
+.wf__col {
+  flex: 0 0 300px;
+  width: 300px;
+}
+.wf__cards {
+  gap: 10px;
+  min-height: 40px;
+}
+.wf__card {
+  padding: 12px 14px;
+}
+
+/* ==========================================================================
+   Finance tracker
+   ========================================================================== */
+
+.fin {
+  width: 100%;
+  margin: 6px 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+}
+.fin__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.fin__name {
+  border: none;
+  background: none;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-strong);
+  outline: none;
+}
+.fin__currency {
+  width: 44px;
+  padding: 5px 8px;
+  text-align: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  outline: none;
+}
+.fin__search {
+  margin-left: auto;
+  width: 160px;
+  max-width: 36vw;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  font-size: 13px;
+  outline: none;
+}
+.fin__search:focus,
+.fin__currency:focus {
+  border-color: var(--accent);
+}
+
+.fin__summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-sunken);
+}
+.fin__stat {
+  min-width: 120px;
+  padding: 8px 14px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+}
+.fin__stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-faint);
+  text-transform: uppercase;
+}
+.fin__stat-value {
+  margin-top: 2px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.fin__scroll {
+  overflow: auto;
+}
+.fin__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.fin__table th,
+.fin__table td {
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: middle;
+}
+.fin__th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bg-sunken);
+}
+.fin__th-inner {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 4px 2px 10px;
+}
+.fin__th-name {
+  flex: 1;
+  min-width: 70px;
+  border: none;
+  background: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  outline: none;
+}
+.fin__fx {
+  color: var(--accent);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 13px;
+}
+.fin__th-menu {
+  width: 20px;
+  height: 22px;
+  border-radius: 4px;
+  color: var(--text-faint);
+}
+.fin__th-menu:hover {
+  background: var(--bg-active);
+}
+.fin__th-dropdown {
+  top: 32px;
+  left: 6px;
+  min-width: 220px;
+}
+.fin__rownum-head {
+  width: 38px;
+  background: var(--bg-sunken);
+}
+.fin__rownum {
+  position: relative;
+  width: 38px;
+  padding: 7px 6px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-faint);
+  background: var(--bg-sunken);
+  font-variant-numeric: tabular-nums;
+}
+.fin__rowdel {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--text-faint);
+  background: var(--bg-sunken);
+  opacity: 0;
+  transition: opacity var(--fast) var(--ease), color var(--fast) var(--ease);
+}
+.fin__row:hover .fin__rowdel {
+  opacity: 1;
+}
+.fin__rowdel:hover {
+  color: var(--danger);
+}
+.fin__cell {
+  min-width: 120px;
+  padding: 0;
+}
+.fin__cell--pad {
+  min-width: 0;
+  border-right: none;
+}
+.fin__input {
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  background: none;
+  outline: none;
+  font-size: 14px;
+}
+.fin__input:focus {
+  background: var(--accent-soft);
+}
+.fin__input--num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.fin__num {
+  display: flex;
+  align-items: center;
+}
+.fin__num-prefix {
+  padding-left: 10px;
+  color: var(--text-faint);
+  font-size: 13px;
+}
+.fin__formula-cell {
+  padding: 8px 10px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.fin__empty {
+  padding: 18px;
+  text-align: center;
+  color: var(--text-faint);
+}
+.fin__foot {
+  position: sticky;
+  bottom: 0;
+  background: var(--bg-sunken);
+  font-weight: 600;
+}
+.fin__foot-cell {
+  padding: 8px 10px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-strong);
+}
+.fin__foot-val {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.fin__foot-agg {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.fin__addcol {
+  width: 42px;
+  background: var(--bg-sunken);
+}
+.fin__addcol-wrap {
+  position: relative;
+}
+.fin__addcol-btn {
+  width: 100%;
+  padding: 6px;
+  color: var(--text-faint);
+}
+.fin__addcol-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+.fin__addcol-menu {
+  top: 34px;
+  right: 0;
+}
+.fin__addrow {
+  padding: 9px 12px;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 13.5px;
+  text-align: left;
+  transition: background var(--fast) var(--ease);
+}
+.fin__addrow:hover {
+  background: var(--bg-hover);
+}
+.fin__menu-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+}
+.fin__menu-select {
+  width: calc(100% - 12px);
+  margin: 2px 6px 6px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  font-size: 13px;
+  outline: none;
+}
+.fin__formula {
+  padding: 0 6px 4px;
+}
+.fin__operand {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.fin__operand-num {
+  width: 70px;
+  margin: 2px 6px 6px 0;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  outline: none;
+}
+.fin__select {
+  position: relative;
+}
+.fin__select-trigger {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 35px;
+  padding: 6px 10px;
+  text-align: left;
+}
+.fin__select-trigger:hover {
+  background: var(--bg-hover);
+}
+.fin__select-placeholder {
+  color: var(--text-faint);
+  font-size: 13px;
+}
+.fin__select-pop {
+  position: absolute;
+  z-index: 60;
+  top: 100%;
+  left: 0;
+  width: 200px;
+  padding: 8px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  animation: pop var(--med) var(--ease);
+}
+.fin__select-input {
+  width: 100%;
+  margin-bottom: 6px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  outline: none;
+}
+.fin__select-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  max-height: 170px;
+  overflow-y: auto;
+}
+.fin__select-opt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px;
+  border-radius: var(--radius);
+  text-align: left;
+}
+.fin__select-opt:hover {
+  background: var(--bg-hover);
+}
+.fin__select-check {
+  margin-left: auto;
+  color: var(--accent);
+}
+.fin__select-create {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+@media (max-width: 1024px) {
+  :root {
+    --sidebar-w: 240px;
+  }
+}
+
+@media (max-width: 768px) {
+  .app__sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 90;
+    width: var(--sidebar-w);
+    transform: translateX(-100%);
+    box-shadow: var(--shadow-lg);
+  }
+  .app--collapsed .app__sidebar {
+    width: var(--sidebar-w);
+  }
+  .app--drawer-open .app__sidebar {
+    transform: translateX(0);
+  }
+  .app__scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    background: rgba(15, 15, 15, 0.4);
+    animation: fade var(--med) var(--ease);
+  }
+  .topbar__menu {
+    display: inline-flex;
+  }
+  .topbar__expand {
+    display: none;
+  }
+  .sidebar__collapse {
+    display: none;
+  }
+  .breadcrumb__item {
+    max-width: 150px;
+  }
+  .form__row {
+    flex-direction: column;
+  }
+}
+
+/* hover-only affordances on devices that truly hover */
+@media (hover: hover) {
+  .block:hover .block__gutter {
+    opacity: 1;
+  }
+  .tree__row:hover .tree__actions {
+    opacity: 1;
+  }
+}
+/* touch devices: keep controls reachable */
+@media (hover: none) {
+  .block__gutter,
+  .tree__actions,
+  .db__th-menu,
+  .wf__stage-del {
+    opacity: 1;
+  }
+}
+
+/* ==========================================================================
+   Reduced motion + print
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media print {
+  .app__sidebar,
+  .topbar,
+  .block__gutter,
+  .editor__add-block,
+  .toast-container {
+    display: none !important;
+  }
+  .app,
+  .app__content {
+    overflow: visible !important;
+    height: auto !important;
+  }
+  body {
+    background: #fff;
+  }
+}
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="text/babel" data-presets="react">
+/* Tracker — single-file build. All logic in one script (JSX via Babel). */
+const { useState, useEffect, useRef, useMemo, useCallback, useContext, createContext, forwardRef, memo, StrictMode } = React;
+
+/* ===================== utils ===================== */
+let _counter = 0;
+function uid(prefix = "id") {
+  _counter = (_counter + 1) % 1000000;
+  const rand = Math.random().toString(36).slice(2, 8);
+  return `${prefix}_${Date.now().toString(36)}${_counter.toString(36)}${rand}`;
+}
+const now = () => Date.now();
+function formatTime(ts) {
+  const d = new Date(ts), diff = Date.now() - ts;
+  const min = 60000, hr = 60 * min, day = 24 * hr;
+  if (diff < min) return "just now";
+  if (diff < hr) return Math.floor(diff / min) + "m ago";
+  if (diff < day) return Math.floor(diff / hr) + "h ago";
+  if (diff < 7 * day) return Math.floor(diff / day) + "d ago";
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+function formatDate(iso) {
+  if (!iso) return "";
+  const d = new Date(iso + "T00:00:00");
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+function debounce(fn, wait) {
+  let timer = null, lastArgs = null;
+  const wrapped = (...args) => {
+    lastArgs = args;
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => { timer = null; if (lastArgs) fn(...lastArgs); lastArgs = null; }, wait);
+  };
+  wrapped.flush = () => { if (timer) { clearTimeout(timer); timer = null; } if (lastArgs) { fn(...lastArgs); lastArgs = null; } };
+  wrapped.cancel = () => { if (timer) clearTimeout(timer); timer = null; lastArgs = null; };
+  return wrapped;
+}
+function downloadText(filename, text) {
+  const blob = new Blob([text], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+  document.body.removeChild(a); setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function isMac() {
+  if (typeof navigator === "undefined") return false;
+  return /mac|iphone|ipad|ipod/i.test(navigator.platform || navigator.userAgent);
+}
+function matches(haystack, needle) { if (!needle) return true; return String(haystack).toLowerCase().includes(needle.toLowerCase()); }
+function arrayMove(arr, from, to) { const c = arr.slice(); const [it] = c.splice(from, 1); c.splice(to, 0, it); return c; }
+
+const SCHEMA_VERSION = 1;
+const PRIORITY_ORDER = ["none", "low", "medium", "high", "urgent"];
+const PRIORITY_LABEL = { none: "No priority", low: "Low", medium: "Medium", high: "High", urgent: "Urgent" };
+const AGG_LABEL = { none: "None", sum: "Sum", avg: "Average", min: "Min", max: "Max", count: "Count" };
+
+/* ===================== finance math ===================== */
+function toNumber(v) {
+  if (typeof v === "number") return v;
+  if (typeof v === "boolean") return v ? 1 : 0;
+  if (typeof v === "string") { const n = parseFloat(v.replace(/[^0-9.+-]/g, "")); return isNaN(n) ? 0 : n; }
+  return 0;
+}
+function resolveOperand(op, row) { if (op.kind === "const") return op.value; return toNumber(row.cells[op.col] ?? null); }
+function computeFormula(col, row) {
+  if (!col.formula) return 0;
+  const a = resolveOperand(col.formula.left, row), b = resolveOperand(col.formula.right, row);
+  switch (col.formula.op) { case "+": return a + b; case "-": return a - b; case "*": return a * b; case "/": return b === 0 ? 0 : a / b; default: return 0; }
+}
+function cellNumber(col, row) { return col.type === "formula" ? computeFormula(col, row) : toNumber(row.cells[col.id] ?? null); }
+function isNumericColumn(col) { return col.type === "number" || col.type === "formula"; }
+function aggregate(col, rows, kind) {
+  if (kind === "none") return null;
+  const nums = rows.map(r => cellNumber(col, r));
+  if (kind === "count") return rows.filter(r => { if (col.type === "formula") return true; const v = r.cells[col.id]; return v !== null && v !== undefined && v !== ""; }).length;
+  if (nums.length === 0) return 0;
+  switch (kind) {
+    case "sum": return nums.reduce((s, n) => s + n, 0);
+    case "avg": return nums.reduce((s, n) => s + n, 0) / nums.length;
+    case "min": return Math.min(...nums);
+    case "max": return Math.max(...nums);
+    default: return null;
+  }
+}
+function formatMoney(n, currency = "$", money = true) {
+  const rounded = Math.round((n + Number.EPSILON) * 100) / 100;
+  const str = rounded.toLocaleString(undefined, { minimumFractionDigits: Number.isInteger(rounded) ? 0 : 2, maximumFractionDigits: 2 });
+  return money ? `${currency}${str}` : str;
+}
+function numericColumns(finance) { return finance.columns.filter(isNumericColumn); }
+
+/* ===================== seed ===================== */
+function createSeedWorkspace() {
+  const t = now();
+  const welcomeId = uid("page"), gettingStartedId = uid("page"), projectsId = uid("page"), calendarChildId = uid("page");
+  const dbId = uid("db"), colTask = uid("col"), colStatus = uid("col"), colPriority = uid("col"), colDue = uid("col"), colDone = uid("col");
+  const wfId = uid("wf"), stIdea = uid("st"), stDraft = uid("st"), stReview = uid("st"), stPublished = uid("st");
+  const financeId = uid("fin"), financePageId = uid("page");
+  const fcItem = uid("fc"), fcCat = uid("fc"), fcQty = uid("fc"), fcPrice = uid("fc"), fcTotal = uid("fc");
+  const block = (pageId, type, content, order, props = {}) => ({ id: uid("blk"), pageId, type, content, order, props });
+  const card = (workflowId, stageId, title, description, priority, tagSpec, assignee, order) => ({
+    id: uid("card"), workflowId, stageId, title, description, priority, dueDate: "",
+    tags: tagSpec.startsWith("tags:") ? tagSpec.slice(5).split(",").map(s => s.trim()).filter(Boolean) : [],
+    assignee, notes: "", order, createdAt: t, updatedAt: t,
+  });
+  const row = (databaseId, order, cells) => ({ id: uid("row"), databaseId, cells, order });
+  const isoInDays = (days) => { const d = new Date(); d.setDate(d.getDate() + days); return d.toISOString().slice(0, 10); };
+  return {
+    version: SCHEMA_VERSION, settings: { theme: "light" },
+    pages: [
+      { id: welcomeId, title: "Welcome to Tracker", emoji: "👋", parentId: null, createdAt: t, updatedAt: t },
+      { id: gettingStartedId, title: "Getting Started", emoji: "🚀", parentId: welcomeId, createdAt: t, updatedAt: t },
+      { id: projectsId, title: "Project Tracker", emoji: "📊", parentId: null, createdAt: t, updatedAt: t },
+      { id: calendarChildId, title: "Content Calendar", emoji: "🗓️", parentId: projectsId, createdAt: t, updatedAt: t },
+      { id: financePageId, title: "Finance Tracker", emoji: "💰", parentId: null, createdAt: t, updatedAt: t },
+    ],
+    blocks: [
+      block(welcomeId, "h1", "Welcome to Tracker", 0),
+      block(welcomeId, "paragraph", "Tracker is your local-first workspace — notes, databases, and workflow boards, all saved right in your browser.", 1),
+      block(welcomeId, "callout", "Everything here lives in localStorage. Nothing is sent to a server, and your data stays after a refresh.", 2, { emoji: "💡" }),
+      block(welcomeId, "h2", "Try these", 3),
+      block(welcomeId, "todo", "Type / on an empty line to open the command menu", 4, { checked: true }),
+      block(welcomeId, "todo", "Create a nested page from the sidebar", 5, { checked: false }),
+      block(welcomeId, "todo", "Drag a card across the workflow board below", 6, { checked: false }),
+      block(welcomeId, "todo", "Press ⌘K / Ctrl+K to search everything", 7, { checked: false }),
+      block(welcomeId, "divider", "", 8),
+      block(welcomeId, "h2", "A workflow board", 9),
+      block(welcomeId, "paragraph", "Boards, tables, and lists all read from the same data.", 10),
+      block(welcomeId, "workflow", "", 11, { workflowId: wfId }),
+      block(gettingStartedId, "h1", "Getting Started", 0),
+      block(gettingStartedId, "quote", "The best way to learn Tracker is to start writing.", 1),
+      block(gettingStartedId, "h3", "Blocks", 2),
+      block(gettingStartedId, "bulleted", "Press Enter to create the next block", 3),
+      block(gettingStartedId, "bulleted", "Press Backspace on an empty block to remove it", 4),
+      block(gettingStartedId, "bulleted", "Hover a block to drag, duplicate, or delete it", 5),
+      block(gettingStartedId, "h3", "Toggle example", 6),
+      block(gettingStartedId, "toggle", "Click to expand for tips", 7, { collapsed: false }),
+      block(gettingStartedId, "h3", "Code", 8),
+      block(gettingStartedId, "code", "const tracker = 'local-first';\nconsole.log(tracker);", 9, { language: "javascript" }),
+      block(projectsId, "h1", "Project Tracker", 0),
+      block(projectsId, "paragraph", "A lightweight database. Add rows and columns, edit cells inline, sort and filter.", 1),
+      block(projectsId, "database", "", 2, { databaseId: dbId }),
+      block(calendarChildId, "h1", "Content Calendar", 0),
+      block(calendarChildId, "paragraph", "Plan posts and track them through the same workflow used on the Welcome page.", 1),
+      block(calendarChildId, "workflow", "", 2, { workflowId: wfId }),
+      block(financePageId, "h1", "Finance Tracker", 0),
+      block(financePageId, "callout", "This table calculates itself. Total = Qty × Price per row, and the summary auto-sums as you type. Add columns, formulas, and aggregations from each column's ⌄ menu.", 1, { emoji: "💰" }),
+      block(financePageId, "finance", "", 2, { financeId, full: true, size: { h: 460 } }),
+    ],
+    workflows: [{ id: wfId, name: "Content Calendar", createdAt: t, updatedAt: t }],
+    workflowStages: [
+      { id: stIdea, workflowId: wfId, name: "Idea", order: 0 },
+      { id: stDraft, workflowId: wfId, name: "Drafting", order: 1 },
+      { id: stReview, workflowId: wfId, name: "Review", order: 2 },
+      { id: stPublished, workflowId: wfId, name: "Published", order: 3 },
+    ],
+    workflowCards: [
+      card(wfId, stIdea, "Launch announcement", "Tease the new release across channels.", "high", "tags:Marketing", "Alex", 0),
+      card(wfId, stIdea, "Customer story: Atlas", "Interview the Atlas team about their setup.", "medium", "tags:Blog", "Sam", 1),
+      card(wfId, stDraft, "Weekly newsletter #42", "Draft the Friday edition.", "medium", "tags:Email", "Jordan", 0),
+      card(wfId, stReview, "Product tips thread", "Reviewing copy before scheduling.", "low", "tags:Social", "Alex", 0),
+      card(wfId, stPublished, "Year in review", "Shipped and performing well.", "urgent", "tags:Blog,Feature", "Sam", 0),
+    ],
+    databases: [{
+      id: dbId, name: "Project Tracker",
+      columns: [
+        { id: colTask, name: "Task", type: "text" },
+        { id: colStatus, name: "Status", type: "select", options: ["Backlog", "In progress", "Done"] },
+        { id: colPriority, name: "Priority", type: "select", options: ["Low", "Medium", "High"] },
+        { id: colDue, name: "Due", type: "date" },
+        { id: colDone, name: "Done", type: "checkbox" },
+      ],
+    }],
+    databaseRows: [
+      row(dbId, 0, { [colTask]: "Design the landing page", [colStatus]: "In progress", [colPriority]: "High", [colDue]: isoInDays(3), [colDone]: false }),
+      row(dbId, 1, { [colTask]: "Write onboarding docs", [colStatus]: "Backlog", [colPriority]: "Medium", [colDue]: isoInDays(7), [colDone]: false }),
+      row(dbId, 2, { [colTask]: "Set up the workspace", [colStatus]: "Done", [colPriority]: "Low", [colDue]: isoInDays(-1), [colDone]: true }),
+    ],
+    finances: [{
+      id: financeId, name: "Monthly Budget", currency: "$",
+      columns: [
+        { id: fcItem, name: "Item", type: "text", agg: "none" },
+        { id: fcCat, name: "Category", type: "select", options: ["Income", "Software", "Office", "Marketing"], agg: "none" },
+        { id: fcQty, name: "Qty", type: "number", money: false, agg: "sum" },
+        { id: fcPrice, name: "Unit price", type: "number", money: true, agg: "none" },
+        { id: fcTotal, name: "Total", type: "formula", money: true, agg: "sum", formula: { left: { kind: "col", col: fcQty }, op: "*", right: { kind: "col", col: fcPrice } } },
+      ],
+      rows: [
+        { id: uid("fr"), financeId, order: 0, cells: { [fcItem]: "Client retainer", [fcCat]: "Income", [fcQty]: 1, [fcPrice]: 4200 } },
+        { id: uid("fr"), financeId, order: 1, cells: { [fcItem]: "Design tool seats", [fcCat]: "Software", [fcQty]: 4, [fcPrice]: 15 } },
+        { id: uid("fr"), financeId, order: 2, cells: { [fcItem]: "Ad campaign", [fcCat]: "Marketing", [fcQty]: 1, [fcPrice]: 600 } },
+        { id: uid("fr"), financeId, order: 3, cells: { [fcItem]: "Co-working desk", [fcCat]: "Office", [fcQty]: 2, [fcPrice]: 220 } },
+      ],
+    }],
+    favorites: [welcomeId], recents: [welcomeId],
+  };
+}
+
+/* ===================== storage ===================== */
+const STORAGE_KEY = "tracker.workspace.v1";
+function isValidWorkspace(v) {
+  if (!v || typeof v !== "object") return false;
+  const arrays = ["pages", "blocks", "workflows", "workflowStages", "workflowCards", "databases", "databaseRows", "favorites", "recents"];
+  if (!arrays.every(k => Array.isArray(v[k]))) return false;
+  if (typeof v.version !== "number") return false;
+  if (!v.settings || typeof v.settings !== "object") return false;
+  return true;
+}
+function migrate(raw) {
+  let ws = raw;
+  if (ws.version !== SCHEMA_VERSION) ws = { ...ws, version: SCHEMA_VERSION };
+  const fresh = createSeedWorkspace();
+  return { ...fresh, ...ws, settings: { ...fresh.settings, ...ws.settings } };
+}
+function loadWorkspace() {
+  let stored = null;
+  try { stored = localStorage.getItem(STORAGE_KEY); }
+  catch { return { workspace: createSeedWorkspace(), recovered: false, firstRun: true }; }
+  if (stored == null) { const seed = createSeedWorkspace(); saveWorkspace(seed); return { workspace: seed, recovered: false, firstRun: true }; }
+  try {
+    const parsed = JSON.parse(stored);
+    if (!isValidWorkspace(parsed)) return { workspace: createSeedWorkspace(), recovered: true, firstRun: false };
+    return { workspace: migrate(parsed), recovered: false, firstRun: false };
+  } catch { return { workspace: createSeedWorkspace(), recovered: true, firstRun: false }; }
+}
+function saveWorkspace(ws) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(ws)); return true; } catch { return false; } }
+function exportWorkspace(ws) { downloadText("tracker-workspace.json", JSON.stringify(ws, null, 2)); }
+async function importWorkspaceFile(file) {
+  try {
+    const text = await file.text();
+    const parsed = JSON.parse(text);
+    if (!isValidWorkspace(parsed)) return { ok: false, error: "That file is not a valid Tracker workspace." };
+    return { ok: true, workspace: migrate(parsed) };
+  } catch { return { ok: false, error: "Could not read that file. Is it valid JSON?" }; }
+}
+
+/* ===================== Toast ===================== */
+const ToastContext = createContext(null);
+function ToastProvider({ children }) {
+  const [toasts, setToasts] = useState([]);
+  const nextId = useRef(1);
+  const show = useCallback((message, kind = "success") => {
+    const id = nextId.current++;
+    setToasts(l => [...l, { id, message, kind }]);
+    window.setTimeout(() => setToasts(l => l.filter(t => t.id !== id)), 2800);
+  }, []);
+  const dismiss = useCallback(id => setToasts(l => l.filter(t => t.id !== id)), []);
+  const value = useMemo(() => ({ show }), [show]);
+  return (
+    <ToastContext.Provider value={value}>
+      {children}
+      <div className="toast-container" role="status" aria-live="polite">
+        {toasts.map(t => (
+          <button key={t.id} type="button" className={`toast toast--${t.kind}`} onClick={() => dismiss(t.id)}>
+            <span className="toast__dot" aria-hidden /><span className="toast__msg">{t.message}</span>
+          </button>
+        ))}
+      </div>
+    </ToastContext.Provider>
+  );
+}
+const useToast = () => useContext(ToastContext);
+
+/* ===================== Store ===================== */
+const StoreContext = createContext(null);
+function WorkspaceProvider({ children }) {
+  const toast = useToast();
+  const initial = useRef(loadWorkspace());
+  const [ws, setWs] = useState(initial.current.workspace);
+  const [currentPageId, setCurrentPageId] = useState(initial.current.workspace.pages[0]?.id ?? null);
+
+  useEffect(() => { if (initial.current.recovered) toast.show("Saved data was unreadable — restored a fresh workspace.", "error"); }, []);
+
+  const debouncedSave = useRef(debounce(next => saveWorkspace(next), 400));
+  useEffect(() => { debouncedSave.current(ws); }, [ws]);
+  useEffect(() => { const flush = debouncedSave.current.flush; return () => flush(); }, []);
+
+  const pageBlocks = useCallback(pageId => ws.blocks.filter(b => b.pageId === pageId).sort((a, b) => a.order - b.order), [ws.blocks]);
+  const touchPage = (pages, id) => pages.map(p => p.id === id ? { ...p, updatedAt: now() } : p);
+  const withPageBlocks = (state, pageId, list) => {
+    const others = state.blocks.filter(b => b.pageId !== pageId);
+    return [...others, ...list.map((b, i) => ({ ...b, order: i }))];
+  };
+
+  const setCurrentPage = useCallback(id => {
+    setCurrentPageId(id);
+    if (id) setWs(s => ({ ...s, recents: [id, ...s.recents.filter(r => r !== id)].slice(0, 12) }));
+  }, []);
+  const createPage = useCallback((parentId = null) => {
+    const id = uid("page"), t = now();
+    const page = { id, title: "Untitled", emoji: "📄", parentId, createdAt: t, updatedAt: t };
+    const firstBlock = { id: uid("blk"), pageId: id, type: "paragraph", content: "", order: 0, props: {} };
+    setWs(s => ({ ...s, pages: [...s.pages, page], blocks: [...s.blocks, firstBlock], recents: [id, ...s.recents].slice(0, 12) }));
+    setCurrentPageId(id); return id;
+  }, []);
+  const renamePage = useCallback((id, title) => setWs(s => ({ ...s, pages: s.pages.map(p => p.id === id ? { ...p, title, updatedAt: now() } : p) })), []);
+  const setPageEmoji = useCallback((id, emoji) => setWs(s => ({ ...s, pages: s.pages.map(p => p.id === id ? { ...p, emoji, updatedAt: now() } : p) })), []);
+  const duplicatePage = useCallback(id => {
+    const newId = uid("page");
+    setWs(s => {
+      const original = s.pages.find(p => p.id === id); if (!original) return s;
+      const t = now();
+      const copy = { ...original, id: newId, title: original.title + " (copy)", createdAt: t, updatedAt: t };
+      const clonedBlocks = s.blocks.filter(b => b.pageId === id).map(b => ({ ...b, id: uid("blk"), pageId: newId }));
+      return { ...s, pages: [...s.pages, copy], blocks: [...s.blocks, ...clonedBlocks] };
+    });
+    setCurrentPageId(newId); return newId;
+  }, []);
+  const deletePage = useCallback(id => {
+    setWs(s => {
+      const toRemove = new Set();
+      const collect = pid => { toRemove.add(pid); s.pages.filter(p => p.parentId === pid).forEach(c => collect(c.id)); };
+      collect(id);
+      return {
+        ...s, pages: s.pages.filter(p => !toRemove.has(p.id)), blocks: s.blocks.filter(b => !toRemove.has(b.pageId)),
+        favorites: s.favorites.filter(f => !toRemove.has(f)), recents: s.recents.filter(r => !toRemove.has(r)),
+      };
+    });
+    setCurrentPageId(cur => { if (cur && cur !== id) return cur; const remaining = ws.pages.filter(p => p.id !== id); return remaining[0]?.id ?? null; });
+  }, [ws.pages]);
+  const toggleFavorite = useCallback(id => setWs(s => ({ ...s, favorites: s.favorites.includes(id) ? s.favorites.filter(f => f !== id) : [...s.favorites, id] })), []);
+
+  const addBlock = useCallback((pageId, afterBlockId, type = "paragraph", content = "", props = {}) => {
+    const id = uid("blk");
+    setWs(s => {
+      const list = s.blocks.filter(b => b.pageId === pageId).sort((a, b) => a.order - b.order);
+      const idx = afterBlockId ? list.findIndex(b => b.id === afterBlockId) + 1 : list.length;
+      list.splice(idx <= 0 ? list.length : idx, 0, { id, pageId, type, content, order: 0, props });
+      return { ...s, blocks: withPageBlocks(s, pageId, list), pages: touchPage(s.pages, pageId) };
+    });
+    return id;
+  }, []);
+  const updateBlock = useCallback((id, patch) => setWs(s => {
+    const target = s.blocks.find(b => b.id === id); if (!target) return s;
+    return { ...s, blocks: s.blocks.map(b => b.id === id ? { ...b, ...patch, props: { ...b.props, ...patch.props } } : b), pages: touchPage(s.pages, target.pageId) };
+  }), []);
+  const changeBlockType = useCallback((id, type, props = {}) => setWs(s => ({ ...s, blocks: s.blocks.map(b => b.id === id ? { ...b, type, props: { ...b.props, ...props } } : b) })), []);
+  const deleteBlock = useCallback(id => setWs(s => {
+    const target = s.blocks.find(b => b.id === id); if (!target) return s;
+    const list = s.blocks.filter(b => b.pageId === target.pageId && b.id !== id).sort((a, b) => a.order - b.order);
+    return { ...s, blocks: withPageBlocks(s, target.pageId, list) };
+  }), []);
+  const duplicateBlock = useCallback(id => setWs(s => {
+    const target = s.blocks.find(b => b.id === id); if (!target) return s;
+    const list = s.blocks.filter(b => b.pageId === target.pageId).sort((a, b) => a.order - b.order);
+    const idx = list.findIndex(b => b.id === id);
+    list.splice(idx + 1, 0, { ...target, id: uid("blk"), props: { ...target.props } });
+    return { ...s, blocks: withPageBlocks(s, target.pageId, list) };
+  }), []);
+  const moveBlock = useCallback((pageId, fromIndex, toIndex) => setWs(s => {
+    const list = s.blocks.filter(b => b.pageId === pageId).sort((a, b) => a.order - b.order);
+    if (fromIndex < 0 || fromIndex >= list.length) return s;
+    const clamped = Math.max(0, Math.min(toIndex, list.length - 1));
+    return { ...s, blocks: withPageBlocks(s, pageId, arrayMove(list, fromIndex, clamped)) };
+  }), []);
+
+  const createWorkflow = useCallback(name => {
+    const id = uid("wf"), t = now();
+    const stages = ["To do", "In progress", "Done"].map((n, i) => ({ id: uid("st"), workflowId: id, name: n, order: i }));
+    setWs(s => ({ ...s, workflows: [...s.workflows, { id, name, createdAt: t, updatedAt: t }], workflowStages: [...s.workflowStages, ...stages] }));
+    return id;
+  }, []);
+  const renameWorkflow = useCallback((id, name) => setWs(s => ({ ...s, workflows: s.workflows.map(w => w.id === id ? { ...w, name, updatedAt: now() } : w) })), []);
+  const deleteWorkflow = useCallback(id => setWs(s => ({ ...s, workflows: s.workflows.filter(w => w.id !== id), workflowStages: s.workflowStages.filter(st => st.workflowId !== id), workflowCards: s.workflowCards.filter(c => c.workflowId !== id) })), []);
+  const addStage = useCallback((workflowId, name) => setWs(s => {
+    const count = s.workflowStages.filter(st => st.workflowId === workflowId).length;
+    return { ...s, workflowStages: [...s.workflowStages, { id: uid("st"), workflowId, name, order: count }] };
+  }), []);
+  const renameStage = useCallback((id, name) => setWs(s => ({ ...s, workflowStages: s.workflowStages.map(st => st.id === id ? { ...st, name } : st) })), []);
+  const deleteStage = useCallback(id => setWs(s => ({ ...s, workflowStages: s.workflowStages.filter(st => st.id !== id), workflowCards: s.workflowCards.filter(c => c.stageId !== id) })), []);
+  const addCard = useCallback((workflowId, stageId, partial = {}) => {
+    const id = uid("card"), t = now();
+    setWs(s => {
+      const count = s.workflowCards.filter(c => c.stageId === stageId).length;
+      const cardObj = { id, workflowId, stageId, title: "New card", description: "", priority: "none", dueDate: "", tags: [], assignee: "", notes: "", order: count, createdAt: t, updatedAt: t, ...partial };
+      return { ...s, workflowCards: [...s.workflowCards, cardObj] };
+    });
+    return id;
+  }, []);
+  const updateCard = useCallback((id, patch) => setWs(s => ({ ...s, workflowCards: s.workflowCards.map(c => c.id === id ? { ...c, ...patch, updatedAt: now() } : c) })), []);
+  const deleteCard = useCallback(id => setWs(s => ({ ...s, workflowCards: s.workflowCards.filter(c => c.id !== id) })), []);
+  const duplicateCard = useCallback(id => setWs(s => {
+    const target = s.workflowCards.find(c => c.id === id); if (!target) return s;
+    const t = now();
+    const copy = { ...target, id: uid("card"), title: target.title + " (copy)", tags: [...target.tags], order: target.order + 0.5, createdAt: t, updatedAt: t };
+    const stageCards = [...s.workflowCards, copy].filter(c => c.stageId === target.stageId).sort((a, b) => a.order - b.order).map((c, i) => ({ ...c, order: i }));
+    return { ...s, workflowCards: [...s.workflowCards.filter(c => c.stageId !== target.stageId), ...stageCards] };
+  }), []);
+  const moveCard = useCallback((cardId, toStageId, toIndex) => setWs(s => {
+    const card = s.workflowCards.find(c => c.id === cardId); if (!card) return s;
+    const fromStageId = card.stageId;
+    const moved = { ...card, stageId: toStageId, updatedAt: now() };
+    const targetList = s.workflowCards.filter(c => c.stageId === toStageId && c.id !== cardId).sort((a, b) => a.order - b.order);
+    const clamped = Math.max(0, Math.min(toIndex, targetList.length));
+    targetList.splice(clamped, 0, moved);
+    const reTarget = targetList.map((c, i) => ({ ...c, order: i }));
+    let result = [...s.workflowCards.filter(c => c.stageId !== toStageId && c.id !== cardId), ...reTarget];
+    if (fromStageId !== toStageId) {
+      const sourceList = result.filter(c => c.stageId === fromStageId).sort((a, b) => a.order - b.order).map((c, i) => ({ ...c, order: i }));
+      result = [...result.filter(c => c.stageId !== fromStageId), ...sourceList];
+    }
+    return { ...s, workflowCards: result };
+  }), []);
+
+  const createDatabase = useCallback(name => {
+    const id = uid("db");
+    const db = { id, name, columns: [{ id: uid("col"), name: "Name", type: "text" }, { id: uid("col"), name: "Status", type: "select", options: ["Todo", "Doing", "Done"] }] };
+    setWs(s => ({ ...s, databases: [...s.databases, db] }));
+    return id;
+  }, []);
+  const renameDatabase = useCallback((id, name) => setWs(s => ({ ...s, databases: s.databases.map(d => d.id === id ? { ...d, name } : d) })), []);
+  const addRow = useCallback(databaseId => setWs(s => {
+    const count = s.databaseRows.filter(r => r.databaseId === databaseId).length;
+    return { ...s, databaseRows: [...s.databaseRows, { id: uid("row"), databaseId, cells: {}, order: count }] };
+  }), []);
+  const deleteRow = useCallback(rowId => setWs(s => ({ ...s, databaseRows: s.databaseRows.filter(r => r.id !== rowId) })), []);
+  const updateCell = useCallback((rowId, colId, value) => setWs(s => ({ ...s, databaseRows: s.databaseRows.map(r => r.id === rowId ? { ...r, cells: { ...r.cells, [colId]: value } } : r) })), []);
+  const addColumn = useCallback((databaseId, type) => setWs(s => ({ ...s, databases: s.databases.map(d => d.id === databaseId ? { ...d, columns: [...d.columns, { id: uid("col"), name: "New column", type, options: type === "select" || type === "multiSelect" ? [] : undefined }] } : d) })), []);
+  const renameColumn = useCallback((databaseId, colId, name) => setWs(s => ({ ...s, databases: s.databases.map(d => d.id === databaseId ? { ...d, columns: d.columns.map(c => c.id === colId ? { ...c, name } : c) } : d) })), []);
+  const updateColumn = useCallback((databaseId, colId, patch) => setWs(s => ({ ...s, databases: s.databases.map(d => d.id === databaseId ? { ...d, columns: d.columns.map(c => c.id === colId ? { ...c, ...patch } : c) } : d) })), []);
+  const deleteColumn = useCallback((databaseId, colId) => setWs(s => ({
+    ...s,
+    databases: s.databases.map(d => d.id === databaseId ? { ...d, columns: d.columns.filter(c => c.id !== colId) } : d),
+    databaseRows: s.databaseRows.map(r => { if (r.databaseId !== databaseId) return r; const cells = { ...r.cells }; delete cells[colId]; return { ...r, cells }; }),
+  })), []);
+
+  const mapFinance = (s, id, fn) => ({ ...s, finances: s.finances.map(f => f.id === id ? fn(f) : f) });
+  const createFinance = useCallback(name => {
+    const id = uid("fin"), cQty = uid("fc"), cPrice = uid("fc"), cTotal = uid("fc");
+    const finance = { id, name, currency: "$", columns: [
+      { id: uid("fc"), name: "Item", type: "text", agg: "none" },
+      { id: cQty, name: "Qty", type: "number", money: false, agg: "sum" },
+      { id: cPrice, name: "Price", type: "number", money: true, agg: "none" },
+      { id: cTotal, name: "Total", type: "formula", money: true, agg: "sum", formula: { left: { kind: "col", col: cQty }, op: "*", right: { kind: "col", col: cPrice } } },
+    ], rows: [] };
+    setWs(s => ({ ...s, finances: [...s.finances, finance] }));
+    return id;
+  }, []);
+  const renameFinance = useCallback((id, name) => setWs(s => mapFinance(s, id, f => ({ ...f, name }))), []);
+  const setFinanceCurrency = useCallback((id, currency) => setWs(s => mapFinance(s, id, f => ({ ...f, currency }))), []);
+  const addFinanceColumn = useCallback((financeId, type) => setWs(s => mapFinance(s, financeId, f => ({ ...f, columns: [...f.columns, { id: uid("fc"), name: type === "formula" ? "Formula" : "New column", type, money: type === "number" || type === "formula", options: type === "select" ? [] : undefined, agg: type === "number" || type === "formula" ? "sum" : "none" }] }))), []);
+  const updateFinanceColumn = useCallback((financeId, colId, patch) => setWs(s => mapFinance(s, financeId, f => ({ ...f, columns: f.columns.map(c => c.id === colId ? { ...c, ...patch } : c) }))), []);
+  const deleteFinanceColumn = useCallback((financeId, colId) => setWs(s => mapFinance(s, financeId, f => ({ ...f, columns: f.columns.filter(c => c.id !== colId), rows: f.rows.map(r => { const cells = { ...r.cells }; delete cells[colId]; return { ...r, cells }; }) }))), []);
+  const addFinanceRow = useCallback(financeId => setWs(s => mapFinance(s, financeId, f => ({ ...f, rows: [...f.rows, { id: uid("fr"), financeId, cells: {}, order: f.rows.length }] }))), []);
+  const deleteFinanceRow = useCallback((financeId, rowId) => setWs(s => mapFinance(s, financeId, f => ({ ...f, rows: f.rows.filter(r => r.id !== rowId) }))), []);
+  const updateFinanceCell = useCallback((financeId, rowId, colId, value) => setWs(s => mapFinance(s, financeId, f => ({ ...f, rows: f.rows.map(r => r.id === rowId ? { ...r, cells: { ...r.cells, [colId]: value } } : r) }))), []);
+
+  const setTheme = useCallback(theme => setWs(s => ({ ...s, settings: { ...s.settings, theme } })), []);
+  const replaceWorkspace = useCallback(next => { setWs(next); setCurrentPageId(next.pages[0]?.id ?? null); saveWorkspace(next); }, []);
+  const resetWorkspace = useCallback(() => { const fresh = createSeedWorkspace(); setWs(fresh); setCurrentPageId(fresh.pages[0]?.id ?? null); saveWorkspace(fresh); }, []);
+  const exportNow = useCallback(() => exportWorkspace(ws), [ws]);
+  const saveNow = useCallback(() => { debouncedSave.current.cancel(); saveWorkspace(ws); }, [ws]);
+
+  const value = {
+    ws, currentPageId, setCurrentPage, createPage, renamePage, setPageEmoji, duplicatePage, deletePage, toggleFavorite,
+    pageBlocks, addBlock, updateBlock, changeBlockType, deleteBlock, duplicateBlock, moveBlock,
+    createWorkflow, renameWorkflow, deleteWorkflow, addStage, renameStage, deleteStage, addCard, updateCard, deleteCard, duplicateCard, moveCard,
+    createDatabase, renameDatabase, addRow, deleteRow, updateCell, addColumn, renameColumn, updateColumn, deleteColumn,
+    createFinance, renameFinance, setFinanceCurrency, addFinanceColumn, updateFinanceColumn, deleteFinanceColumn, addFinanceRow, deleteFinanceRow, updateFinanceCell,
+    setTheme, replaceWorkspace, resetWorkspace, exportNow, saveNow,
+  };
+  return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
+}
+const useStore = () => useContext(StoreContext);
+
+/* ===================== hooks ===================== */
+function useHotkeys(handlers) {
+  useEffect(() => {
+    const onKeyDown = e => {
+      const mod = isMac() ? e.metaKey : e.ctrlKey;
+      if (mod && e.key.toLowerCase() === "k") { e.preventDefault(); handlers.onSearch && handlers.onSearch(); return; }
+      if (mod && e.key.toLowerCase() === "s") { e.preventDefault(); handlers.onSave && handlers.onSave(); return; }
+      if (mod && e.shiftKey && e.key.toLowerCase() === "n") { e.preventDefault(); handlers.onNewPage && handlers.onNewPage(); return; }
+      if (e.key === "Escape") handlers.onEscape && handlers.onEscape();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [handlers]);
+}
+function useLocalState(key, initial) {
+  const storageKey = "tracker.ui." + key;
+  const [value, setValue] = useState(() => { try { const raw = localStorage.getItem(storageKey); return raw != null ? JSON.parse(raw) : initial; } catch { return initial; } });
+  useEffect(() => { try { localStorage.setItem(storageKey, JSON.stringify(value)); } catch {} }, [storageKey, value]);
+  return [value, setValue];
+}
+
+/* ===================== Modal ===================== */
+function Modal({ open, onClose, title, children, footer, width = 440 }) {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = e => { if (e.key === "Escape") { e.stopPropagation(); onClose(); } };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [open, onClose]);
+  if (!open) return null;
+  return (
+    <div className="overlay" onMouseDown={onClose}>
+      <div className="modal" style={{ maxWidth: width }} role="dialog" aria-modal="true" aria-label={title} onMouseDown={e => e.stopPropagation()}>
+        {title && (<div className="modal__header"><h2 className="modal__title">{title}</h2><button className="icon-btn" onClick={onClose} aria-label="Close">✕</button></div>)}
+        <div className="modal__body">{children}</div>
+        {footer && <div className="modal__footer">{footer}</div>}
+      </div>
+    </div>
+  );
+}
+function ConfirmModal({ open, title, message, confirmLabel = "Confirm", cancelLabel = "Cancel", destructive = false, onConfirm, onCancel }) {
+  return (
+    <Modal open={open} onClose={onCancel} title={title} footer={
+      <><button className="btn" onClick={onCancel}>{cancelLabel}</button>
+        <button className={destructive ? "btn btn--danger" : "btn btn--primary"} onClick={onConfirm}>{confirmLabel}</button></>
+    }><p className="modal__message">{message}</p></Modal>
+  );
+}
+
+/* ===================== EmojiPicker ===================== */
+const EMOJIS = [
+  { char: "📄", name: "page document" }, { char: "📝", name: "memo note write" }, { char: "📋", name: "clipboard list" },
+  { char: "✅", name: "check done todo" }, { char: "🚀", name: "rocket launch ship" }, { char: "💡", name: "idea bulb light" },
+  { char: "🔥", name: "fire hot trending" }, { char: "⭐", name: "star favorite" }, { char: "📊", name: "chart data stats" },
+  { char: "📈", name: "growth up chart" }, { char: "🗓️", name: "calendar date plan" }, { char: "🎯", name: "target goal" },
+  { char: "🧩", name: "puzzle piece" }, { char: "📦", name: "package box" }, { char: "🛠️", name: "tools build" },
+  { char: "🎨", name: "art design paint" }, { char: "💼", name: "work briefcase business" }, { char: "📚", name: "books docs learn" },
+  { char: "🧠", name: "brain mind think" }, { char: "⚡", name: "bolt fast energy" }, { char: "🌱", name: "seedling grow" },
+  { char: "🏷️", name: "tag label" }, { char: "📌", name: "pin location" }, { char: "🔔", name: "bell notify" },
+  { char: "❤️", name: "heart love" }, { char: "👋", name: "wave hello welcome" }, { char: "😀", name: "smile happy" },
+  { char: "🎉", name: "party celebrate" }, { char: "🏆", name: "trophy win" }, { char: "🌍", name: "globe world" },
+  { char: "☕", name: "coffee break" }, { char: "🎬", name: "movie video film" }, { char: "📷", name: "camera photo" },
+  { char: "🎵", name: "music note" }, { char: "💰", name: "money sales" }, { char: "🔒", name: "lock secure" },
+];
+function EmojiPicker({ onPick, onClose }) {
+  const [query, setQuery] = useState("");
+  const ref = useRef(null), inputRef = useRef(null);
+  useEffect(() => {
+    inputRef.current && inputRef.current.focus();
+    const onDoc = e => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
+    const onKey = e => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("mousedown", onDoc); document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onKey); };
+  }, [onClose]);
+  const filtered = EMOJIS.filter(e => matches(e.name, query) || e.char === query);
+  return (
+    <div className="emoji-picker" ref={ref}>
+      <input ref={inputRef} className="emoji-picker__search" placeholder="Filter…" value={query} onChange={e => setQuery(e.target.value)} />
+      <div className="emoji-picker__grid">
+        {filtered.map(e => <button key={e.char} type="button" className="emoji-picker__item" title={e.name} onClick={() => { onPick(e.char); onClose(); }}>{e.char}</button>)}
+        {filtered.length === 0 && <div className="emoji-picker__empty">No matches</div>}
+      </div>
+    </div>
+  );
+}
+
+/* ===================== SlashMenu ===================== */
+const SLASH_COMMANDS = [
+  { type: "paragraph", label: "Text", description: "Plain paragraph", hint: "¶", keywords: "text paragraph plain body", group: "Basic" },
+  { type: "h1", label: "Heading 1", description: "Large section heading", hint: "H1", keywords: "heading title h1 big", group: "Basic" },
+  { type: "h2", label: "Heading 2", description: "Medium section heading", hint: "H2", keywords: "heading subtitle h2", group: "Basic" },
+  { type: "h3", label: "Heading 3", description: "Small section heading", hint: "H3", keywords: "heading h3 small", group: "Basic" },
+  { type: "bulleted", label: "Bulleted list", description: "Simple bullet list", hint: "•", keywords: "bullet unordered list ul", group: "Lists" },
+  { type: "numbered", label: "Numbered list", description: "Ordered list", hint: "1.", keywords: "number ordered list ol", group: "Lists" },
+  { type: "todo", label: "To-do", description: "Checkbox task", hint: "☑", keywords: "todo task checkbox check", group: "Lists" },
+  { type: "quote", label: "Quote", description: "Capture a quote", hint: "❝", keywords: "quote blockquote citation", group: "Basic" },
+  { type: "callout", label: "Callout", description: "Highlighted note", hint: "💬", keywords: "callout note highlight info", group: "Basic" },
+  { type: "divider", label: "Divider", description: "Visual separator", hint: "—", keywords: "divider separator line hr rule", group: "Basic" },
+  { type: "code", label: "Code", description: "Code snippet", hint: "</>", keywords: "code snippet monospace", group: "Media" },
+  { type: "toggle", label: "Toggle", description: "Collapsible content", hint: "▸", keywords: "toggle collapse expand details", group: "Basic" },
+  { type: "image", label: "Image", description: "Embed an image by URL", hint: "🖼", keywords: "image picture photo url media", group: "Media" },
+  { type: "database", label: "Database table", description: "Inline table with columns", hint: "▦", keywords: "database table grid spreadsheet", group: "Database" },
+  { type: "workflow", label: "Workflow board", description: "Kanban board with stages", hint: "▤", keywords: "workflow board kanban pipeline tracker", group: "Database" },
+  { type: "finance", label: "Finance tracker", description: "Auto-calculating money table", hint: "$", keywords: "finance money budget expense income total formula calculate", group: "Database" },
+];
+function SlashMenu({ query, onSelect, onClose }) {
+  const [active, setActive] = useState(0);
+  const listRef = useRef(null);
+  const filtered = useMemo(() => {
+    const q = query.trim(); if (!q) return SLASH_COMMANDS;
+    return SLASH_COMMANDS.filter(c => matches(c.label, q) || matches(c.keywords, q));
+  }, [query]);
+  useEffect(() => setActive(0), [query]);
+  useEffect(() => {
+    const onKey = e => {
+      if (e.key === "ArrowDown") { e.preventDefault(); setActive(a => Math.min(a + 1, Math.max(0, filtered.length - 1))); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); setActive(a => Math.max(a - 1, 0)); }
+      else if (e.key === "Enter") { e.preventDefault(); const cmd = filtered[active]; if (cmd) onSelect(cmd.type); }
+      else if (e.key === "Escape") { e.preventDefault(); onClose(); }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [filtered, active, onSelect, onClose]);
+  useEffect(() => { const el = listRef.current && listRef.current.querySelector(`[data-idx="${active}"]`); el && el.scrollIntoView({ block: "nearest" }); }, [active]);
+  const groups = [];
+  filtered.forEach((cmd, idx) => { let g = groups.find(x => x.name === cmd.group); if (!g) { g = { name: cmd.group, items: [] }; groups.push(g); } g.items.push({ cmd, idx }); });
+  return (
+    <div className="slash-menu" ref={listRef} role="listbox">
+      {filtered.length === 0 && <div className="slash-menu__empty">No matching blocks</div>}
+      {groups.map(g => (
+        <div className="slash-menu__group" key={g.name}>
+          <div className="slash-menu__group-label">{g.name}</div>
+          {g.items.map(({ cmd, idx }) => (
+            <button key={cmd.type} type="button" data-idx={idx} role="option" aria-selected={idx === active}
+              className={`slash-menu__item ${idx === active ? "is-active" : ""}`} onMouseEnter={() => setActive(idx)}
+              onMouseDown={e => { e.preventDefault(); onSelect(cmd.type); }}>
+              <span className="slash-menu__hint">{cmd.hint}</span>
+              <span className="slash-menu__text"><span className="slash-menu__label">{cmd.label}</span><span className="slash-menu__desc">{cmd.description}</span></span>
+            </button>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ===================== Block ===================== */
+const TEXT_TYPES = ["paragraph", "h1", "h2", "h3", "bulleted", "numbered", "todo", "quote", "callout", "toggle"];
+const PLACEHOLDERS = { paragraph: "Type '/' for commands", h1: "Heading 1", h2: "Heading 2", h3: "Heading 3", bulleted: "List", numbered: "List", todo: "To-do", quote: "Empty quote", callout: "Callout", toggle: "Toggle" };
+function continuationType(t) { return t === "bulleted" || t === "numbered" || t === "todo" ? t : "paragraph"; }
+function placeCaret(el, pos) {
+  el.focus();
+  const range = document.createRange(); range.selectNodeContents(el); range.collapse(pos === "start");
+  const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+}
+const Editable = forwardRef(function Editable({ value, className, placeholder, onInput, onKeyDown }, ref) {
+  const innerRef = useRef(null);
+  useEffect(() => { const el = innerRef.current; if (el && el.innerText !== value) el.innerText = value; }, [value]);
+  return (
+    <div ref={node => { innerRef.current = node; if (typeof ref === "function") ref(node); else if (ref) ref.current = node; }}
+      className={className} contentEditable suppressContentEditableWarning spellCheck data-placeholder={placeholder}
+      onInput={e => onInput(e.target.innerText)} onKeyDown={onKeyDown} />
+  );
+});
+function BlockRowInner(props) {
+  const { block, index, total, ordinal, prevBlockId, shouldFocus, focusPos, onFocused, requestFocus, onDragStart, onDragEnterRow, onDrop, onDragEnd, isDropTarget } = props;
+  const store = useStore();
+  const editRef = useRef(null);
+  const [slashOpen, setSlashOpen] = useState(false);
+  const [slashQuery, setSlashQuery] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
+  useEffect(() => { if (shouldFocus && editRef.current) { placeCaret(editRef.current, focusPos); onFocused(); } }, [shouldFocus, focusPos, onFocused]);
+  const isText = TEXT_TYPES.includes(block.type);
+  const handleInput = text => {
+    store.updateBlock(block.id, { content: text });
+    if (isText && block.type !== "code") {
+      if (text.startsWith("/")) { if (!slashOpen && text === "/") setSlashOpen(true); setSlashQuery(text.slice(1)); }
+      else if (slashOpen) setSlashOpen(false);
+    }
+  };
+  const handleSlashSelect = type => {
+    setSlashOpen(false);
+    if (type === "database") { const dbId = store.createDatabase("Untitled database"); store.updateBlock(block.id, { type: "database", content: "", props: { databaseId: dbId } }); }
+    else if (type === "workflow") { const wfId = store.createWorkflow("Untitled workflow"); store.updateBlock(block.id, { type: "workflow", content: "", props: { workflowId: wfId } }); }
+    else if (type === "finance") { const finId = store.createFinance("Finance tracker"); store.updateBlock(block.id, { type: "finance", content: "", props: { financeId: finId } }); }
+    else if (type === "divider") { store.updateBlock(block.id, { type: "divider", content: "" }); const nid = store.addBlock(block.pageId, block.id, "paragraph"); requestFocus(nid, "end"); }
+    else if (type === "image") { store.updateBlock(block.id, { type: "image", content: "" }); }
+    else { store.updateBlock(block.id, { type, content: "" }); requestFocus(block.id, "end"); }
+  };
+  const handleKeyDown = e => {
+    if (slashOpen && ["ArrowDown", "ArrowUp", "Enter", "Escape"].includes(e.key)) return;
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      const empty = block.content.trim() === "";
+      if (empty && (block.type === "bulleted" || block.type === "numbered" || block.type === "todo")) { store.changeBlockType(block.id, "paragraph"); return; }
+      const nid = store.addBlock(block.pageId, block.id, continuationType(block.type)); requestFocus(nid, "start"); return;
+    }
+    if (e.key === "Backspace") {
+      if (block.content === "") {
+        if (block.type !== "paragraph") { e.preventDefault(); store.changeBlockType(block.id, "paragraph"); return; }
+        if (prevBlockId) { e.preventDefault(); store.deleteBlock(block.id); requestFocus(prevBlockId, "end"); return; }
+      }
+    }
+  };
+  const gutter = (
+    <div className="block__gutter" contentEditable={false}>
+      <button className="block__handle-btn" title="Add block below" onClick={() => { const nid = store.addBlock(block.pageId, block.id, "paragraph"); requestFocus(nid, "start"); }}>＋</button>
+      <button className="block__handle-btn block__drag" title="Drag to move · click for actions" draggable
+        onClick={() => setMenuOpen(v => !v)}
+        onDragStart={e => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", String(index)); onDragStart(index); }}
+        onDragEnd={onDragEnd}>⠿</button>
+      {menuOpen && (
+        <BlockActionsMenu onClose={() => setMenuOpen(false)}
+          onDuplicate={() => { store.duplicateBlock(block.id); setMenuOpen(false); }}
+          onDelete={() => { const target = prevBlockId; store.deleteBlock(block.id); if (target) requestFocus(target, "end"); setMenuOpen(false); }}
+          canDelete={total > 1} />
+      )}
+    </div>
+  );
+  const editable = (extra = "") => <Editable ref={editRef} value={block.content} className={`block__text ${extra}`} placeholder={PLACEHOLDERS[block.type]} onInput={handleInput} onKeyDown={handleKeyDown} />;
+  let body;
+  switch (block.type) {
+    case "h1": body = <h1 className="block__h1">{editable("is-h1")}</h1>; break;
+    case "h2": body = <h2 className="block__h2">{editable("is-h2")}</h2>; break;
+    case "h3": body = <h3 className="block__h3">{editable("is-h3")}</h3>; break;
+    case "bulleted": body = <div className="block__list"><span className="block__bullet" contentEditable={false}>•</span>{editable()}</div>; break;
+    case "numbered": body = <div className="block__list"><span className="block__number" contentEditable={false}>{ordinal}.</span>{editable()}</div>; break;
+    case "todo": body = (
+      <div className={`block__todo ${block.props.checked ? "is-done" : ""}`}>
+        <input type="checkbox" className="block__check" checked={!!block.props.checked} onChange={e => store.updateBlock(block.id, { props: { checked: e.target.checked } })} contentEditable={false} />
+        {editable()}
+      </div>); break;
+    case "quote": body = <blockquote className="block__quote">{editable()}</blockquote>; break;
+    case "callout": body = <div className="block__callout"><span className="block__callout-emoji" contentEditable={false}>{block.props.emoji || "💡"}</span>{editable()}</div>; break;
+    case "toggle": body = (
+      <div className="block__toggle">
+        <div className="block__toggle-head">
+          <button className={`block__toggle-arrow ${block.props.collapsed ? "" : "is-open"}`} contentEditable={false} onClick={() => store.updateBlock(block.id, { props: { collapsed: !block.props.collapsed } })} title={block.props.collapsed ? "Expand" : "Collapse"}>▸</button>
+          {editable()}
+        </div>
+        {!block.props.collapsed && <ToggleBody value={block.props.body || ""} onChange={v => store.updateBlock(block.id, { props: { body: v } })} />}
+      </div>); break;
+    case "divider": body = <hr className="block__divider" contentEditable={false} />; break;
+    case "code": body = <CodeBlock value={block.content} language={block.props.language || ""} onChange={v => store.updateBlock(block.id, { content: v })} onLanguage={l => store.updateBlock(block.id, { props: { language: l } })} />; break;
+    case "image": body = <ImageBlock url={block.props.url || ""} caption={block.props.caption || ""} onSetUrl={u => store.updateBlock(block.id, { props: { url: u } })} onCaption={c => store.updateBlock(block.id, { props: { caption: c } })} />; break;
+    case "database": body = block.props.databaseId ? <ResizableEmbed block={block} defaultHeight={380}><DatabaseTable databaseId={block.props.databaseId} /></ResizableEmbed> : <div className="embed-missing">Database not found</div>; break;
+    case "workflow": body = block.props.workflowId ? <ResizableEmbed block={block} defaultHeight={480}><WorkflowBoard workflowId={block.props.workflowId} /></ResizableEmbed> : <div className="embed-missing">Workflow not found</div>; break;
+    case "finance": body = block.props.financeId ? <ResizableEmbed block={block} defaultHeight={440}><FinanceTracker financeId={block.props.financeId} /></ResizableEmbed> : <div className="embed-missing">Finance tracker not found</div>; break;
+    default: body = editable();
+  }
+  const isEmbed = block.type === "database" || block.type === "workflow" || block.type === "finance";
+  return (
+    <div className={`block ${isDropTarget ? "is-drop-target" : ""} ${isEmbed ? "block--embed" : ""}`} data-type={block.type}
+      onDragEnter={() => onDragEnterRow(index)} onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); onDrop(); }}>
+      {gutter}
+      <div className="block__body">{body}{slashOpen && <SlashMenu query={slashQuery} onSelect={handleSlashSelect} onClose={() => setSlashOpen(false)} />}</div>
+    </div>
+  );
+}
+const BlockRow = memo(BlockRowInner);
+function ToggleBody({ value, onChange }) {
+  return <textarea className="block__toggle-body" placeholder="Empty toggle. Add content…" value={value} rows={Math.max(1, value.split("\n").length)} onChange={e => onChange(e.target.value)} />;
+}
+function CodeBlock({ value, language, onChange, onLanguage }) {
+  const ref = useRef(null);
+  useEffect(() => { const el = ref.current; if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }, [value]);
+  return (
+    <div className="block__code" contentEditable={false}>
+      <input className="block__code-lang" value={language} placeholder="language" onChange={e => onLanguage(e.target.value)} />
+      <textarea ref={ref} className="block__code-area" spellCheck={false} value={value} placeholder="// code" onChange={e => onChange(e.target.value)} />
+    </div>
+  );
+}
+function ImageBlock({ url, caption, onSetUrl, onCaption }) {
+  const [draft, setDraft] = useState("");
+  if (!url) return (
+    <div className="block__image-empty" contentEditable={false}>
+      <span className="block__image-icon">🖼</span>
+      <input className="block__image-input" placeholder="Paste an image URL and press Enter" value={draft} onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && draft.trim()) onSetUrl(draft.trim()); }} />
+    </div>);
+  return (
+    <figure className="block__image" contentEditable={false}>
+      <img src={url} alt={caption || "image"} onError={e => (e.currentTarget.style.opacity = "0.3")} />
+      <input className="block__image-caption" placeholder="Write a caption…" value={caption} onChange={e => onCaption(e.target.value)} />
+      <button className="block__image-replace" onClick={() => onSetUrl("")}>Replace</button>
+    </figure>
+  );
+}
+function BlockActionsMenu({ onClose, onDuplicate, onDelete, canDelete }) {
+  const ref = useRef(null);
+  useEffect(() => { const onDoc = e => { if (ref.current && !ref.current.contains(e.target)) onClose(); }; document.addEventListener("mousedown", onDoc); return () => document.removeEventListener("mousedown", onDoc); }, [onClose]);
+  return (
+    <div className="block-actions" ref={ref} contentEditable={false}>
+      <button className="block-actions__item" onClick={onDuplicate}>Duplicate</button>
+      <button className="block-actions__item block-actions__item--danger" onClick={onDelete} disabled={!canDelete}>Delete</button>
+    </div>
+  );
+}
+
+/* ===================== Editor ===================== */
+function Editor({ page }) {
+  const store = useStore();
+  const blocks = store.pageBlocks(page.id);
+  const [pendingFocus, setPendingFocus] = useState(null);
+  const [showEmoji, setShowEmoji] = useState(false);
+  const [dragIndex, setDragIndex] = useState(null);
+  const [dropIndex, setDropIndex] = useState(null);
+  const [saveState, setSaveState] = useState("idle");
+  const titleRef = useRef(null);
+  const firstRender = useRef(true);
+  useEffect(() => {
+    if (firstRender.current) { firstRender.current = false; return; }
+    setSaveState("saving"); const t = window.setTimeout(() => setSaveState("idle"), 700); return () => window.clearTimeout(t);
+  }, [page.updatedAt]);
+  useEffect(() => { const el = titleRef.current; if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }, [page.title, page.id]);
+  const requestFocus = useCallback((id, pos = "end") => setPendingFocus({ id, pos }), []);
+  const clearFocus = useCallback(() => setPendingFocus(null), []);
+  const onDragStart = useCallback(i => setDragIndex(i), []);
+  const onDragEnterRow = useCallback(i => setDropIndex(i), []);
+  const onDragEnd = useCallback(() => { setDragIndex(null); setDropIndex(null); }, []);
+  const onDrop = useCallback(() => {
+    setDragIndex(from => { setDropIndex(to => { if (from != null && to != null && from !== to) store.moveBlock(page.id, from, to); return null; }); return null; });
+  }, [page.id, store]);
+  const handleTitleKey = e => {
+    if (e.key === "Enter") { e.preventDefault(); const first = blocks[0]; if (first) requestFocus(first.id, "start"); else { const nid = store.addBlock(page.id, null, "paragraph"); requestFocus(nid, "start"); } }
+  };
+  let runningNumber = 0;
+  return (
+    <article className="editor">
+      <div className="editor__inner">
+        <div className="editor__icon-row">
+          <button className="editor__emoji" onClick={() => setShowEmoji(v => !v)} title="Change icon">{page.emoji}</button>
+          {showEmoji && <EmojiPicker onPick={emoji => store.setPageEmoji(page.id, emoji)} onClose={() => setShowEmoji(false)} />}
+          <span className={`editor__save editor__save--${saveState}`}>{saveState === "saving" ? "Saving…" : `Saved · ${formatTime(page.updatedAt)}`}</span>
+        </div>
+        <textarea ref={titleRef} className="editor__title" placeholder="Untitled" rows={1} value={page.title} onChange={e => store.renamePage(page.id, e.target.value)} onKeyDown={handleTitleKey} />
+        <div className="editor__blocks">
+          {blocks.map((block, i) => {
+            if (block.type === "numbered") runningNumber += 1; else runningNumber = 0;
+            return (
+              <BlockRow key={block.id} block={block} index={i} total={blocks.length} ordinal={runningNumber}
+                prevBlockId={i > 0 ? blocks[i - 1].id : null} shouldFocus={pendingFocus?.id === block.id} focusPos={pendingFocus?.pos ?? "end"}
+                onFocused={clearFocus} requestFocus={requestFocus} onDragStart={onDragStart} onDragEnterRow={onDragEnterRow} onDrop={onDrop} onDragEnd={onDragEnd}
+                isDropTarget={dropIndex === i && dragIndex !== null && dragIndex !== i} />
+            );
+          })}
+          {blocks.length === 0 && (
+            <div className="editor__empty"><p>This page is empty.</p>
+              <button className="btn btn--primary" onClick={() => { const nid = store.addBlock(page.id, null, "paragraph"); requestFocus(nid, "start"); }}>Add a block</button></div>
+          )}
+        </div>
+        {blocks.length > 0 && (
+          <button className="editor__add-block" onClick={() => { const last = blocks[blocks.length - 1]; const nid = store.addBlock(page.id, last ? last.id : null, "paragraph"); requestFocus(nid, "start"); }}>＋ Add a block</button>
+        )}
+      </div>
+    </article>
+  );
+}
+
+/* ===================== DatabaseTable ===================== */
+const COLUMN_TYPES = [
+  { type: "text", label: "Text" }, { type: "number", label: "Number" }, { type: "select", label: "Select" },
+  { type: "multiSelect", label: "Multi-select" }, { type: "date", label: "Date" }, { type: "checkbox", label: "Checkbox" }, { type: "url", label: "URL" },
+];
+function cellToText(v) { if (v === null || v === undefined) return ""; if (Array.isArray(v)) return v.join(" "); return String(v); }
+function compareCells(a, b, type) {
+  if (type === "number") { const an = typeof a === "number" ? a : -Infinity; const bn = typeof b === "number" ? b : -Infinity; return an - bn; }
+  if (type === "checkbox") return (a ? 1 : 0) - (b ? 1 : 0);
+  return cellToText(a).localeCompare(cellToText(b));
+}
+function DatabaseTable({ databaseId }) {
+  const store = useStore();
+  const db = store.ws.databases.find(d => d.id === databaseId);
+  const rows = useMemo(() => store.ws.databaseRows.filter(r => r.databaseId === databaseId).sort((a, b) => a.order - b.order), [store.ws.databaseRows, databaseId]);
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState(null);
+  const [addColOpen, setAddColOpen] = useState(false);
+  if (!db) return <div className="embed-missing">Database not found</div>;
+  const filtered = rows.filter(r => db.columns.some(c => matches(cellToText(r.cells[c.id]), query)));
+  const sorted = sort ? [...filtered].sort((a, b) => { const col = db.columns.find(c => c.id === sort.colId); const cmp = compareCells(a.cells[sort.colId], b.cells[sort.colId], col && col.type); return sort.dir === "asc" ? cmp : -cmp; }) : filtered;
+  return (
+    <div className="db" contentEditable={false}>
+      <div className="db__toolbar">
+        <input className="db__name" value={db.name} onChange={e => store.renameDatabase(db.id, e.target.value)} aria-label="Database name" />
+        <div className="db__toolbar-right"><input className="db__search" placeholder="Search rows…" value={query} onChange={e => setQuery(e.target.value)} /></div>
+      </div>
+      <div className="db__scroll">
+        <table className="db__table">
+          <thead>
+            <tr>
+              <th className="db__rownum-head" />
+              {db.columns.map(col => (
+                <ColumnHeader key={col.id} databaseId={db.id} column={col} sort={sort && sort.colId === col.id ? sort.dir : null}
+                  onSort={dir => setSort({ colId: col.id, dir })} onClearSort={() => setSort(null)} canDelete={db.columns.length > 1} />
+              ))}
+              <th className="db__addcol"><div className="db__addcol-wrap">
+                <button className="db__addcol-btn" onClick={() => setAddColOpen(v => !v)} title="Add column">＋</button>
+                {addColOpen && <TypeMenu onPick={t => { store.addColumn(db.id, t); setAddColOpen(false); }} onClose={() => setAddColOpen(false)} />}
+              </div></th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((row, i) => (
+              <tr key={row.id} className="db__row">
+                <td className="db__rownum"><span>{i + 1}</span><button className="db__rowdel" title="Delete row" onClick={() => store.deleteRow(row.id)}>✕</button></td>
+                {db.columns.map(col => (
+                  <td key={col.id} className="db__cell" data-type={col.type}>
+                    <Cell column={col} value={row.cells[col.id] ?? null} onChange={v => store.updateCell(row.id, col.id, v)}
+                      onAddOption={opt => { const options = Array.from(new Set([...(col.options || []), opt])); store.updateColumn(db.id, col.id, { options }); }} />
+                  </td>
+                ))}
+                <td className="db__cell db__cell--pad" />
+              </tr>
+            ))}
+            {sorted.length === 0 && <tr><td className="db__empty" colSpan={db.columns.length + 2}>{query ? "No rows match your search." : "No rows yet."}</td></tr>}
+          </tbody>
+        </table>
+      </div>
+      <button className="db__addrow" onClick={() => store.addRow(db.id)}>＋ New row</button>
+    </div>
+  );
+}
+function ColumnHeader({ databaseId, column, sort, onSort, onClearSort, canDelete }) {
+  const store = useStore();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [typeOpen, setTypeOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => { const onDoc = e => { if (ref.current && !ref.current.contains(e.target)) { setMenuOpen(false); setTypeOpen(false); } }; document.addEventListener("mousedown", onDoc); return () => document.removeEventListener("mousedown", onDoc); }, []);
+  return (
+    <th className="db__th" ref={ref}>
+      <div className="db__th-inner">
+        <input className="db__th-name" value={column.name} onChange={e => store.renameColumn(databaseId, column.id, e.target.value)} />
+        {sort && <span className="db__sort-mark">{sort === "asc" ? "↑" : "↓"}</span>}
+        <button className="db__th-menu" onClick={() => setMenuOpen(v => !v)} title="Column options">⌄</button>
+      </div>
+      {menuOpen && (
+        <div className="menu db__th-dropdown">
+          <button className="menu__item" onClick={() => { onSort("asc"); setMenuOpen(false); }}>Sort ascending</button>
+          <button className="menu__item" onClick={() => { onSort("desc"); setMenuOpen(false); }}>Sort descending</button>
+          <button className="menu__item" onClick={() => { onClearSort(); setMenuOpen(false); }}>Clear sort</button>
+          <div className="menu__sep" />
+          <button className="menu__item" onClick={() => setTypeOpen(v => !v)}>Change type ›</button>
+          {typeOpen && (
+            <div className="menu db__type-sub">
+              {COLUMN_TYPES.map(t => (
+                <button key={t.type} className={`menu__item ${t.type === column.type ? "is-active" : ""}`}
+                  onClick={() => { store.updateColumn(databaseId, column.id, { type: t.type, options: t.type === "select" || t.type === "multiSelect" ? column.options || [] : undefined }); setTypeOpen(false); setMenuOpen(false); }}>{t.label}</button>
+              ))}
+            </div>
+          )}
+          <div className="menu__sep" />
+          <button className="menu__item menu__item--danger" disabled={!canDelete} onClick={() => { store.deleteColumn(databaseId, column.id); setMenuOpen(false); }}>Delete column</button>
+        </div>
+      )}
+    </th>
+  );
+}
+function Cell({ column, value, onChange, onAddOption }) {
+  switch (column.type) {
+    case "number": return <input className="db__input" type="number" value={value === null || value === undefined ? "" : String(value)} onChange={e => onChange(e.target.value === "" ? null : Number(e.target.value))} />;
+    case "checkbox": return <input className="db__checkbox" type="checkbox" checked={!!value} onChange={e => onChange(e.target.checked)} />;
+    case "date": return <input className="db__input" type="date" value={typeof value === "string" ? value : ""} onChange={e => onChange(e.target.value)} />;
+    case "url": return (
+      <div className="db__url">
+        <input className="db__input" type="url" placeholder="https://" value={typeof value === "string" ? value : ""} onChange={e => onChange(e.target.value)} />
+        {typeof value === "string" && value && <a className="db__url-link" href={value} target="_blank" rel="noreferrer" title="Open">↗</a>}
+      </div>);
+    case "select": return <SelectCell multi={false} options={column.options || []} value={value} onChange={onChange} onAddOption={onAddOption} />;
+    case "multiSelect": return <SelectCell multi options={column.options || []} value={value} onChange={onChange} onAddOption={onAddOption} />;
+    default: return <input className="db__input" value={typeof value === "string" ? value : ""} onChange={e => onChange(e.target.value)} />;
+  }
+}
+function SelectCell({ multi, options, value, onChange, onAddOption }) {
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState("");
+  const ref = useRef(null);
+  const selected = multi ? (Array.isArray(value) ? value : []) : (typeof value === "string" && value ? [value] : []);
+  useEffect(() => { const onDoc = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }; document.addEventListener("mousedown", onDoc); return () => document.removeEventListener("mousedown", onDoc); }, []);
+  const toggle = opt => {
+    if (multi) onChange(selected.includes(opt) ? selected.filter(s => s !== opt) : [...selected, opt]);
+    else { onChange(selected[0] === opt ? null : opt); setOpen(false); }
+  };
+  const add = () => { const v = draft.trim(); if (!v) return; if (!options.includes(v)) onAddOption(v); toggle(v); setDraft(""); };
+  return (
+    <div className="db__select" ref={ref}>
+      <button className="db__select-trigger" onClick={() => setOpen(v => !v)}>
+        {selected.length === 0 ? <span className="db__select-placeholder">Empty</span> : selected.map(s => <span key={s} className="chip">{s}</span>)}
+      </button>
+      {open && (
+        <div className="db__select-pop">
+          <input className="db__select-input" placeholder={multi ? "Add or pick…" : "Pick or add…"} value={draft} autoFocus onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === "Enter") add(); }} />
+          <div className="db__select-list">
+            {options.filter(o => matches(o, draft)).map(o => (
+              <button key={o} className={`db__select-opt ${selected.includes(o) ? "is-selected" : ""}`} onClick={() => toggle(o)}>
+                <span className="chip">{o}</span>{selected.includes(o) && <span className="db__select-check">✓</span>}
+              </button>
+            ))}
+            {draft.trim() && !options.includes(draft.trim()) && <button className="db__select-opt db__select-create" onClick={add}>Create “{draft.trim()}”</button>}
+            {options.length === 0 && !draft && <div className="db__select-empty">Type to add an option</div>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+function TypeMenu({ onPick, onClose }) {
+  const ref = useRef(null);
+  useEffect(() => { const onDoc = e => { if (ref.current && !ref.current.contains(e.target)) onClose(); }; document.addEventListener("mousedown", onDoc); return () => document.removeEventListener("mousedown", onDoc); }, [onClose]);
+  return (
+    <div className="menu db__addcol-menu" ref={ref}>
+      <div className="menu__label">New column</div>
+      {COLUMN_TYPES.map(t => <button key={t.type} className="menu__item" onClick={() => onPick(t.type)}>{t.label}</button>)}
+    </div>
+  );
+}
+
+/* ===================== WorkflowBoard ===================== */
+function WorkflowBoard({ workflowId }) {
+  const store = useStore();
+  const workflow = store.ws.workflows.find(w => w.id === workflowId);
+  const stages = useMemo(() => store.ws.workflowStages.filter(s => s.workflowId === workflowId).sort((a, b) => a.order - b.order), [store.ws.workflowStages, workflowId]);
+  const allCards = useMemo(() => store.ws.workflowCards.filter(c => c.workflowId === workflowId), [store.ws.workflowCards, workflowId]);
+  const [view, setView] = useState("board");
+  const [query, setQuery] = useState("");
+  const [priorityFilter, setPriorityFilter] = useState("all");
+  const [editingCardId, setEditingCardId] = useState(null);
+  const [dragCardId, setDragCardId] = useState(null);
+  const [dropTarget, setDropTarget] = useState(null);
+  if (!workflow) return <div className="embed-missing">Workflow not found</div>;
+  const cardMatches = c => {
+    if (priorityFilter !== "all" && c.priority !== priorityFilter) return false;
+    if (!query) return true;
+    return matches(c.title, query) || matches(c.description, query) || matches(c.assignee, query) || matches(c.tags.join(" "), query);
+  };
+  const cardsByStage = stageId => allCards.filter(c => c.stageId === stageId && cardMatches(c)).sort((a, b) => a.order - b.order);
+  const editingCard = allCards.find(c => c.id === editingCardId) || null;
+  const handleDrop = (stageId, index) => { if (dragCardId) store.moveCard(dragCardId, stageId, index); setDragCardId(null); setDropTarget(null); };
+  return (
+    <div className="wf" contentEditable={false}>
+      <div className="wf__toolbar">
+        <input className="wf__name" value={workflow.name} onChange={e => store.renameWorkflow(workflow.id, e.target.value)} aria-label="Workflow name" />
+        <div className="wf__views">{["board", "table", "list"].map(v => <button key={v} className={`wf__view-btn ${view === v ? "is-active" : ""}`} onClick={() => setView(v)}>{v[0].toUpperCase() + v.slice(1)}</button>)}</div>
+        <div className="wf__filters">
+          <input className="wf__search" placeholder="Search cards…" value={query} onChange={e => setQuery(e.target.value)} />
+          <select className="wf__priority-filter" value={priorityFilter} onChange={e => setPriorityFilter(e.target.value)}>
+            <option value="all">All priorities</option>
+            {PRIORITY_ORDER.map(p => <option key={p} value={p}>{PRIORITY_LABEL[p]}</option>)}
+          </select>
+        </div>
+      </div>
+      {view === "board" && (
+        <div className="wf__board">
+          {stages.map(stage => {
+            const cards = cardsByStage(stage.id);
+            return (
+              <div key={stage.id} className="wf__col"
+                onDragOver={e => { e.preventDefault(); if (dragCardId) setDropTarget({ stageId: stage.id, index: cards.length }); }}
+                onDrop={e => { e.preventDefault(); handleDrop(stage.id, dropTarget && dropTarget.stageId === stage.id ? dropTarget.index : cards.length); }}>
+                <div className="wf__col-head">
+                  <input className="wf__stage-name" value={stage.name} onChange={e => store.renameStage(stage.id, e.target.value)} />
+                  <span className="wf__count">{cards.length}</span>
+                  <button className="wf__stage-del" title="Delete stage" onClick={() => store.deleteStage(stage.id)}>✕</button>
+                </div>
+                <div className="wf__cards">
+                  {cards.map((card, idx) => (
+                    <div key={card.id} className={`wf__card ${dropTarget && dropTarget.stageId === stage.id && dropTarget.index === idx ? "is-drop-before" : ""} ${dragCardId === card.id ? "is-dragging" : ""}`}
+                      draggable onDragStart={() => setDragCardId(card.id)} onDragEnd={() => { setDragCardId(null); setDropTarget(null); }}
+                      onDragOver={e => { e.preventDefault(); e.stopPropagation(); if (dragCardId) setDropTarget({ stageId: stage.id, index: idx }); }}
+                      onDrop={e => { e.preventDefault(); e.stopPropagation(); handleDrop(stage.id, idx); }}
+                      onClick={() => setEditingCardId(card.id)}>
+                      <CardFace card={card} />
+                    </div>
+                  ))}
+                  <button className="wf__add-card" onClick={() => { const id = store.addCard(workflow.id, stage.id); setEditingCardId(id); }}>＋ New card</button>
+                </div>
+              </div>
+            );
+          })}
+          <div className="wf__add-stage-col"><button className="wf__add-stage" onClick={() => store.addStage(workflow.id, "New stage")}>＋ Add stage</button></div>
+        </div>
+      )}
+      {view === "table" && (
+        <div className="wf__table-scroll">
+          <table className="wf__table">
+            <thead><tr><th>Title</th><th>Stage</th><th>Priority</th><th>Due</th><th>Assignee</th><th>Tags</th></tr></thead>
+            <tbody>
+              {allCards.filter(cardMatches).map(card => (
+                <tr key={card.id} onClick={() => setEditingCardId(card.id)} className="wf__trow">
+                  <td>{card.title}</td>
+                  <td><select className="wf__inline-select" value={card.stageId} onClick={e => e.stopPropagation()} onChange={e => store.updateCard(card.id, { stageId: e.target.value })}>{stages.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></td>
+                  <td><span className={`prio prio--${card.priority}`}>{PRIORITY_LABEL[card.priority]}</span></td>
+                  <td>{formatDate(card.dueDate)}</td>
+                  <td>{card.assignee}</td>
+                  <td><div className="wf__tags">{card.tags.map(t => <span key={t} className="chip">{t}</span>)}</div></td>
+                </tr>
+              ))}
+              {allCards.filter(cardMatches).length === 0 && <tr><td className="wf__empty" colSpan={6}>No cards.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {view === "list" && (
+        <div className="wf__list">
+          {stages.map(stage => {
+            const cards = cardsByStage(stage.id);
+            return (
+              <div key={stage.id} className="wf__list-group">
+                <div className="wf__list-head">{stage.name} <span className="wf__count">{cards.length}</span></div>
+                {cards.map(card => (
+                  <button key={card.id} className="wf__list-item" onClick={() => setEditingCardId(card.id)}>
+                    <span className={`prio-dot prio-dot--${card.priority}`} />
+                    <span className="wf__list-title">{card.title}</span>
+                    {card.dueDate && <span className="wf__list-due">{formatDate(card.dueDate)}</span>}
+                    <div className="wf__tags">{card.tags.map(t => <span key={t} className="chip">{t}</span>)}</div>
+                  </button>
+                ))}
+                {cards.length === 0 && <div className="wf__list-empty">No cards</div>}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {editingCard && <CardEditor card={editingCard} stages={stages} onClose={() => setEditingCardId(null)} />}
+    </div>
+  );
+}
+function CardFace({ card }) {
+  return (
+    <>
+      <div className="wf__card-title">{card.title}</div>
+      {card.description && <div className="wf__card-desc">{card.description}</div>}
+      <div className="wf__card-meta">
+        {card.priority !== "none" && <span className={`prio prio--${card.priority}`}>{PRIORITY_LABEL[card.priority]}</span>}
+        {card.dueDate && <span className="wf__card-due">📅 {formatDate(card.dueDate)}</span>}
+        {card.assignee && <span className="wf__card-assignee">{card.assignee}</span>}
+      </div>
+      {card.tags.length > 0 && <div className="wf__tags">{card.tags.map(t => <span key={t} className="chip">{t}</span>)}</div>}
+    </>
+  );
+}
+function CardEditor({ card, stages, onClose }) {
+  const store = useStore();
+  const [tagDraft, setTagDraft] = useState("");
+  const titleRef = useRef(null);
+  useEffect(() => { titleRef.current && titleRef.current.focus(); }, []);
+  const addTag = () => { const v = tagDraft.trim(); if (!v || card.tags.includes(v)) { setTagDraft(""); return; } store.updateCard(card.id, { tags: [...card.tags, v] }); setTagDraft(""); };
+  return (
+    <Modal open onClose={onClose} width={520} title="Card" footer={
+      <><button className="btn" onClick={() => { store.duplicateCard(card.id); onClose(); }}>Duplicate</button>
+        <button className="btn btn--danger" onClick={() => { store.deleteCard(card.id); onClose(); }}>Delete</button>
+        <button className="btn btn--primary" onClick={onClose}>Done</button></>
+    }>
+      <div className="form">
+        <label className="form__field"><span className="form__label">Title</span>
+          <input ref={titleRef} className="form__input" value={card.title} onChange={e => store.updateCard(card.id, { title: e.target.value })} /></label>
+        <div className="form__row">
+          <label className="form__field"><span className="form__label">Stage</span>
+            <select className="form__input" value={card.stageId} onChange={e => store.updateCard(card.id, { stageId: e.target.value })}>{stages.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+          <label className="form__field"><span className="form__label">Priority</span>
+            <select className="form__input" value={card.priority} onChange={e => store.updateCard(card.id, { priority: e.target.value })}>{PRIORITY_ORDER.map(p => <option key={p} value={p}>{PRIORITY_LABEL[p]}</option>)}</select></label>
+        </div>
+        <div className="form__row">
+          <label className="form__field"><span className="form__label">Due date</span>
+            <input className="form__input" type="date" value={card.dueDate} onChange={e => store.updateCard(card.id, { dueDate: e.target.value })} /></label>
+          <label className="form__field"><span className="form__label">Assignee</span>
+            <input className="form__input" value={card.assignee} placeholder="Who's on it?" onChange={e => store.updateCard(card.id, { assignee: e.target.value })} /></label>
+        </div>
+        <label className="form__field"><span className="form__label">Description</span>
+          <textarea className="form__input form__textarea" value={card.description} rows={2} onChange={e => store.updateCard(card.id, { description: e.target.value })} /></label>
+        <div className="form__field"><span className="form__label">Tags</span>
+          <div className="form__tags">
+            {card.tags.map(t => <span key={t} className="chip chip--removable">{t}<button onClick={() => store.updateCard(card.id, { tags: card.tags.filter(x => x !== t) })} aria-label={`Remove ${t}`}>✕</button></span>)}
+            <input className="form__tag-input" placeholder="Add tag…" value={tagDraft} onChange={e => setTagDraft(e.target.value)} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }} />
+          </div>
+        </div>
+        <label className="form__field"><span className="form__label">Notes</span>
+          <textarea className="form__input form__textarea" value={card.notes} rows={3} onChange={e => store.updateCard(card.id, { notes: e.target.value })} /></label>
+      </div>
+    </Modal>
+  );
+}
+
+/* ===================== ResizableEmbed ===================== */
+function ResizableEmbed({ block, defaultHeight, children }) {
+  const store = useStore();
+  const ref = useRef(null);
+  const full = !!block.props.full;
+  const size = block.props.size;
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    let timer = null;
+    const ro = new ResizeObserver(() => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        const h = Math.round(el.offsetHeight);
+        const w = full ? (block.props.size && block.props.size.w) : Math.round(el.offsetWidth);
+        const prev = block.props.size;
+        const wChanged = !full && Math.abs(((prev && prev.w) || 0) - (w || 0)) > 1;
+        const hChanged = Math.abs(((prev && prev.h) || 0) - h) > 1;
+        if (wChanged || hChanged) store.updateBlock(block.id, { props: { size: { w, h } } });
+      }, 350);
+    });
+    ro.observe(el);
+    return () => { if (timer) clearTimeout(timer); ro.disconnect(); };
+  }, [block.id, full]);
+  const style = { height: (size && size.h) || defaultHeight, width: full ? undefined : (size && size.w) || undefined };
+  return (
+    <div className={`embed-frame ${full ? "is-full" : ""}`} ref={ref} style={style}>
+      <div className="embed-frame__bar">
+        <button className="embed-frame__btn" title={full ? "Fit to page" : "Expand to full width"} onClick={() => store.updateBlock(block.id, { props: { full: !full } })}>{full ? "⤡ Fit" : "⤢ Full width"}</button>
+        <button className="embed-frame__btn" title="Reset size" onClick={() => store.updateBlock(block.id, { props: { size: undefined, full: false } })}>↺ Reset</button>
+        <span className="embed-frame__hint">drag corner to resize ↘</span>
+      </div>
+      <div className="embed-frame__content">{children}</div>
+    </div>
+  );
+}
+
+/* ===================== FinanceTracker ===================== */
+const FIN_TYPES = [
+  { type: "text", label: "Text" }, { type: "number", label: "Number" }, { type: "date", label: "Date" },
+  { type: "select", label: "Select" }, { type: "formula", label: "Formula (auto)" },
+];
+const AGGS = ["none", "sum", "avg", "min", "max", "count"];
+const OPS = [{ op: "+", label: "+  add" }, { op: "-", label: "−  subtract" }, { op: "*", label: "×  multiply" }, { op: "/", label: "÷  divide" }];
+function finCellText(col, row) {
+  if (col.type === "formula") return String(cellNumber(col, row));
+  const v = row.cells[col.id];
+  if (v === null || v === undefined) return "";
+  return Array.isArray(v) ? v.join(" ") : String(v);
+}
+function FinanceTracker({ financeId }) {
+  const store = useStore();
+  const finance = store.ws.finances.find(f => f.id === financeId);
+  const [query, setQuery] = useState("");
+  const [addColOpen, setAddColOpen] = useState(false);
+  const rows = useMemo(() => finance ? [...finance.rows].sort((a, b) => a.order - b.order) : [], [finance]);
+  if (!finance) return <div className="embed-missing">Finance tracker not found</div>;
+  const filtered = rows.filter(r => finance.columns.some(c => matches(finCellText(c, r), query)));
+  const numCols = numericColumns(finance);
+  return (
+    <div className="fin" contentEditable={false}>
+      <div className="fin__toolbar">
+        <input className="fin__name" value={finance.name} onChange={e => store.renameFinance(finance.id, e.target.value)} aria-label="Finance tracker name" />
+        <input className="fin__currency" value={finance.currency} maxLength={3} title="Currency symbol" onChange={e => store.setFinanceCurrency(finance.id, e.target.value)} />
+        <input className="fin__search" placeholder="Search…" value={query} onChange={e => setQuery(e.target.value)} />
+      </div>
+      <div className="fin__summary">
+        {numCols.filter(c => c.agg !== "none").map(c => {
+          const val = aggregate(c, filtered, c.agg);
+          return (
+            <div className="fin__stat" key={c.id}>
+              <div className="fin__stat-label">{AGG_LABEL[c.agg]} · {c.name}</div>
+              <div className="fin__stat-value">{val === null ? "—" : formatMoney(val, finance.currency, c.money)}</div>
+            </div>
+          );
+        })}
+        <div className="fin__stat"><div className="fin__stat-label">Rows</div><div className="fin__stat-value">{filtered.length}</div></div>
+      </div>
+      <div className="fin__scroll">
+        <table className="fin__table">
+          <thead>
+            <tr>
+              <th className="fin__rownum-head" />
+              {finance.columns.map(col => <FinColumnHeader key={col.id} financeId={finance.id} column={col} allColumns={finance.columns} />)}
+              <th className="fin__addcol"><div className="fin__addcol-wrap">
+                <button className="fin__addcol-btn" onClick={() => setAddColOpen(v => !v)} title="Add column">＋</button>
+                {addColOpen && <FinTypeMenu onPick={t => { store.addFinanceColumn(finance.id, t); setAddColOpen(false); }} onClose={() => setAddColOpen(false)} />}
+              </div></th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((row, i) => (
+              <tr key={row.id} className="fin__row">
+                <td className="fin__rownum"><span>{i + 1}</span><button className="fin__rowdel" title="Delete row" onClick={() => store.deleteFinanceRow(finance.id, row.id)}>✕</button></td>
+                {finance.columns.map(col => (
+                  <td key={col.id} className="fin__cell" data-type={col.type}>
+                    <FinCell column={col} row={row} currency={finance.currency}
+                      onChange={v => store.updateFinanceCell(finance.id, row.id, col.id, v)}
+                      onAddOption={opt => store.updateFinanceColumn(finance.id, col.id, { options: Array.from(new Set([...(col.options || []), opt])) })} />
+                  </td>
+                ))}
+                <td className="fin__cell fin__cell--pad" />
+              </tr>
+            ))}
+            {filtered.length === 0 && <tr><td className="fin__empty" colSpan={finance.columns.length + 2}>{query ? "No rows match." : "No rows yet — add one below."}</td></tr>}
+          </tbody>
+          <tfoot>
+            <tr className="fin__foot">
+              <td className="fin__rownum">Σ</td>
+              {finance.columns.map(col => {
+                const val = isNumericColumn(col) && col.agg !== "none" ? aggregate(col, filtered, col.agg) : null;
+                return <td key={col.id} className="fin__foot-cell">{val !== null && <span className="fin__foot-val"><span className="fin__foot-agg">{AGG_LABEL[col.agg]}</span>{formatMoney(val, finance.currency, col.money)}</span>}</td>;
+              })}
+              <td className="fin__cell fin__cell--pad" />
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <button className="fin__addrow" onClick={() => store.addFinanceRow(finance.id)}>＋ New row</button>
+    </div>
+  );
+}
+function FinColumnHeader({ financeId, column, allColumns }) {
+  const store = useStore();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => { const onDoc = e => { if (ref.current && !ref.current.contains(e.target)) setMenuOpen(false); }; document.addEventListener("mousedown", onDoc); return () => document.removeEventListener("mousedown", onDoc); }, []);
+  const otherNumeric = allColumns.filter(c => c.id !== column.id && isNumericColumn(c));
+  return (
+    <th className="fin__th" ref={ref}>
+      <div className="fin__th-inner">
+        <input className="fin__th-name" value={column.name} onChange={e => store.updateFinanceColumn(financeId, column.id, { name: e.target.value })} />
+        {column.type === "formula" && <span className="fin__fx" title="Auto-calculated">ƒ</span>}
+        <button className="fin__th-menu" onClick={() => setMenuOpen(v => !v)} title="Column options">⌄</button>
+      </div>
+      {menuOpen && (
+        <div className="menu fin__th-dropdown">
+          <div className="menu__label">Type</div>
+          {FIN_TYPES.map(t => (
+            <button key={t.type} className={`menu__item ${t.type === column.type ? "is-active" : ""}`}
+              onClick={() => store.updateFinanceColumn(financeId, column.id, {
+                type: t.type,
+                money: t.type === "number" || t.type === "formula" ? (column.money ?? true) : false,
+                agg: t.type === "number" || t.type === "formula" ? (column.agg === "none" ? "sum" : column.agg) : "none",
+                options: t.type === "select" ? (column.options || []) : column.options,
+              })}>{t.label}</button>
+          ))}
+          {column.type === "formula" && <FormulaEditor column={column} numCols={otherNumeric} onChange={formula => store.updateFinanceColumn(financeId, column.id, { formula })} />}
+          {isNumericColumn(column) && (
+            <>
+              <div className="menu__sep" />
+              <label className="fin__menu-toggle"><input type="checkbox" checked={!!column.money} onChange={e => store.updateFinanceColumn(financeId, column.id, { money: e.target.checked })} />Show as currency</label>
+              <div className="menu__label">Summary</div>
+              <select className="fin__menu-select" value={column.agg} onChange={e => store.updateFinanceColumn(financeId, column.id, { agg: e.target.value })}>{AGGS.map(a => <option key={a} value={a}>{AGG_LABEL[a]}</option>)}</select>
+            </>
+          )}
+          <div className="menu__sep" />
+          <button className="menu__item menu__item--danger" disabled={allColumns.length <= 1} onClick={() => { store.deleteFinanceColumn(financeId, column.id); setMenuOpen(false); }}>Delete column</button>
+        </div>
+      )}
+    </th>
+  );
+}
+function FormulaEditor({ column, numCols, onChange }) {
+  const formula = column.formula || {
+    left: numCols[0] ? { kind: "col", col: numCols[0].id } : { kind: "const", value: 0 },
+    op: "*",
+    right: numCols[1] ? { kind: "col", col: numCols[1].id } : { kind: "const", value: 0 },
+  };
+  const renderOperand = side => {
+    const op = formula[side];
+    return (
+      <div className="fin__operand">
+        <select className="fin__menu-select" value={op.kind === "col" ? op.col : "__const"}
+          onChange={e => { const v = e.target.value; const next = v === "__const" ? { kind: "const", value: 0 } : { kind: "col", col: v }; onChange({ ...formula, [side]: next }); }}>
+          {numCols.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          <option value="__const">Number…</option>
+        </select>
+        {op.kind === "const" && <input className="fin__operand-num" type="number" value={op.value} onChange={e => onChange({ ...formula, [side]: { kind: "const", value: Number(e.target.value) || 0 } })} />}
+      </div>
+    );
+  };
+  return (
+    <div className="fin__formula">
+      <div className="menu__label">Formula</div>
+      {renderOperand("left")}
+      <select className="fin__menu-select" value={formula.op} onChange={e => onChange({ ...formula, op: e.target.value })}>{OPS.map(o => <option key={o.op} value={o.op}>{o.label}</option>)}</select>
+      {renderOperand("right")}
+    </div>
+  );
+}
+function FinCell({ column, row, currency, onChange, onAddOption }) {
+  const value = row.cells[column.id] ?? null;
+  switch (column.type) {
+    case "formula": return <div className="fin__formula-cell">{formatMoney(computeFormula(column, row), currency, column.money)}</div>;
+    case "number": return (
+      <div className="fin__num">
+        {column.money && <span className="fin__num-prefix">{currency}</span>}
+        <input className="fin__input fin__input--num" type="number" value={value === null || value === undefined ? "" : String(value)} onChange={e => onChange(e.target.value === "" ? null : Number(e.target.value))} />
+      </div>);
+    case "date": return <input className="fin__input" type="date" value={typeof value === "string" ? value : ""} onChange={e => onChange(e.target.value)} />;
+    case "select": return <FinSelect options={column.options || []} value={typeof value === "string" ? value : ""} onChange={onChange} onAddOption={onAddOption} />;
+    default: return <input className="fin__input" value={typeof value === "string" ? value : ""} onChange={e => onChange(e.target.value)} />;
+  }
+}
+function FinSelect({ options, value, onChange, onAddOption }) {
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState("");
+  const ref = useRef(null);
+  useEffect(() => { const onDoc = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }; document.addEventListener("mousedown", onDoc); return () => document.removeEventListener("mousedown", onDoc); }, []);
+  const add = () => { const v = draft.trim(); if (!v) return; if (!options.includes(v)) onAddOption(v); onChange(v); setDraft(""); setOpen(false); };
+  return (
+    <div className="fin__select" ref={ref}>
+      <button className="fin__select-trigger" onClick={() => setOpen(v => !v)}>{value ? <span className="chip">{value}</span> : <span className="fin__select-placeholder">Empty</span>}</button>
+      {open && (
+        <div className="fin__select-pop">
+          <input className="fin__select-input" placeholder="Pick or add…" value={draft} autoFocus onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === "Enter") add(); }} />
+          <div className="fin__select-list">
+            {options.filter(o => matches(o, draft)).map(o => (
+              <button key={o} className="fin__select-opt" onClick={() => { onChange(value === o ? null : o); setOpen(false); }}>
+                <span className="chip">{o}</span>{value === o && <span className="fin__select-check">✓</span>}
+              </button>
+            ))}
+            {draft.trim() && !options.includes(draft.trim()) && <button className="fin__select-opt fin__select-create" onClick={add}>Create “{draft.trim()}”</button>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+function FinTypeMenu({ onPick, onClose }) {
+  const ref = useRef(null);
+  useEffect(() => { const onDoc = e => { if (ref.current && !ref.current.contains(e.target)) onClose(); }; document.addEventListener("mousedown", onDoc); return () => document.removeEventListener("mousedown", onDoc); }, [onClose]);
+  return (
+    <div className="menu fin__addcol-menu" ref={ref}>
+      <div className="menu__label">New column</div>
+      {FIN_TYPES.map(t => <button key={t.type} className="menu__item" onClick={() => onPick(t.type)}>{t.label}</button>)}
+    </div>
+  );
+}
+
+/* ===================== PageTreeItem ===================== */
+function PageTreeItem({ page, depth, ctx }) {
+  const store = useStore();
+  const children = ctx.childrenOf(page.id);
+  const hasChildren = children.length > 0;
+  const isExpanded = ctx.expanded.has(page.id);
+  const isActive = ctx.currentPageId === page.id;
+  const isFav = ctx.favorites.includes(page.id);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [draft, setDraft] = useState(page.title);
+  const menuRef = useRef(null), inputRef = useRef(null);
+  useEffect(() => { if (renaming) { inputRef.current && inputRef.current.focus(); inputRef.current && inputRef.current.select(); } }, [renaming]);
+  useEffect(() => { if (!menuOpen) return; const onDoc = e => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false); }; document.addEventListener("mousedown", onDoc); return () => document.removeEventListener("mousedown", onDoc); }, [menuOpen]);
+  const commitRename = () => { store.renamePage(page.id, draft.trim() || "Untitled"); setRenaming(false); };
+  return (
+    <div className="tree__node">
+      <div className={`tree__row ${isActive ? "is-active" : ""}`} style={{ paddingLeft: 8 + depth * 16 }} onClick={() => !renaming && ctx.onSelect(page.id)}>
+        <button className={`tree__caret ${hasChildren ? "" : "is-hidden"} ${isExpanded ? "is-open" : ""}`} onClick={e => { e.stopPropagation(); ctx.toggleExpand(page.id); }} aria-label={isExpanded ? "Collapse" : "Expand"}>▸</button>
+        <span className="tree__emoji">{page.emoji}</span>
+        {renaming ? (
+          <input ref={inputRef} className="tree__rename" value={draft} onClick={e => e.stopPropagation()} onChange={e => setDraft(e.target.value)} onBlur={commitRename}
+            onKeyDown={e => { if (e.key === "Enter") commitRename(); if (e.key === "Escape") { setDraft(page.title); setRenaming(false); } }} />
+        ) : (<span className="tree__title">{page.title || "Untitled"}</span>)}
+        <div className="tree__actions" onClick={e => e.stopPropagation()}>
+          <button className="tree__action" title="Add a page inside" onClick={() => { const id = store.createPage(page.id); if (!ctx.expanded.has(page.id)) ctx.toggleExpand(page.id); ctx.onSelect(id); }}>＋</button>
+          <div className="tree__menu-wrap" ref={menuRef}>
+            <button className="tree__action" title="More" onClick={() => setMenuOpen(v => !v)}>⋯</button>
+            {menuOpen && (
+              <div className="menu tree__menu">
+                <button className="menu__item" onClick={() => { setDraft(page.title); setRenaming(true); setMenuOpen(false); }}>Rename</button>
+                <button className="menu__item" onClick={() => { store.duplicatePage(page.id); setMenuOpen(false); }}>Duplicate</button>
+                <button className="menu__item" onClick={() => { store.toggleFavorite(page.id); setMenuOpen(false); }}>{isFav ? "Remove from favorites" : "Add to favorites"}</button>
+                <div className="menu__sep" />
+                <button className="menu__item menu__item--danger" onClick={() => { store.deletePage(page.id); setMenuOpen(false); }}>Delete</button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      {hasChildren && isExpanded && <div className="tree__children">{children.map(child => <PageTreeItem key={child.id} page={child} depth={depth + 1} ctx={ctx} />)}</div>}
+    </div>
+  );
+}
+
+/* ===================== Sidebar ===================== */
+function Sidebar({ onOpenSearch, onCloseDrawer, onCollapse }) {
+  const store = useStore();
+  const { ws, currentPageId } = store;
+  const [expandedList, setExpandedList] = useLocalState("expandedPages", []);
+  const expanded = new Set(expandedList);
+  const toggleExpand = useCallback(id => setExpandedList(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]), [setExpandedList]);
+  const childrenOf = useCallback(id => ws.pages.filter(p => p.parentId === id).sort((a, b) => a.createdAt - b.createdAt), [ws.pages]);
+  const onSelect = useCallback(id => { store.setCurrentPage(id); onCloseDrawer(); }, [store, onCloseDrawer]);
+  const ctx = { childrenOf, currentPageId, expanded, toggleExpand, onSelect, favorites: ws.favorites };
+  const rootPages = childrenOf(null);
+  const favoritePages = ws.favorites.map(id => ws.pages.find(p => p.id === id)).filter(Boolean);
+  const recentPages = ws.recents.map(id => ws.pages.find(p => p.id === id)).filter(Boolean).slice(0, 5);
+  return (
+    <aside className="sidebar">
+      <div className="sidebar__head">
+        <div className="sidebar__brand"><span className="sidebar__logo" aria-hidden>T</span><span className="sidebar__brand-name">Tracker</span></div>
+        <button className="icon-btn sidebar__collapse" title="Collapse sidebar" onClick={onCollapse}>«</button>
+      </div>
+      <div className="sidebar__actions">
+        <button className="sidebar__btn" onClick={onOpenSearch}><span className="sidebar__btn-icon">🔍</span><span>Search</span><span className="sidebar__kbd">⌘K</span></button>
+        <button className="sidebar__btn" onClick={() => { store.createPage(null); onCloseDrawer(); }}><span className="sidebar__btn-icon">＋</span><span>New page</span></button>
+      </div>
+      <nav className="sidebar__nav">
+        {favoritePages.length > 0 && (
+          <div className="sidebar__section"><div className="sidebar__section-title">Favorites</div>
+            {favoritePages.map(p => <button key={p.id} className={`sidebar__flat ${currentPageId === p.id ? "is-active" : ""}`} onClick={() => onSelect(p.id)}><span className="tree__emoji">{p.emoji}</span><span className="tree__title">{p.title || "Untitled"}</span><span className="sidebar__star">★</span></button>)}
+          </div>
+        )}
+        {recentPages.length > 0 && (
+          <div className="sidebar__section"><div className="sidebar__section-title">Recent</div>
+            {recentPages.map(p => <button key={p.id} className={`sidebar__flat ${currentPageId === p.id ? "is-active" : ""}`} onClick={() => onSelect(p.id)}><span className="tree__emoji">{p.emoji}</span><span className="tree__title">{p.title || "Untitled"}</span></button>)}
+          </div>
+        )}
+        <div className="sidebar__section"><div className="sidebar__section-title">Pages</div>
+          {rootPages.map(p => <PageTreeItem key={p.id} page={p} depth={0} ctx={ctx} />)}
+          {rootPages.length === 0 && <div className="sidebar__empty">No pages yet. Create one above.</div>}
+        </div>
+      </nav>
+      <div className="sidebar__foot"><button className="sidebar__foot-btn" onClick={() => { store.createPage(null); onCloseDrawer(); }}>＋ New page</button></div>
+    </aside>
+  );
+}
+
+/* ===================== TopBar ===================== */
+function TopBar({ onToggleDrawer, sidebarCollapsed, onExpandSidebar, onImportClick, onResetClick }) {
+  const store = useStore();
+  const { ws, currentPageId } = store;
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+  useEffect(() => { if (!menuOpen) return; const onDoc = e => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false); }; document.addEventListener("mousedown", onDoc); return () => document.removeEventListener("mousedown", onDoc); }, [menuOpen]);
+  const chain = [];
+  let cursor = ws.pages.find(p => p.id === currentPageId) || null;
+  const guard = new Set();
+  while (cursor && !guard.has(cursor.id)) { guard.add(cursor.id); chain.unshift(cursor); cursor = cursor.parentId ? ws.pages.find(p => p.id === cursor.parentId) || null : null; }
+  const current = chain[chain.length - 1];
+  const isFav = current ? ws.favorites.includes(current.id) : false;
+  const theme = ws.settings.theme;
+  return (
+    <header className="topbar">
+      <div className="topbar__left">
+        <button className="icon-btn topbar__menu" onClick={onToggleDrawer} aria-label="Open menu">☰</button>
+        {sidebarCollapsed && <button className="icon-btn topbar__expand" onClick={onExpandSidebar} title="Show sidebar">»</button>}
+        <nav className="breadcrumb">
+          {chain.length === 0 && <span className="breadcrumb__item">Tracker</span>}
+          {chain.map((p, i) => (
+            <span className="breadcrumb__seg" key={p.id}>
+              {i > 0 && <span className="breadcrumb__sep">/</span>}
+              <button className="breadcrumb__item" onClick={() => store.setCurrentPage(p.id)}><span className="breadcrumb__emoji">{p.emoji}</span>{p.title || "Untitled"}</button>
+            </span>
+          ))}
+        </nav>
+      </div>
+      <div className="topbar__right">
+        {current && <button className={`icon-btn topbar__fav ${isFav ? "is-fav" : ""}`} title={isFav ? "Remove from favorites" : "Add to favorites"} onClick={() => store.toggleFavorite(current.id)}>{isFav ? "★" : "☆"}</button>}
+        <button className="icon-btn" title="Toggle theme" onClick={() => store.setTheme(theme === "light" ? "dark" : "light")}>{theme === "light" ? "🌙" : "☀️"}</button>
+        <div className="topbar__menu-wrap" ref={menuRef}>
+          <button className="icon-btn" title="Workspace menu" onClick={() => setMenuOpen(v => !v)}>⋯</button>
+          {menuOpen && (
+            <div className="menu topbar__dropdown">
+              <div className="menu__label">Workspace</div>
+              <button className="menu__item" onClick={() => { store.exportNow(); setMenuOpen(false); }}>Export JSON</button>
+              <button className="menu__item" onClick={() => { onImportClick(); setMenuOpen(false); }}>Import JSON</button>
+              <div className="menu__sep" />
+              <button className="menu__item menu__item--danger" onClick={() => { onResetClick(); setMenuOpen(false); }}>Reset workspace</button>
+            </div>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+}
+
+/* ===================== SearchModal ===================== */
+function SearchModal({ open, onClose }) {
+  const store = useStore();
+  const { ws } = store;
+  const [query, setQuery] = useState("");
+  const [active, setActive] = useState(0);
+  const inputRef = useRef(null), listRef = useRef(null);
+  useEffect(() => { if (open) { setQuery(""); setActive(0); setTimeout(() => inputRef.current && inputRef.current.focus(), 0); } }, [open]);
+  const pageOfWorkflow = useMemo(() => { const m = new Map(); ws.blocks.forEach(b => { if (b.type === "workflow" && b.props.workflowId) m.set(b.props.workflowId, b.pageId); }); return m; }, [ws.blocks]);
+  const pageOfDatabase = useMemo(() => { const m = new Map(); ws.blocks.forEach(b => { if (b.type === "database" && b.props.databaseId) m.set(b.props.databaseId, b.pageId); }); return m; }, [ws.blocks]);
+  const results = useMemo(() => {
+    const q = query.trim();
+    if (!q) return ws.recents.map(id => ws.pages.find(p => p.id === id)).filter(Boolean).slice(0, 6).map(p => ({ id: p.id, kind: "Page", icon: p.emoji, title: p.title || "Untitled", subtitle: "Recent", pageId: p.id }));
+    const out = [];
+    ws.pages.forEach(p => { if (matches(p.title, q)) out.push({ id: p.id, kind: "Page", icon: p.emoji, title: p.title || "Untitled", subtitle: "Page", pageId: p.id }); });
+    ws.blocks.forEach(b => { if (b.content && matches(b.content, q) && b.type !== "database" && b.type !== "workflow") { const page = ws.pages.find(p => p.id === b.pageId); out.push({ id: b.id, kind: "Block", icon: "¶", title: b.content.slice(0, 80), subtitle: `in ${page ? page.title : "page"}`, pageId: b.pageId }); } });
+    ws.workflows.forEach(w => { if (matches(w.name, q)) out.push({ id: w.id, kind: "Workflow", icon: "▤", title: w.name, subtitle: "Workflow", pageId: pageOfWorkflow.get(w.id) ?? null }); });
+    ws.workflowCards.forEach(c => { if (matches(c.title, q) || matches(c.description, q) || matches(c.tags.join(" "), q)) out.push({ id: c.id, kind: "Card", icon: "▢", title: c.title, subtitle: "Card", pageId: pageOfWorkflow.get(c.workflowId) ?? null }); });
+    ws.databaseRows.forEach(r => { const text = Object.values(r.cells).map(v => Array.isArray(v) ? v.join(" ") : String(v ?? "")).join(" "); if (matches(text, q)) { const db = ws.databases.find(d => d.id === r.databaseId); out.push({ id: r.id, kind: "Row", icon: "▦", title: text.trim().slice(0, 80) || "(empty row)", subtitle: `in ${db ? db.name : "table"}`, pageId: pageOfDatabase.get(r.databaseId) ?? null }); } });
+    return out.slice(0, 40);
+  }, [query, ws, pageOfWorkflow, pageOfDatabase]);
+  useEffect(() => setActive(0), [query]);
+  const choose = r => { if (!r) return; if (r.pageId) store.setCurrentPage(r.pageId); onClose(); };
+  useEffect(() => {
+    if (!open) return;
+    const onKey = e => {
+      if (e.key === "ArrowDown") { e.preventDefault(); setActive(a => Math.min(a + 1, Math.max(0, results.length - 1))); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); setActive(a => Math.max(a - 1, 0)); }
+      else if (e.key === "Enter") { e.preventDefault(); choose(results[active]); }
+      else if (e.key === "Escape") { e.preventDefault(); onClose(); }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [open, results, active]);
+  useEffect(() => { const el = listRef.current && listRef.current.querySelector(`[data-idx="${active}"]`); el && el.scrollIntoView({ block: "nearest" }); }, [active]);
+  if (!open) return null;
+  const groups = [];
+  results.forEach((r, idx) => { let g = groups.find(x => x.kind === r.kind); if (!g) { g = { kind: r.kind, items: [] }; groups.push(g); } g.items.push({ r, idx }); });
+  return (
+    <div className="overlay overlay--top" onMouseDown={onClose}>
+      <div className="search" onMouseDown={e => e.stopPropagation()} role="dialog" aria-modal="true">
+        <div className="search__input-row">
+          <span className="search__icon">🔍</span>
+          <input ref={inputRef} className="search__input" placeholder="Search pages, blocks, workflows, cards…" value={query} onChange={e => setQuery(e.target.value)} />
+          <span className="search__esc">Esc</span>
+        </div>
+        <div className="search__results" ref={listRef}>
+          {results.length === 0 && <div className="search__empty">No results found.</div>}
+          {groups.map(g => (
+            <div className="search__group" key={g.kind}>
+              <div className="search__group-label">{g.kind}</div>
+              {g.items.map(({ r, idx }) => (
+                <button key={r.kind + r.id} data-idx={idx} className={`search__result ${idx === active ? "is-active" : ""}`} onMouseEnter={() => setActive(idx)} onClick={() => choose(r)}>
+                  <span className="search__result-icon">{r.icon}</span>
+                  <span className="search__result-text"><span className="search__result-title">{r.title}</span><span className="search__result-sub">{r.subtitle}</span></span>
+                  {!r.pageId && <span className="search__result-warn">no page</span>}
+                </button>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ===================== App ===================== */
+function App() {
+  const store = useStore();
+  const toast = useToast();
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [collapsed, setCollapsed] = useLocalState("sidebarCollapsed", false);
+  const [pendingImport, setPendingImport] = useState(null);
+  const [resetOpen, setResetOpen] = useState(false);
+  const fileRef = useRef(null);
+  useEffect(() => { document.documentElement.dataset.theme = store.ws.settings.theme; }, [store.ws.settings.theme]);
+  useHotkeys({
+    onSearch: () => setSearchOpen(true),
+    onSave: () => { store.saveNow(); toast.show("Saved"); },
+    onEscape: () => setDrawerOpen(false),
+    onNewPage: () => { store.createPage(null); toast.show("Page created"); },
+  });
+  const handleImportClick = useCallback(() => fileRef.current && fileRef.current.click(), []);
+  const handleFile = useCallback(async e => {
+    const file = e.target.files && e.target.files[0]; e.target.value = "";
+    if (!file) return;
+    const res = await importWorkspaceFile(file);
+    if (res.ok && res.workspace) setPendingImport(res.workspace);
+    else toast.show(res.error || "Import failed", "error");
+  }, [toast]);
+  const currentPage = store.ws.pages.find(p => p.id === store.currentPageId) || null;
+  return (
+    <div className={`app ${collapsed ? "app--collapsed" : ""} ${drawerOpen ? "app--drawer-open" : ""}`}>
+      <div className="app__sidebar"><Sidebar onOpenSearch={() => setSearchOpen(true)} onCloseDrawer={() => setDrawerOpen(false)} onCollapse={() => setCollapsed(true)} /></div>
+      {drawerOpen && <div className="app__scrim" onClick={() => setDrawerOpen(false)} />}
+      <div className="app__main">
+        <TopBar onToggleDrawer={() => setDrawerOpen(v => !v)} sidebarCollapsed={collapsed} onExpandSidebar={() => setCollapsed(false)} onImportClick={handleImportClick} onResetClick={() => setResetOpen(true)} />
+        <main className="app__content">
+          {currentPage ? <Editor key={currentPage.id} page={currentPage} /> : (
+            <div className="app__no-page"><h2>No page open</h2><p>Create a page from the sidebar to get started.</p><button className="btn btn--primary" onClick={() => store.createPage(null)}>＋ New page</button></div>
+          )}
+        </main>
+      </div>
+      <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <ConfirmModal open={pendingImport !== null} title="Replace workspace?" message="Importing will replace your current workspace. This can't be undone — consider exporting first." confirmLabel="Import & replace" destructive
+        onCancel={() => setPendingImport(null)} onConfirm={() => { if (pendingImport) { store.replaceWorkspace(pendingImport); toast.show("Workspace imported"); } setPendingImport(null); }} />
+      <ConfirmModal open={resetOpen} title="Reset workspace?" message="This clears everything and restores the starter workspace. This can't be undone." confirmLabel="Reset" destructive
+        onCancel={() => setResetOpen(false)} onConfirm={() => { store.resetWorkspace(); setResetOpen(false); toast.show("Workspace reset"); }} />
+      <input ref={fileRef} type="file" accept="application/json,.json" style={{ display: "none" }} onChange={handleFile} />
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(
+  <StrictMode><ToastProvider><WorkspaceProvider><App /></WorkspaceProvider></ToastProvider></StrictMode>
+);
+    </script>
+  </body>
+</html>
 
