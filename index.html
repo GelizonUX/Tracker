@@ -2153,6 +2153,7 @@ a {
 .embed-frame__bar {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
   padding: 5px 8px;
   border-bottom: 1px solid var(--border);
@@ -2170,7 +2171,6 @@ a {
   color: var(--text);
 }
 .embed-frame__hint {
-  margin-left: auto;
   font-size: 11px;
   color: var(--text-faint);
 }
@@ -2222,6 +2222,7 @@ a {
 .fin__toolbar {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   padding: 10px 12px;
   border-bottom: 1px solid var(--border);
@@ -2580,6 +2581,590 @@ a {
 }
 
 /* ==========================================================================
+   Bug fixes: modal scroll + menus above embeds + embed spacing
+   ========================================================================== */
+
+.modal {
+  display: flex;
+  flex-direction: column;
+  max-height: 88vh;
+}
+.modal__body {
+  overflow-y: auto;
+}
+.modal__header,
+.modal__footer {
+  flex: 0 0 auto;
+}
+
+/* dropdowns / menus / slash menu must always sit above embedded boards */
+.menu {
+  z-index: 1000;
+}
+/* portaled popovers (table/finance dropdowns) — never clipped by an embed */
+.popover {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 6px;
+  animation: pop var(--med) var(--ease);
+}
+.popover .menu__item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 7px 9px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  color: var(--text);
+  text-align: left;
+  transition: background var(--fast) var(--ease);
+}
+.popover .menu__item:hover {
+  background: var(--bg-hover);
+}
+.popover .menu__item.is-active {
+  background: var(--accent-soft);
+}
+.popover .menu__item--danger {
+  color: var(--danger);
+}
+.popover .menu__item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.block-actions {
+  z-index: 1100;
+}
+.slash-menu {
+  z-index: 1200;
+}
+/* keep the add-block affordance clickable beneath embeds */
+.editor__add-block {
+  position: relative;
+  z-index: 3;
+}
+.embed-frame {
+  margin: 14px 0 18px;
+  isolation: isolate;
+}
+/* embeds use the frame bar for actions, not the floating column gutter
+   (which otherwise lands in the middle of the page over full-width boards) */
+.block--embed .block__gutter {
+  display: none;
+}
+.embed-frame__spacer {
+  flex: 1;
+}
+.embed-frame__btn--danger:hover {
+  color: var(--danger);
+}
+
+/* ==========================================================================
+   Page cover photo
+   ========================================================================== */
+
+.cover-wrap {
+  position: relative;
+  width: 100%;
+}
+.cover {
+  position: relative;
+  width: 100%;
+  height: clamp(140px, 26vh, 260px);
+  overflow: hidden;
+  background: var(--bg-sunken);
+}
+.cover__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  user-select: none;
+}
+.cover__gradient {
+  width: 100%;
+  height: 100%;
+}
+.cover.is-reposition .cover__img {
+  cursor: ns-resize;
+}
+.cover__controls {
+  position: absolute;
+  right: 14px;
+  bottom: 12px;
+  z-index: 30;
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity var(--fast) var(--ease);
+}
+.cover-wrap:hover .cover__controls {
+  opacity: 1;
+}
+.cover__menu-wrap {
+  position: relative;
+}
+.cover__btn {
+  padding: 4px 10px;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--bg) 86%, transparent);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 12.5px;
+  backdrop-filter: blur(6px);
+  box-shadow: var(--shadow-sm);
+  transition: background var(--fast) var(--ease);
+}
+.cover__btn:hover {
+  background: var(--bg);
+}
+.cover__hint {
+  align-self: center;
+  padding: 4px 10px;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--bg) 86%, transparent);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.cover__panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 280px;
+  max-height: min(60vh, 420px);
+  overflow-y: auto;
+  padding: 10px;
+}
+.cover__swatches {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  padding: 2px 4px 6px;
+}
+.cover__swatch {
+  height: 34px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  transition: transform var(--fast) var(--ease);
+}
+.cover__swatch:hover {
+  transform: scale(1.04);
+}
+.cover__url-row {
+  display: flex;
+  gap: 6px;
+  padding: 2px 4px 4px;
+}
+.cover__url-input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  outline: none;
+}
+.cover__url-btn {
+  height: auto;
+  padding: 0 12px;
+}
+.editor.has-cover {
+  padding-top: 0;
+}
+/* only the emoji lifts onto the cover edge — controls stay below it */
+.editor.has-cover .editor__inner {
+  position: relative;
+}
+.editor.has-cover .editor__emoji {
+  margin-top: -46px;
+  background: var(--bg);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 0 0 4px var(--bg);
+}
+.editor.has-cover .editor__icon-row {
+  align-items: flex-end;
+}
+
+/* full-width page */
+.editor.full-width .editor__inner {
+  max-width: min(1400px, 100%);
+}
+
+/* page controls toolbar (add cover / width / align) — sits below the cover */
+.editor__page-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 28px;
+  margin: 2px 0 6px;
+  opacity: 0;
+  transition: opacity var(--fast) var(--ease);
+}
+.editor:hover .editor__page-controls {
+  opacity: 1;
+}
+.editor__page-control-wrap {
+  position: relative;
+}
+.editor__page-control {
+  padding: 4px 10px;
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-size: 13px;
+  border: 1px solid transparent;
+  transition: background var(--fast) var(--ease), color var(--fast) var(--ease), border-color var(--fast) var(--ease);
+}
+.editor__page-control:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+  border-color: var(--border);
+}
+.editor__align {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+}
+.editor__align-label {
+  padding: 0 6px 0 4px;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+.editor__align-btn {
+  width: 26px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 12px;
+  transition: background var(--fast) var(--ease), color var(--fast) var(--ease);
+}
+.editor__align-btn:hover {
+  background: var(--bg-hover);
+}
+.editor__align-btn.is-active {
+  background: var(--bg-elev);
+  color: var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ==========================================================================
+   Alignment + color / highlight tokens
+   ========================================================================== */
+
+.ta-left { text-align: left; }
+.ta-center { text-align: center; }
+.ta-right { text-align: right; }
+
+.hl-gray, .hl-brown, .hl-orange, .hl-yellow, .hl-green, .hl-blue, .hl-purple, .hl-pink, .hl-red {
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+}
+
+/* text colors — light */
+.tc-gray { color: #787774; }
+.tc-brown { color: #976d57; }
+.tc-orange { color: #cc782f; }
+.tc-yellow { color: #c29343; }
+.tc-green { color: #548164; }
+.tc-blue { color: #487ca5; }
+.tc-purple { color: #8a67ab; }
+.tc-pink { color: #b35488; }
+.tc-red { color: #c4554d; }
+.tc-default { color: var(--text); }
+
+/* highlight backgrounds — light */
+.hl-gray { background: #f1f1ef; }
+.hl-brown { background: #f3eeee; }
+.hl-orange { background: #faebdd; }
+.hl-yellow { background: #fbf3db; }
+.hl-green { background: #edf3ec; }
+.hl-blue { background: #e7f3f8; }
+.hl-purple { background: #f6f3f9; }
+.hl-pink { background: #faf1f5; }
+.hl-red { background: #fdebec; }
+
+[data-theme="dark"] .tc-gray { color: #9b9b9b; }
+[data-theme="dark"] .tc-brown { color: #ba856f; }
+[data-theme="dark"] .tc-orange { color: #c77d48; }
+[data-theme="dark"] .tc-yellow { color: #ca9849; }
+[data-theme="dark"] .tc-green { color: #529e72; }
+[data-theme="dark"] .tc-blue { color: #5e87c9; }
+[data-theme="dark"] .tc-purple { color: #9d68d3; }
+[data-theme="dark"] .tc-pink { color: #d15796; }
+[data-theme="dark"] .tc-red { color: #df5452; }
+[data-theme="dark"] .tc-default { color: var(--text); }
+
+[data-theme="dark"] .hl-gray { background: rgba(155, 155, 155, 0.14); }
+[data-theme="dark"] .hl-brown { background: rgba(186, 133, 111, 0.16); }
+[data-theme="dark"] .hl-orange { background: rgba(199, 125, 72, 0.16); }
+[data-theme="dark"] .hl-yellow { background: rgba(202, 152, 73, 0.16); }
+[data-theme="dark"] .hl-green { background: rgba(82, 158, 114, 0.16); }
+[data-theme="dark"] .hl-blue { background: rgba(94, 135, 201, 0.18); }
+[data-theme="dark"] .hl-purple { background: rgba(157, 104, 211, 0.18); }
+[data-theme="dark"] .hl-pink { background: rgba(209, 87, 150, 0.16); }
+[data-theme="dark"] .hl-red { background: rgba(223, 84, 82, 0.16); }
+
+/* swatch buttons in the block menu */
+.block-actions__label {
+  padding: 5px 6px 2px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.block-actions__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 0 4px 4px;
+}
+.block-actions__chip {
+  width: 30px;
+  height: 26px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.block-actions__chip.is-active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.block-actions__sep {
+  height: 1px;
+  margin: 5px 2px;
+  background: var(--border);
+}
+.swatch {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+.swatch.is-active {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.swatch.hl-default {
+  background: var(--bg-sunken);
+  color: var(--text-faint);
+}
+
+/* ==========================================================================
+   Linked page block
+   ========================================================================== */
+
+.pagelink {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: var(--radius);
+  text-align: left;
+  color: var(--text);
+  transition: background var(--fast) var(--ease);
+}
+.pagelink:hover {
+  background: var(--bg-hover);
+}
+.pagelink__icon {
+  font-size: 16px;
+}
+.pagelink__title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border-strong);
+  padding-bottom: 1px;
+}
+.pagelink__hint {
+  color: var(--text-faint);
+  font-size: 13px;
+}
+.pagelink--empty {
+  background: var(--bg-sunken);
+}
+.pagelink__select {
+  flex: 1;
+  border: none;
+  background: none;
+  color: var(--text);
+  outline: none;
+  font-size: 14px;
+}
+
+/* ==========================================================================
+   Workflow calendar view
+   ========================================================================== */
+
+.cal {
+  padding: 14px;
+  background: var(--bg);
+}
+.cal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.cal__title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+.cal__nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.cal__nav-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-size: 16px;
+}
+.cal__nav-btn:hover {
+  background: var(--bg-hover);
+}
+.cal__today {
+  padding: 4px 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text);
+}
+.cal__today:hover {
+  background: var(--bg-hover);
+}
+.cal__weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+.cal__weekday {
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.cal__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.cal__cell {
+  min-height: 96px;
+  padding: 4px;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+.cal__cell.is-out {
+  background: var(--bg-sunken);
+  color: var(--text-faint);
+}
+.cal__cell.is-today {
+  background: var(--accent-soft);
+}
+.cal__date {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.cal__add {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  color: var(--text-faint);
+  opacity: 0;
+  transition: opacity var(--fast) var(--ease), background var(--fast) var(--ease);
+}
+.cal__cell:hover .cal__add {
+  opacity: 1;
+}
+.cal__add:hover {
+  background: var(--bg-active);
+}
+.cal__events {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 3px;
+}
+.cal__event {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  text-align: left;
+  cursor: pointer;
+}
+.cal__event:hover {
+  border-color: var(--border-strong);
+}
+.cal__event-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.cal__unscheduled {
+  margin-top: 12px;
+}
+.cal__unscheduled-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.cal__unscheduled-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.cal__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  font-size: 12.5px;
+  cursor: grab;
+}
+.cal__chip:active {
+  cursor: grabbing;
+}
+
+/* ==========================================================================
    Responsive
    ========================================================================== */
 
@@ -2681,13 +3266,51 @@ a {
     background: #fff;
   }
 }
+
+/* ==========================================================================
+   Responsive tweaks for added features
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  .cover {
+    height: clamp(110px, 20vh, 170px);
+  }
+  .cal__cell {
+    min-height: 64px;
+    padding: 2px;
+  }
+  .cal__weekday {
+    padding: 3px 4px;
+    font-size: 9px;
+  }
+  .cal__event-title {
+    font-size: 11px;
+  }
+  .cover__panel {
+    width: min(280px, 84vw);
+  }
+  /* on touch, the resize hint + spacer waste room — let buttons sit together */
+  .embed-frame__hint {
+    display: none;
+  }
+  .embed-frame__spacer {
+    flex-basis: 100%;
+    height: 0;
+  }
+  .editor__page-controls {
+    opacity: 1;
+  }
+  .editor.has-cover .editor__emoji {
+    margin-top: -36px;
+  }
+}
     </style>
   </head>
   <body>
     <div id="root"></div>
     <script type="text/babel" data-presets="react">
 /* Tracker — single-file build. All logic in one script (JSX via Babel). */
-const { useState, useEffect, useRef, useMemo, useCallback, useContext, createContext, forwardRef, memo, StrictMode } = React;
+const { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback, useContext, createContext, forwardRef, memo, StrictMode } = React;
 
 /* ===================== utils ===================== */
 let _counter = 0;
@@ -2736,11 +3359,45 @@ function isMac() {
 }
 function matches(haystack, needle) { if (!needle) return true; return String(haystack).toLowerCase().includes(needle.toLowerCase()); }
 function arrayMove(arr, from, to) { const c = arr.slice(); const [it] = c.splice(from, 1); c.splice(to, 0, it); return c; }
+function compressImageFile(file, maxWidth = 1600, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("read"));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("load"));
+      img.onload = () => {
+        const scale = Math.min(1, maxWidth / img.width);
+        const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { resolve(reader.result); return; }
+        ctx.drawImage(img, 0, 0, w, h);
+        const hasAlpha = file.type === "image/png";
+        resolve(canvas.toDataURL(hasAlpha ? "image/png" : "image/jpeg", quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 const SCHEMA_VERSION = 1;
 const PRIORITY_ORDER = ["none", "low", "medium", "high", "urgent"];
 const PRIORITY_LABEL = { none: "No priority", low: "Low", medium: "Medium", high: "High", urgent: "Urgent" };
 const AGG_LABEL = { none: "None", sum: "Sum", avg: "Average", min: "Min", max: "Max", count: "Count" };
+const COLOR_TOKENS = ["default", "gray", "brown", "orange", "yellow", "green", "blue", "purple", "pink", "red"];
+const COVER_GRADIENTS = [
+  "linear-gradient(120deg, #fdcbf1 0%, #e6dee9 100%)",
+  "linear-gradient(120deg, #a1c4fd 0%, #c2e9fb 100%)",
+  "linear-gradient(120deg, #d4fc79 0%, #96e6a1 100%)",
+  "linear-gradient(120deg, #fbc2eb 0%, #a6c1ee 100%)",
+  "linear-gradient(120deg, #ffecd2 0%, #fcb69f 100%)",
+  "linear-gradient(120deg, #e0c3fc 0%, #8ec5fc 100%)",
+  "linear-gradient(120deg, #f6d365 0%, #fda085 100%)",
+  "linear-gradient(135deg, #2b5876 0%, #4e4376 100%)",
+];
 
 /* ===================== finance math ===================== */
 function toNumber(v) {
@@ -2780,7 +3437,7 @@ function numericColumns(finance) { return finance.columns.filter(isNumericColumn
 /* ===================== seed ===================== */
 function createSeedWorkspace() {
   const t = now();
-  const welcomeId = uid("page"), gettingStartedId = uid("page"), projectsId = uid("page"), calendarChildId = uid("page");
+  const dashboardId = uid("page"), welcomeId = uid("page"), gettingStartedId = uid("page"), projectsId = uid("page"), calendarChildId = uid("page");
   const dbId = uid("db"), colTask = uid("col"), colStatus = uid("col"), colPriority = uid("col"), colDue = uid("col"), colDone = uid("col");
   const wfId = uid("wf"), stIdea = uid("st"), stDraft = uid("st"), stReview = uid("st"), stPublished = uid("st");
   const financeId = uid("fin"), financePageId = uid("page");
@@ -2796,13 +3453,23 @@ function createSeedWorkspace() {
   return {
     version: SCHEMA_VERSION, settings: { theme: "light" },
     pages: [
-      { id: welcomeId, title: "Welcome to Tracker", emoji: "👋", parentId: null, createdAt: t, updatedAt: t },
+      { id: dashboardId, title: "Dashboard", emoji: "🏠", parentId: null, createdAt: t, updatedAt: t, cover: { kind: "gradient", src: COVER_GRADIENTS[1], y: 50 } },
+      { id: welcomeId, title: "Welcome to Tracker", emoji: "👋", parentId: null, createdAt: t, updatedAt: t, cover: { kind: "gradient", src: COVER_GRADIENTS[0], y: 50 } },
       { id: gettingStartedId, title: "Getting Started", emoji: "🚀", parentId: welcomeId, createdAt: t, updatedAt: t },
       { id: projectsId, title: "Project Tracker", emoji: "📊", parentId: null, createdAt: t, updatedAt: t },
       { id: calendarChildId, title: "Content Calendar", emoji: "🗓️", parentId: projectsId, createdAt: t, updatedAt: t },
       { id: financePageId, title: "Finance Tracker", emoji: "💰", parentId: null, createdAt: t, updatedAt: t },
     ],
     blocks: [
+      block(dashboardId, "h1", "Dashboard", 0, { align: "center" }),
+      block(dashboardId, "callout", "Your workspace at a glance. Everything below links to a real page — edit there and it stays in sync here.", 1, { emoji: "🏠", bg: "blue" }),
+      block(dashboardId, "h2", "Workspace", 2),
+      block(dashboardId, "pagelink", "", 3, { targetPageId: welcomeId }),
+      block(dashboardId, "pagelink", "", 4, { targetPageId: gettingStartedId }),
+      block(dashboardId, "h2", "Trackers", 5),
+      block(dashboardId, "pagelink", "", 6, { targetPageId: projectsId }),
+      block(dashboardId, "pagelink", "", 7, { targetPageId: calendarChildId }),
+      block(dashboardId, "pagelink", "", 8, { targetPageId: financePageId }),
       block(welcomeId, "h1", "Welcome to Tracker", 0),
       block(welcomeId, "paragraph", "Tracker is your local-first workspace — notes, databases, and workflow boards, all saved right in your browser.", 1),
       block(welcomeId, "callout", "Everything here lives in localStorage. Nothing is sent to a server, and your data stays after a refresh.", 2, { emoji: "💡" }),
@@ -2880,7 +3547,7 @@ function createSeedWorkspace() {
         { id: uid("fr"), financeId, order: 3, cells: { [fcItem]: "Co-working desk", [fcCat]: "Office", [fcQty]: 2, [fcPrice]: 220 } },
       ],
     }],
-    favorites: [welcomeId], recents: [welcomeId],
+    favorites: [dashboardId, welcomeId], recents: [dashboardId, welcomeId],
   };
 }
 
@@ -3007,6 +3674,9 @@ function WorkspaceProvider({ children }) {
     setCurrentPageId(cur => { if (cur && cur !== id) return cur; const remaining = ws.pages.filter(p => p.id !== id); return remaining[0]?.id ?? null; });
   }, [ws.pages]);
   const toggleFavorite = useCallback(id => setWs(s => ({ ...s, favorites: s.favorites.includes(id) ? s.favorites.filter(f => f !== id) : [...s.favorites, id] })), []);
+  const setPageCover = useCallback((id, cover) => setWs(s => ({ ...s, pages: s.pages.map(p => p.id === id ? { ...p, cover, updatedAt: now() } : p) })), []);
+  const setPageTitleAlign = useCallback((id, align) => setWs(s => ({ ...s, pages: s.pages.map(p => p.id === id ? { ...p, titleAlign: align, updatedAt: now() } : p) })), []);
+  const setPageFullWidth = useCallback((id, full) => setWs(s => ({ ...s, pages: s.pages.map(p => p.id === id ? { ...p, fullWidth: full, updatedAt: now() } : p) })), []);
 
   const addBlock = useCallback((pageId, afterBlockId, type = "paragraph", content = "", props = {}) => {
     const id = uid("blk");
@@ -3140,7 +3810,7 @@ function WorkspaceProvider({ children }) {
   const saveNow = useCallback(() => { debouncedSave.current.cancel(); saveWorkspace(ws); }, [ws]);
 
   const value = {
-    ws, currentPageId, setCurrentPage, createPage, renamePage, setPageEmoji, duplicatePage, deletePage, toggleFavorite,
+    ws, currentPageId, setCurrentPage, createPage, renamePage, setPageEmoji, duplicatePage, deletePage, toggleFavorite, setPageCover, setPageTitleAlign, setPageFullWidth,
     pageBlocks, addBlock, updateBlock, changeBlockType, deleteBlock, duplicateBlock, moveBlock,
     createWorkflow, renameWorkflow, deleteWorkflow, addStage, renameStage, deleteStage, addCard, updateCard, deleteCard, duplicateCard, moveCard,
     createDatabase, renameDatabase, addRow, deleteRow, updateCell, addColumn, renameColumn, updateColumn, deleteColumn,
@@ -3200,6 +3870,36 @@ function ConfirmModal({ open, title, message, confirmLabel = "Confirm", cancelLa
   );
 }
 
+/* ===================== Popover (portal) ===================== */
+function Popover({ anchorRef, onClose, className, width = 220, align = "left", children }) {
+  const ref = useRef(null);
+  const [style, setStyle] = useState(null);
+  useLayoutEffect(() => {
+    const el = anchorRef.current; if (!el) return;
+    const r = el.getBoundingClientRect();
+    const vw = window.innerWidth, vh = window.innerHeight;
+    let left = align === "right" ? r.right - width : r.left;
+    left = Math.max(8, Math.min(left, vw - width - 8));
+    const spaceBelow = vh - r.bottom - 8, spaceAbove = r.top - 8;
+    const base = { position: "fixed", left, width, zIndex: 1500, overflowY: "auto" };
+    if (spaceBelow >= 200 || spaceBelow >= spaceAbove) setStyle({ ...base, top: r.bottom + 4, maxHeight: Math.max(160, spaceBelow) });
+    else setStyle({ ...base, bottom: vh - r.top + 4, maxHeight: Math.max(160, spaceAbove) });
+  }, [anchorRef, width, align]);
+  useEffect(() => {
+    const el = anchorRef.current;
+    const onDoc = e => { const t = e.target; if (ref.current && !ref.current.contains(t) && el && !el.contains(t)) onClose(); };
+    const onScroll = () => onClose();
+    const onKey = e => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("mousedown", onDoc);
+    window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("resize", onClose);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("mousedown", onDoc); window.removeEventListener("scroll", onScroll, true); window.removeEventListener("resize", onClose); document.removeEventListener("keydown", onKey); };
+  }, [anchorRef, onClose]);
+  if (!style) return null;
+  return ReactDOM.createPortal(<div ref={ref} className={`popover ${className || ""}`} style={style}>{children}</div>, document.body);
+}
+
 /* ===================== EmojiPicker ===================== */
 const EMOJIS = [
   { char: "📄", name: "page document" }, { char: "📝", name: "memo note write" }, { char: "📋", name: "clipboard list" },
@@ -3255,6 +3955,7 @@ const SLASH_COMMANDS = [
   { type: "database", label: "Database table", description: "Inline table with columns", hint: "▦", keywords: "database table grid spreadsheet", group: "Database" },
   { type: "workflow", label: "Workflow board", description: "Kanban board with stages", hint: "▤", keywords: "workflow board kanban pipeline tracker", group: "Database" },
   { type: "finance", label: "Finance tracker", description: "Auto-calculating money table", hint: "$", keywords: "finance money budget expense income total formula calculate", group: "Database" },
+  { type: "pagelink", label: "Link to page", description: "Reference an existing page", hint: "↗", keywords: "link page reference dashboard linked mention", group: "Database" },
 ];
 function SlashMenu({ query, onSelect, onClose }) {
   const [active, setActive] = useState(0);
@@ -3338,6 +4039,7 @@ function BlockRowInner(props) {
     else if (type === "finance") { const finId = store.createFinance("Finance tracker"); store.updateBlock(block.id, { type: "finance", content: "", props: { financeId: finId } }); }
     else if (type === "divider") { store.updateBlock(block.id, { type: "divider", content: "" }); const nid = store.addBlock(block.pageId, block.id, "paragraph"); requestFocus(nid, "end"); }
     else if (type === "image") { store.updateBlock(block.id, { type: "image", content: "" }); }
+    else if (type === "pagelink") { store.updateBlock(block.id, { type: "pagelink", content: "", props: {} }); }
     else { store.updateBlock(block.id, { type, content: "" }); requestFocus(block.id, "end"); }
   };
   const handleKeyDown = e => {
@@ -3366,11 +4068,21 @@ function BlockRowInner(props) {
         <BlockActionsMenu onClose={() => setMenuOpen(false)}
           onDuplicate={() => { store.duplicateBlock(block.id); setMenuOpen(false); }}
           onDelete={() => { const target = prevBlockId; store.deleteBlock(block.id); if (target) requestFocus(target, "end"); setMenuOpen(false); }}
-          canDelete={total > 1} />
+          canDelete={total > 1}
+          showFormatting={isText || block.type === "callout"}
+          align={block.props.align ?? "left"} color={block.props.color ?? "default"} bg={block.props.bg ?? "default"}
+          onAlign={a => store.updateBlock(block.id, { props: { align: a } })}
+          onColor={c => store.updateBlock(block.id, { props: { color: c } })}
+          onBg={c => store.updateBlock(block.id, { props: { bg: c } })} />
       )}
     </div>
   );
-  const editable = (extra = "") => <Editable ref={editRef} value={block.content} className={`block__text ${extra}`} placeholder={PLACEHOLDERS[block.type]} onInput={handleInput} onKeyDown={handleKeyDown} />;
+  const fmt = [
+    block.props.align ? `ta-${block.props.align}` : "",
+    block.props.color && block.props.color !== "default" ? `tc-${block.props.color}` : "",
+    block.props.bg && block.props.bg !== "default" ? `hl-${block.props.bg}` : "",
+  ].filter(Boolean).join(" ");
+  const editable = (extra = "") => <Editable ref={editRef} value={block.content} className={`block__text ${extra} ${fmt}`} placeholder={PLACEHOLDERS[block.type]} onInput={handleInput} onKeyDown={handleKeyDown} />;
   let body;
   switch (block.type) {
     case "h1": body = <h1 className="block__h1">{editable("is-h1")}</h1>; break;
@@ -3399,6 +4111,7 @@ function BlockRowInner(props) {
     case "database": body = block.props.databaseId ? <ResizableEmbed block={block} defaultHeight={380}><DatabaseTable databaseId={block.props.databaseId} /></ResizableEmbed> : <div className="embed-missing">Database not found</div>; break;
     case "workflow": body = block.props.workflowId ? <ResizableEmbed block={block} defaultHeight={480}><WorkflowBoard workflowId={block.props.workflowId} /></ResizableEmbed> : <div className="embed-missing">Workflow not found</div>; break;
     case "finance": body = block.props.financeId ? <ResizableEmbed block={block} defaultHeight={440}><FinanceTracker financeId={block.props.financeId} /></ResizableEmbed> : <div className="embed-missing">Finance tracker not found</div>; break;
+    case "pagelink": body = <PageLink block={block} />; break;
     default: body = editable();
   }
   const isEmbed = block.type === "database" || block.type === "workflow" || block.type === "finance";
@@ -3439,13 +4152,130 @@ function ImageBlock({ url, caption, onSetUrl, onCaption }) {
     </figure>
   );
 }
-function BlockActionsMenu({ onClose, onDuplicate, onDelete, canDelete }) {
+function BlockActionsMenu({ onClose, onDuplicate, onDelete, canDelete, showFormatting, align, color, bg, onAlign, onColor, onBg }) {
   const ref = useRef(null);
   useEffect(() => { const onDoc = e => { if (ref.current && !ref.current.contains(e.target)) onClose(); }; document.addEventListener("mousedown", onDoc); return () => document.removeEventListener("mousedown", onDoc); }, [onClose]);
+  const aligns = [{ a: "left", icon: "⬅" }, { a: "center", icon: "↔" }, { a: "right", icon: "➡" }];
   return (
     <div className="block-actions" ref={ref} contentEditable={false}>
+      {showFormatting && (
+        <>
+          <div className="block-actions__label">Align</div>
+          <div className="block-actions__row">
+            {aligns.map(({ a, icon }) => <button key={a} className={`block-actions__chip ${align === a ? "is-active" : ""}`} onClick={() => onAlign(a)} title={a}>{icon}</button>)}
+          </div>
+          <div className="block-actions__label">Text color</div>
+          <div className="block-actions__row">
+            {COLOR_TOKENS.map(c => <button key={c} className={`swatch tc-${c} ${color === c ? "is-active" : ""}`} onClick={() => onColor(c)} title={c}>A</button>)}
+          </div>
+          <div className="block-actions__label">Highlight</div>
+          <div className="block-actions__row">
+            {COLOR_TOKENS.map(c => <button key={c} className={`swatch hl-${c} ${bg === c ? "is-active" : ""}`} onClick={() => onBg(c)} title={c}>{c === "default" ? "∅" : ""}</button>)}
+          </div>
+          <div className="block-actions__sep" />
+        </>
+      )}
       <button className="block-actions__item" onClick={onDuplicate}>Duplicate</button>
       <button className="block-actions__item block-actions__item--danger" onClick={onDelete} disabled={!canDelete}>Delete</button>
+    </div>
+  );
+}
+function PageLink({ block }) {
+  const store = useStore();
+  const target = store.ws.pages.find(p => p.id === block.props.targetPageId);
+  if (!target) {
+    return (
+      <div className="pagelink pagelink--empty" contentEditable={false}>
+        <span className="pagelink__icon">↗</span>
+        <select className="pagelink__select" value={block.props.targetPageId || ""} onChange={e => store.updateBlock(block.id, { props: { targetPageId: e.target.value } })}>
+          <option value="" disabled>Link to a page…</option>
+          {store.ws.pages.map(p => <option key={p.id} value={p.id}>{p.emoji} {p.title || "Untitled"}</option>)}
+        </select>
+      </div>
+    );
+  }
+  return (
+    <button className="pagelink" contentEditable={false} onClick={() => store.setCurrentPage(target.id)}>
+      <span className="pagelink__icon">{target.emoji}</span>
+      <span className="pagelink__title">{target.title || "Untitled"}</span>
+      <span className="pagelink__hint">↗</span>
+    </button>
+  );
+}
+
+/* ===================== CoverPhoto ===================== */
+function CoverPhoto({ page }) {
+  const store = useStore();
+  const cover = page.cover;
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [reposition, setReposition] = useState(false);
+  const dragY = useRef(null);
+  if (!cover) return null;
+  const isImage = cover.kind === "url" || cover.kind === "data";
+  const y = cover.y ?? 50;
+  const onPointerDown = e => { if (!reposition || !isImage) return; dragY.current = e.clientY; e.target.setPointerCapture && e.target.setPointerCapture(e.pointerId); };
+  const onPointerMove = e => { if (dragY.current == null) return; const delta = e.clientY - dragY.current; dragY.current = e.clientY; store.setPageCover(page.id, { ...cover, y: Math.max(0, Math.min(100, y - delta * 0.4)) }); };
+  const onPointerUp = () => { dragY.current = null; };
+  return (
+    <div className="cover-wrap">
+      <div className={`cover ${reposition ? "is-reposition" : ""}`}>
+        {isImage
+          ? <img className="cover__img" src={cover.src} alt="" style={{ objectPosition: `center ${y}%` }} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} draggable={false} />
+          : <div className="cover__gradient" style={{ background: cover.src }} />}
+      </div>
+      <div className="cover__controls">
+        {reposition ? (
+          <>
+            <span className="cover__hint">Drag image to reposition</span>
+            <button className="cover__btn" onClick={() => setReposition(false)}>Save position</button>
+          </>
+        ) : (
+          <>
+            <div className="cover__menu-wrap">
+              <button className="cover__btn" onClick={() => setMenuOpen(v => !v)}>Change cover</button>
+              {menuOpen && <CoverMenu page={page} onClose={() => setMenuOpen(false)} />}
+            </div>
+            {isImage && <button className="cover__btn" onClick={() => setReposition(true)}>Reposition</button>}
+            <button className="cover__btn" onClick={() => store.setPageCover(page.id, undefined)}>Remove</button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+function CoverMenu({ page, onClose }) {
+  const store = useStore();
+  const toast = useToast();
+  const ref = useRef(null);
+  const fileRef = useRef(null);
+  const [url, setUrl] = useState("");
+  useEffect(() => { const onDoc = e => { if (ref.current && !ref.current.contains(e.target)) onClose(); }; document.addEventListener("mousedown", onDoc); return () => document.removeEventListener("mousedown", onDoc); }, [onClose]);
+  const apply = cover => { store.setPageCover(page.id, cover); onClose(); };
+  const onFile = async e => {
+    const file = e.target.files && e.target.files[0]; e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { toast.show("Please choose an image file.", "error"); return; }
+    try {
+      const dataUrl = await compressImageFile(file);
+      if (dataUrl.length > 1400000) { toast.show("That image is large — try a smaller one.", "error"); return; }
+      apply({ kind: "data", src: dataUrl, y: 50 }); toast.show("Cover updated");
+    } catch { toast.show("Could not process that image.", "error"); }
+  };
+  return (
+    <div className="menu cover__panel" ref={ref}>
+      <div className="menu__label">Gallery</div>
+      <div className="cover__swatches">
+        {COVER_GRADIENTS.map(g => <button key={g} className="cover__swatch" style={{ background: g }} onClick={() => apply({ kind: "gradient", src: g })} aria-label="Use gradient cover" />)}
+      </div>
+      <div className="menu__sep" />
+      <div className="menu__label">Image URL</div>
+      <div className="cover__url-row">
+        <input className="cover__url-input" placeholder="https://…" value={url} onChange={e => setUrl(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && url.trim()) apply({ kind: "url", src: url.trim(), y: 50 }); }} />
+        <button className="btn btn--primary cover__url-btn" disabled={!url.trim()} onClick={() => apply({ kind: "url", src: url.trim(), y: 50 })}>Add</button>
+      </div>
+      <div className="menu__sep" />
+      <button className="menu__item" onClick={() => fileRef.current && fileRef.current.click()}>Upload from device…</button>
+      <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={onFile} />
     </div>
   );
 }
@@ -3456,6 +4286,7 @@ function Editor({ page }) {
   const blocks = store.pageBlocks(page.id);
   const [pendingFocus, setPendingFocus] = useState(null);
   const [showEmoji, setShowEmoji] = useState(false);
+  const [showCoverMenu, setShowCoverMenu] = useState(false);
   const [dragIndex, setDragIndex] = useState(null);
   const [dropIndex, setDropIndex] = useState(null);
   const [saveState, setSaveState] = useState("idle");
@@ -3477,16 +4308,32 @@ function Editor({ page }) {
   const handleTitleKey = e => {
     if (e.key === "Enter") { e.preventDefault(); const first = blocks[0]; if (first) requestFocus(first.id, "start"); else { const nid = store.addBlock(page.id, null, "paragraph"); requestFocus(nid, "start"); } }
   };
+  const aligns = ["left", "center", "right"];
+  const alignIcon = { left: "⬅", center: "↔", right: "➡" };
   let runningNumber = 0;
   return (
-    <article className="editor">
+    <article className={`editor ${page.cover ? "has-cover" : ""} ${page.fullWidth ? "full-width" : ""}`}>
+      <CoverPhoto page={page} />
       <div className="editor__inner">
         <div className="editor__icon-row">
           <button className="editor__emoji" onClick={() => setShowEmoji(v => !v)} title="Change icon">{page.emoji}</button>
           {showEmoji && <EmojiPicker onPick={emoji => store.setPageEmoji(page.id, emoji)} onClose={() => setShowEmoji(false)} />}
           <span className={`editor__save editor__save--${saveState}`}>{saveState === "saving" ? "Saving…" : `Saved · ${formatTime(page.updatedAt)}`}</span>
         </div>
-        <textarea ref={titleRef} className="editor__title" placeholder="Untitled" rows={1} value={page.title} onChange={e => store.renamePage(page.id, e.target.value)} onKeyDown={handleTitleKey} />
+        <div className="editor__page-controls">
+          {!page.cover && (
+            <div className="editor__page-control-wrap">
+              <button className="editor__page-control" onClick={() => setShowCoverMenu(v => !v)}>🖼 Add cover</button>
+              {showCoverMenu && <CoverMenu page={page} onClose={() => setShowCoverMenu(false)} />}
+            </div>
+          )}
+          <button className="editor__page-control" onClick={() => store.setPageFullWidth(page.id, !page.fullWidth)} title="Toggle page width">{page.fullWidth ? "→← Fit width" : "↔ Full width"}</button>
+          <div className="editor__align" role="group" aria-label="Title alignment">
+            <span className="editor__align-label">Title</span>
+            {aligns.map(a => <button key={a} className={`editor__align-btn ${(page.titleAlign || "left") === a ? "is-active" : ""}`} onClick={() => store.setPageTitleAlign(page.id, a)} title={`Align ${a}`}>{alignIcon[a]}</button>)}
+          </div>
+        </div>
+        <textarea ref={titleRef} className="editor__title" placeholder="Untitled" rows={1} style={{ textAlign: page.titleAlign || "left" }} value={page.title} onChange={e => store.renamePage(page.id, e.target.value)} onKeyDown={handleTitleKey} />
         <div className="editor__blocks">
           {blocks.map((block, i) => {
             if (block.type === "numbered") runningNumber += 1; else runningNumber = 0;
@@ -3528,6 +4375,7 @@ function DatabaseTable({ databaseId }) {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState(null);
   const [addColOpen, setAddColOpen] = useState(false);
+  const addColBtn = useRef(null);
   if (!db) return <div className="embed-missing">Database not found</div>;
   const filtered = rows.filter(r => db.columns.some(c => matches(cellToText(r.cells[c.id]), query)));
   const sorted = sort ? [...filtered].sort((a, b) => { const col = db.columns.find(c => c.id === sort.colId); const cmp = compareCells(a.cells[sort.colId], b.cells[sort.colId], col && col.type); return sort.dir === "asc" ? cmp : -cmp; }) : filtered;
@@ -3547,8 +4395,8 @@ function DatabaseTable({ databaseId }) {
                   onSort={dir => setSort({ colId: col.id, dir })} onClearSort={() => setSort(null)} canDelete={db.columns.length > 1} />
               ))}
               <th className="db__addcol"><div className="db__addcol-wrap">
-                <button className="db__addcol-btn" onClick={() => setAddColOpen(v => !v)} title="Add column">＋</button>
-                {addColOpen && <TypeMenu onPick={t => { store.addColumn(db.id, t); setAddColOpen(false); }} onClose={() => setAddColOpen(false)} />}
+                <button ref={addColBtn} className="db__addcol-btn" onClick={() => setAddColOpen(v => !v)} title="Add column">＋</button>
+                {addColOpen && <TypeMenu anchorRef={addColBtn} onPick={t => { store.addColumn(db.id, t); setAddColOpen(false); }} onClose={() => setAddColOpen(false)} />}
               </div></th>
             </tr>
           </thead>
@@ -3577,17 +4425,16 @@ function ColumnHeader({ databaseId, column, sort, onSort, onClearSort, canDelete
   const store = useStore();
   const [menuOpen, setMenuOpen] = useState(false);
   const [typeOpen, setTypeOpen] = useState(false);
-  const ref = useRef(null);
-  useEffect(() => { const onDoc = e => { if (ref.current && !ref.current.contains(e.target)) { setMenuOpen(false); setTypeOpen(false); } }; document.addEventListener("mousedown", onDoc); return () => document.removeEventListener("mousedown", onDoc); }, []);
+  const menuBtn = useRef(null);
   return (
-    <th className="db__th" ref={ref}>
+    <th className="db__th">
       <div className="db__th-inner">
         <input className="db__th-name" value={column.name} onChange={e => store.renameColumn(databaseId, column.id, e.target.value)} />
         {sort && <span className="db__sort-mark">{sort === "asc" ? "↑" : "↓"}</span>}
-        <button className="db__th-menu" onClick={() => setMenuOpen(v => !v)} title="Column options">⌄</button>
+        <button ref={menuBtn} className="db__th-menu" onClick={() => setMenuOpen(v => !v)} title="Column options">⌄</button>
       </div>
       {menuOpen && (
-        <div className="menu db__th-dropdown">
+        <Popover anchorRef={menuBtn} align="left" width={210} onClose={() => { setMenuOpen(false); setTypeOpen(false); }}>
           <button className="menu__item" onClick={() => { onSort("asc"); setMenuOpen(false); }}>Sort ascending</button>
           <button className="menu__item" onClick={() => { onSort("desc"); setMenuOpen(false); }}>Sort descending</button>
           <button className="menu__item" onClick={() => { onClearSort(); setMenuOpen(false); }}>Clear sort</button>
@@ -3603,7 +4450,7 @@ function ColumnHeader({ databaseId, column, sort, onSort, onClearSort, canDelete
           )}
           <div className="menu__sep" />
           <button className="menu__item menu__item--danger" disabled={!canDelete} onClick={() => { store.deleteColumn(databaseId, column.id); setMenuOpen(false); }}>Delete column</button>
-        </div>
+        </Popover>
       )}
     </th>
   );
@@ -3626,21 +4473,20 @@ function Cell({ column, value, onChange, onAddOption }) {
 function SelectCell({ multi, options, value, onChange, onAddOption }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
-  const ref = useRef(null);
+  const triggerRef = useRef(null);
   const selected = multi ? (Array.isArray(value) ? value : []) : (typeof value === "string" && value ? [value] : []);
-  useEffect(() => { const onDoc = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }; document.addEventListener("mousedown", onDoc); return () => document.removeEventListener("mousedown", onDoc); }, []);
   const toggle = opt => {
     if (multi) onChange(selected.includes(opt) ? selected.filter(s => s !== opt) : [...selected, opt]);
     else { onChange(selected[0] === opt ? null : opt); setOpen(false); }
   };
   const add = () => { const v = draft.trim(); if (!v) return; if (!options.includes(v)) onAddOption(v); toggle(v); setDraft(""); };
   return (
-    <div className="db__select" ref={ref}>
-      <button className="db__select-trigger" onClick={() => setOpen(v => !v)}>
+    <div className="db__select">
+      <button ref={triggerRef} className="db__select-trigger" onClick={() => setOpen(v => !v)}>
         {selected.length === 0 ? <span className="db__select-placeholder">Empty</span> : selected.map(s => <span key={s} className="chip">{s}</span>)}
       </button>
       {open && (
-        <div className="db__select-pop">
+        <Popover anchorRef={triggerRef} className="db__select-pop" width={220} onClose={() => setOpen(false)}>
           <input className="db__select-input" placeholder={multi ? "Add or pick…" : "Pick or add…"} value={draft} autoFocus onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === "Enter") add(); }} />
           <div className="db__select-list">
             {options.filter(o => matches(o, draft)).map(o => (
@@ -3651,23 +4497,26 @@ function SelectCell({ multi, options, value, onChange, onAddOption }) {
             {draft.trim() && !options.includes(draft.trim()) && <button className="db__select-opt db__select-create" onClick={add}>Create “{draft.trim()}”</button>}
             {options.length === 0 && !draft && <div className="db__select-empty">Type to add an option</div>}
           </div>
-        </div>
+        </Popover>
       )}
     </div>
   );
 }
-function TypeMenu({ onPick, onClose }) {
-  const ref = useRef(null);
-  useEffect(() => { const onDoc = e => { if (ref.current && !ref.current.contains(e.target)) onClose(); }; document.addEventListener("mousedown", onDoc); return () => document.removeEventListener("mousedown", onDoc); }, [onClose]);
+function TypeMenu({ anchorRef, onPick, onClose }) {
   return (
-    <div className="menu db__addcol-menu" ref={ref}>
+    <Popover anchorRef={anchorRef} align="right" width={180} onClose={onClose}>
       <div className="menu__label">New column</div>
       {COLUMN_TYPES.map(t => <button key={t.type} className="menu__item" onClick={() => onPick(t.type)}>{t.label}</button>)}
-    </div>
+    </Popover>
   );
 }
 
 /* ===================== WorkflowBoard ===================== */
+function isoOf(d) {
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${day}`;
+}
 function WorkflowBoard({ workflowId }) {
   const store = useStore();
   const workflow = store.ws.workflows.find(w => w.id === workflowId);
@@ -3679,6 +4528,7 @@ function WorkflowBoard({ workflowId }) {
   const [editingCardId, setEditingCardId] = useState(null);
   const [dragCardId, setDragCardId] = useState(null);
   const [dropTarget, setDropTarget] = useState(null);
+  const [calMonth, setCalMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
   if (!workflow) return <div className="embed-missing">Workflow not found</div>;
   const cardMatches = c => {
     if (priorityFilter !== "all" && c.priority !== priorityFilter) return false;
@@ -3692,7 +4542,7 @@ function WorkflowBoard({ workflowId }) {
     <div className="wf" contentEditable={false}>
       <div className="wf__toolbar">
         <input className="wf__name" value={workflow.name} onChange={e => store.renameWorkflow(workflow.id, e.target.value)} aria-label="Workflow name" />
-        <div className="wf__views">{["board", "table", "list"].map(v => <button key={v} className={`wf__view-btn ${view === v ? "is-active" : ""}`} onClick={() => setView(v)}>{v[0].toUpperCase() + v.slice(1)}</button>)}</div>
+        <div className="wf__views">{["board", "table", "list", "calendar"].map(v => <button key={v} className={`wf__view-btn ${view === v ? "is-active" : ""}`} onClick={() => setView(v)}>{v[0].toUpperCase() + v.slice(1)}</button>)}</div>
         <div className="wf__filters">
           <input className="wf__search" placeholder="Search cards…" value={query} onChange={e => setQuery(e.target.value)} />
           <select className="wf__priority-filter" value={priorityFilter} onChange={e => setPriorityFilter(e.target.value)}>
@@ -3773,7 +4623,69 @@ function WorkflowBoard({ workflowId }) {
           })}
         </div>
       )}
+      {view === "calendar" && (
+        <CalendarView month={calMonth} cards={allCards.filter(cardMatches)}
+          onPrev={() => setCalMonth(m => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
+          onNext={() => setCalMonth(m => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
+          onToday={() => { const d = new Date(); setCalMonth(new Date(d.getFullYear(), d.getMonth(), 1)); }}
+          onOpen={id => setEditingCardId(id)}
+          onSetDate={(cardId, iso) => store.updateCard(cardId, { dueDate: iso })}
+          onAddOnDate={iso => { const stageId = stages[0] && stages[0].id; if (!stageId) return; const id = store.addCard(workflow.id, stageId, { dueDate: iso }); setEditingCardId(id); }} />
+      )}
       {editingCard && <CardEditor card={editingCard} stages={stages} onClose={() => setEditingCardId(null)} />}
+    </div>
+  );
+}
+function CalendarView({ month, cards, onPrev, onNext, onToday, onOpen, onSetDate, onAddOnDate }) {
+  const [dragId, setDragId] = useState(null);
+  const year = month.getFullYear(), m = month.getMonth();
+  const first = new Date(year, m, 1);
+  const gridStart = new Date(year, m, 1 - first.getDay());
+  const todayIso = isoOf(new Date());
+  const days = [];
+  for (let i = 0; i < 42; i++) days.push(new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + i));
+  const byDate = new Map();
+  cards.forEach(c => { if (!c.dueDate) return; const arr = byDate.get(c.dueDate) || []; arr.push(c); byDate.set(c.dueDate, arr); });
+  const unscheduled = cards.filter(c => !c.dueDate);
+  const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  return (
+    <div className="cal">
+      <div className="cal__head">
+        <div className="cal__title">{month.toLocaleDateString(undefined, { month: "long", year: "numeric" })}</div>
+        <div className="cal__nav">
+          <button className="cal__nav-btn" onClick={onPrev} aria-label="Previous month">‹</button>
+          <button className="cal__today" onClick={onToday}>Today</button>
+          <button className="cal__nav-btn" onClick={onNext} aria-label="Next month">›</button>
+        </div>
+      </div>
+      <div className="cal__weekdays">{weekdays.map(w => <div key={w} className="cal__weekday">{w}</div>)}</div>
+      <div className="cal__grid">
+        {days.map(d => {
+          const iso = isoOf(d), inMonth = d.getMonth() === m, dayCards = byDate.get(iso) || [];
+          return (
+            <div key={iso} className={`cal__cell ${inMonth ? "" : "is-out"} ${iso === todayIso ? "is-today" : ""}`}
+              onDragOver={e => { if (dragId) e.preventDefault(); }}
+              onDrop={e => { e.preventDefault(); if (dragId) onSetDate(dragId, iso); setDragId(null); }}>
+              <div className="cal__date"><span>{d.getDate()}</span><button className="cal__add" title="Add card" onClick={() => onAddOnDate(iso)}>＋</button></div>
+              <div className="cal__events">
+                {dayCards.map(c => (
+                  <button key={c.id} className={`cal__event prio-edge--${c.priority}`} draggable onDragStart={() => setDragId(c.id)} onDragEnd={() => setDragId(null)} onClick={() => onOpen(c.id)} title={c.title}>
+                    <span className={`prio-dot prio-dot--${c.priority}`} /><span className="cal__event-title">{c.title}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {unscheduled.length > 0 && (
+        <div className="cal__unscheduled">
+          <div className="cal__unscheduled-label">Unscheduled · drag onto a day</div>
+          <div className="cal__unscheduled-list">
+            {unscheduled.map(c => <button key={c.id} className="cal__chip" draggable onDragStart={() => setDragId(c.id)} onDragEnd={() => setDragId(null)} onClick={() => onOpen(c.id)}><span className={`prio-dot prio-dot--${c.priority}`} />{c.title}</button>)}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -3863,7 +4775,11 @@ function ResizableEmbed({ block, defaultHeight, children }) {
       <div className="embed-frame__bar">
         <button className="embed-frame__btn" title={full ? "Fit to page" : "Expand to full width"} onClick={() => store.updateBlock(block.id, { props: { full: !full } })}>{full ? "⤡ Fit" : "⤢ Full width"}</button>
         <button className="embed-frame__btn" title="Reset size" onClick={() => store.updateBlock(block.id, { props: { size: undefined, full: false } })}>↺ Reset</button>
-        <span className="embed-frame__hint">drag corner to resize ↘</span>
+        <span className="embed-frame__hint">drag corner ↘</span>
+        <span className="embed-frame__spacer" />
+        <button className="embed-frame__btn" title="Add a block below" onClick={() => store.addBlock(block.pageId, block.id, "paragraph")}>＋ Add block</button>
+        <button className="embed-frame__btn" title="Duplicate" onClick={() => store.duplicateBlock(block.id)}>⧉</button>
+        <button className="embed-frame__btn embed-frame__btn--danger" title="Delete" onClick={() => store.deleteBlock(block.id)}>🗑</button>
       </div>
       <div className="embed-frame__content">{children}</div>
     </div>
@@ -3888,6 +4804,7 @@ function FinanceTracker({ financeId }) {
   const finance = store.ws.finances.find(f => f.id === financeId);
   const [query, setQuery] = useState("");
   const [addColOpen, setAddColOpen] = useState(false);
+  const addColBtn = useRef(null);
   const rows = useMemo(() => finance ? [...finance.rows].sort((a, b) => a.order - b.order) : [], [finance]);
   if (!finance) return <div className="embed-missing">Finance tracker not found</div>;
   const filtered = rows.filter(r => finance.columns.some(c => matches(finCellText(c, r), query)));
@@ -3918,8 +4835,8 @@ function FinanceTracker({ financeId }) {
               <th className="fin__rownum-head" />
               {finance.columns.map(col => <FinColumnHeader key={col.id} financeId={finance.id} column={col} allColumns={finance.columns} />)}
               <th className="fin__addcol"><div className="fin__addcol-wrap">
-                <button className="fin__addcol-btn" onClick={() => setAddColOpen(v => !v)} title="Add column">＋</button>
-                {addColOpen && <FinTypeMenu onPick={t => { store.addFinanceColumn(finance.id, t); setAddColOpen(false); }} onClose={() => setAddColOpen(false)} />}
+                <button ref={addColBtn} className="fin__addcol-btn" onClick={() => setAddColOpen(v => !v)} title="Add column">＋</button>
+                {addColOpen && <FinTypeMenu anchorRef={addColBtn} onPick={t => { store.addFinanceColumn(finance.id, t); setAddColOpen(false); }} onClose={() => setAddColOpen(false)} />}
               </div></th>
             </tr>
           </thead>
@@ -3958,18 +4875,17 @@ function FinanceTracker({ financeId }) {
 function FinColumnHeader({ financeId, column, allColumns }) {
   const store = useStore();
   const [menuOpen, setMenuOpen] = useState(false);
-  const ref = useRef(null);
-  useEffect(() => { const onDoc = e => { if (ref.current && !ref.current.contains(e.target)) setMenuOpen(false); }; document.addEventListener("mousedown", onDoc); return () => document.removeEventListener("mousedown", onDoc); }, []);
+  const menuBtn = useRef(null);
   const otherNumeric = allColumns.filter(c => c.id !== column.id && isNumericColumn(c));
   return (
-    <th className="fin__th" ref={ref}>
+    <th className="fin__th">
       <div className="fin__th-inner">
         <input className="fin__th-name" value={column.name} onChange={e => store.updateFinanceColumn(financeId, column.id, { name: e.target.value })} />
         {column.type === "formula" && <span className="fin__fx" title="Auto-calculated">ƒ</span>}
-        <button className="fin__th-menu" onClick={() => setMenuOpen(v => !v)} title="Column options">⌄</button>
+        <button ref={menuBtn} className="fin__th-menu" onClick={() => setMenuOpen(v => !v)} title="Column options">⌄</button>
       </div>
       {menuOpen && (
-        <div className="menu fin__th-dropdown">
+        <Popover anchorRef={menuBtn} align="left" width={230} onClose={() => setMenuOpen(false)}>
           <div className="menu__label">Type</div>
           {FIN_TYPES.map(t => (
             <button key={t.type} className={`menu__item ${t.type === column.type ? "is-active" : ""}`}
@@ -3991,7 +4907,7 @@ function FinColumnHeader({ financeId, column, allColumns }) {
           )}
           <div className="menu__sep" />
           <button className="menu__item menu__item--danger" disabled={allColumns.length <= 1} onClick={() => { store.deleteFinanceColumn(financeId, column.id); setMenuOpen(false); }}>Delete column</button>
-        </div>
+        </Popover>
       )}
     </th>
   );
@@ -4041,14 +4957,13 @@ function FinCell({ column, row, currency, onChange, onAddOption }) {
 function FinSelect({ options, value, onChange, onAddOption }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
-  const ref = useRef(null);
-  useEffect(() => { const onDoc = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }; document.addEventListener("mousedown", onDoc); return () => document.removeEventListener("mousedown", onDoc); }, []);
+  const triggerRef = useRef(null);
   const add = () => { const v = draft.trim(); if (!v) return; if (!options.includes(v)) onAddOption(v); onChange(v); setDraft(""); setOpen(false); };
   return (
-    <div className="fin__select" ref={ref}>
-      <button className="fin__select-trigger" onClick={() => setOpen(v => !v)}>{value ? <span className="chip">{value}</span> : <span className="fin__select-placeholder">Empty</span>}</button>
+    <div className="fin__select">
+      <button ref={triggerRef} className="fin__select-trigger" onClick={() => setOpen(v => !v)}>{value ? <span className="chip">{value}</span> : <span className="fin__select-placeholder">Empty</span>}</button>
       {open && (
-        <div className="fin__select-pop">
+        <Popover anchorRef={triggerRef} className="fin__select-pop" width={200} onClose={() => setOpen(false)}>
           <input className="fin__select-input" placeholder="Pick or add…" value={draft} autoFocus onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === "Enter") add(); }} />
           <div className="fin__select-list">
             {options.filter(o => matches(o, draft)).map(o => (
@@ -4058,19 +4973,17 @@ function FinSelect({ options, value, onChange, onAddOption }) {
             ))}
             {draft.trim() && !options.includes(draft.trim()) && <button className="fin__select-opt fin__select-create" onClick={add}>Create “{draft.trim()}”</button>}
           </div>
-        </div>
+        </Popover>
       )}
     </div>
   );
 }
-function FinTypeMenu({ onPick, onClose }) {
-  const ref = useRef(null);
-  useEffect(() => { const onDoc = e => { if (ref.current && !ref.current.contains(e.target)) onClose(); }; document.addEventListener("mousedown", onDoc); return () => document.removeEventListener("mousedown", onDoc); }, [onClose]);
+function FinTypeMenu({ anchorRef, onPick, onClose }) {
   return (
-    <div className="menu fin__addcol-menu" ref={ref}>
+    <Popover anchorRef={anchorRef} align="right" width={180} onClose={onClose}>
       <div className="menu__label">New column</div>
       {FIN_TYPES.map(t => <button key={t.type} className="menu__item" onClick={() => onPick(t.type)}>{t.label}</button>)}
-    </div>
+    </Popover>
   );
 }
 
@@ -4332,4 +5245,3 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     </script>
   </body>
 </html>
-
