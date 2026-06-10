@@ -1,0 +1,2712 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="description" content="BizPilot — a local-first business command center: finance, goals, roadmap, tasks, notes, CRM, metrics and smart insights. All data stays in your browser.">
+<title>BizPilot — Business Command Center</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%236366f1'/%3E%3Cstop offset='1' stop-color='%238b5cf6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='8' fill='url(%23g)'/%3E%3Cpath d='M8 22l5-6 4 3 7-9' stroke='%23fff' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+/* ============================================================
+   BizPilot — design tokens
+   ============================================================ */
+:root{
+  --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --mono: ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, Consolas, monospace;
+
+  --bg:#f4f5fb;
+  --bg-card:#ffffff;
+  --bg-card-glass:rgba(255,255,255,.78);
+  --bg-sunken:#eef0f8;
+  --bg-hover:rgba(99,102,241,.06);
+  --bg-input:#ffffff;
+  --bg-sidebar:#0f1222;
+  --sidebar-text:#a3a9c9;
+  --sidebar-text-active:#ffffff;
+  --sidebar-hover:rgba(255,255,255,.07);
+  --sidebar-active:linear-gradient(90deg,rgba(99,102,241,.28),rgba(139,92,246,.14));
+
+  --text:#1c2033;
+  --text-2:#5b6178;
+  --text-3:#8e94ab;
+
+  --border:#e4e7f2;
+  --border-2:#d4d8e8;
+
+  --accent:#6366f1;
+  --accent-2:#8b5cf6;
+  --accent-soft:rgba(99,102,241,.1);
+  --accent-grad:linear-gradient(135deg,#6366f1,#8b5cf6);
+
+  --good:#10b981;  --good-soft:rgba(16,185,129,.12);
+  --warn:#f59e0b;  --warn-soft:rgba(245,158,11,.13);
+  --risk:#ef4444;  --risk-soft:rgba(239,68,68,.11);
+  --info:#3b82f6;  --info-soft:rgba(59,130,246,.11);
+
+  --income:#10b981; --expense:#ef4444;
+
+  --r-sm:8px; --r:12px; --r-lg:16px; --r-xl:20px;
+  --shadow-sm:0 1px 2px rgba(20,24,50,.05),0 1px 6px rgba(20,24,50,.04);
+  --shadow:0 2px 6px rgba(20,24,50,.05),0 10px 28px rgba(20,24,50,.07);
+  --shadow-lg:0 8px 16px rgba(20,24,50,.08),0 24px 56px rgba(20,24,50,.14);
+  --ease:cubic-bezier(.4,0,.2,1);
+  --chart-grid:#eceef6;
+}
+html[data-theme="dark"]{
+  --bg:#0c0e1a;
+  --bg-card:#151829;
+  --bg-card-glass:rgba(21,24,41,.8);
+  --bg-sunken:#10131f;
+  --bg-hover:rgba(99,102,241,.12);
+  --bg-input:#1b1f33;
+  --bg-sidebar:#0a0c16;
+  --sidebar-text:#8b91b3;
+  --sidebar-text-active:#ffffff;
+  --sidebar-hover:rgba(255,255,255,.06);
+
+  --text:#e8eaf6;
+  --text-2:#a4aac6;
+  --text-3:#6f7592;
+
+  --border:#252a44;
+  --border-2:#323858;
+
+  --accent:#818cf8;
+  --accent-soft:rgba(129,140,248,.14);
+
+  --good:#34d399; --good-soft:rgba(52,211,153,.13);
+  --warn:#fbbf24; --warn-soft:rgba(251,191,36,.13);
+  --risk:#f87171; --risk-soft:rgba(248,113,113,.13);
+  --info:#60a5fa; --info-soft:rgba(96,165,250,.13);
+  --income:#34d399; --expense:#f87171;
+
+  --shadow-sm:0 1px 2px rgba(0,0,0,.3);
+  --shadow:0 2px 8px rgba(0,0,0,.35),0 12px 32px rgba(0,0,0,.3);
+  --shadow-lg:0 12px 24px rgba(0,0,0,.45),0 32px 64px rgba(0,0,0,.4);
+  --chart-grid:#1f2440;
+}
+
+/* ============================================================
+   base
+   ============================================================ */
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:15px}
+body{
+  font-family:var(--font);
+  background:var(--bg);
+  color:var(--text);
+  line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+  transition:background .3s var(--ease),color .3s var(--ease);
+  overflow-x:hidden;
+}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select,textarea{font-family:inherit;font-size:.95rem;color:var(--text)}
+a{color:var(--accent);text-decoration:none}
+::placeholder{color:var(--text-3)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* scrollbars */
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:8px;border:2px solid transparent;background-clip:content-box}
+::-webkit-scrollbar-thumb:hover{background:var(--text-3);border:2px solid transparent;background-clip:content-box}
+
+/* ============================================================
+   layout: sidebar + main
+   ============================================================ */
+.app{display:flex;min-height:100vh}
+.sidebar{
+  position:fixed;inset:0 auto 0 0;width:248px;z-index:60;
+  background:var(--bg-sidebar);
+  display:flex;flex-direction:column;
+  padding:18px 12px;
+  transition:transform .3s var(--ease);
+}
+.brand{display:flex;align-items:center;gap:10px;padding:6px 10px 18px}
+.brand-logo{width:36px;height:36px;border-radius:10px;background:var(--accent-grad);display:grid;place-items:center;flex-shrink:0;box-shadow:0 4px 14px rgba(99,102,241,.45)}
+.brand-logo svg{width:20px;height:20px}
+.brand-name{font-weight:800;font-size:1.06rem;color:#fff;letter-spacing:-.02em}
+.brand-sub{font-size:.66rem;color:var(--sidebar-text);text-transform:uppercase;letter-spacing:.14em;font-weight:600}
+
+.nav{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:2px}
+.nav-section{font-size:.64rem;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--sidebar-text);opacity:.65;padding:14px 12px 5px}
+.nav-item{
+  display:flex;align-items:center;gap:11px;
+  padding:8px 12px;border-radius:9px;
+  color:var(--sidebar-text);font-size:.9rem;font-weight:500;
+  transition:background .15s,color .15s,transform .1s;
+  width:100%;text-align:left;position:relative;
+}
+.nav-item:hover{background:var(--sidebar-hover);color:var(--sidebar-text-active)}
+.nav-item.active{background:var(--sidebar-active);color:var(--sidebar-text-active);font-weight:600}
+.nav-item.active::before{content:'';position:absolute;left:-12px;top:20%;bottom:20%;width:3px;border-radius:0 3px 3px 0;background:var(--accent-grad)}
+.nav-item svg{width:17px;height:17px;flex-shrink:0;opacity:.85}
+.nav-badge{margin-left:auto;background:var(--risk);color:#fff;font-size:.64rem;font-weight:700;padding:1px 7px;border-radius:99px;min-width:18px;text-align:center}
+
+.sidebar-foot{padding:12px 10px 2px;border-top:1px solid rgba(255,255,255,.08);margin-top:10px}
+.biz-chip{display:flex;align-items:center;gap:9px;color:var(--sidebar-text);font-size:.8rem}
+.biz-chip .avatar{width:30px;height:30px;border-radius:8px;background:var(--accent-grad);display:grid;place-items:center;color:#fff;font-weight:700;font-size:.8rem;flex-shrink:0}
+.biz-chip b{color:#fff;display:block;font-size:.84rem;line-height:1.2;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.main{flex:1;margin-left:248px;min-width:0;padding:26px 30px 70px;animation:fadeIn .35s var(--ease)}
+
+/* topbar */
+.topbar{display:flex;align-items:center;gap:14px;margin-bottom:24px;flex-wrap:wrap}
+.page-title h1{font-size:1.5rem;font-weight:800;letter-spacing:-.025em;line-height:1.2}
+.page-title p{color:var(--text-2);font-size:.88rem;margin-top:2px}
+.topbar-actions{margin-left:auto;display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.hamburger{display:none;width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--bg-card);align-items:center;justify-content:center;box-shadow:var(--shadow-sm)}
+.hamburger svg{width:19px;height:19px}
+.scrim{display:none;position:fixed;inset:0;background:rgba(8,10,20,.55);z-index:55;backdrop-filter:blur(2px);animation:fadeIn .2s}
+
+/* ============================================================
+   buttons
+   ============================================================ */
+.btn{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:8px 16px;border-radius:10px;
+  font-size:.88rem;font-weight:600;
+  border:1px solid transparent;
+  transition:all .18s var(--ease);
+  white-space:nowrap;
+}
+.btn svg{width:15px;height:15px}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--accent-grad);color:#fff;box-shadow:0 3px 10px rgba(99,102,241,.35)}
+.btn-primary:hover{box-shadow:0 6px 18px rgba(99,102,241,.5);transform:translateY(-1px)}
+.btn-ghost{background:var(--bg-card);border-color:var(--border);color:var(--text);box-shadow:var(--shadow-sm)}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent);transform:translateY(-1px)}
+.btn-danger{background:var(--risk-soft);color:var(--risk)}
+.btn-danger:hover{background:var(--risk);color:#fff}
+.btn-good{background:var(--good-soft);color:var(--good)}
+.btn-good:hover{background:var(--good);color:#fff}
+.btn-sm{padding:5px 11px;font-size:.8rem;border-radius:8px}
+.btn-icon{width:30px;height:30px;padding:0;justify-content:center;border-radius:8px;color:var(--text-3);background:transparent}
+.btn-icon:hover{background:var(--bg-hover);color:var(--accent)}
+.btn-icon.danger:hover{background:var(--risk-soft);color:var(--risk)}
+.btn-icon svg{width:15px;height:15px}
+.btn-block{width:100%;justify-content:center}
+
+/* theme toggle */
+.theme-toggle{width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--bg-card);display:inline-flex;align-items:center;justify-content:center;box-shadow:var(--shadow-sm);transition:all .2s}
+.theme-toggle:hover{border-color:var(--accent);color:var(--accent);transform:rotate(15deg)}
+.theme-toggle svg{width:17px;height:17px}
+
+/* ============================================================
+   cards & grids
+   ============================================================ */
+.card{
+  background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-lg);
+  padding:20px;box-shadow:var(--shadow-sm);
+  transition:box-shadow .25s var(--ease),transform .25s var(--ease),border-color .25s;
+  animation:fadeUp .4s var(--ease) backwards;
+}
+.card:hover{box-shadow:var(--shadow)}
+.card-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.card-head h3{font-size:1rem;font-weight:700;letter-spacing:-.01em}
+.card-head .sub{font-size:.8rem;color:var(--text-3)}
+.card-head .spacer{margin-left:auto}
+.grid{display:grid;gap:16px}
+.grid-2{grid-template-columns:repeat(2,1fr)}
+.grid-3{grid-template-columns:repeat(3,1fr)}
+.grid-4{grid-template-columns:repeat(4,1fr)}
+.grid-hero{grid-template-columns:1fr 1.7fr}
+.grid > .card:nth-child(2){animation-delay:.05s}
+.grid > .card:nth-child(3){animation-delay:.1s}
+.grid > .card:nth-child(4){animation-delay:.15s}
+.grid > .card:nth-child(5){animation-delay:.2s}
+.grid > .card:nth-child(6){animation-delay:.25s}
+.mt{margin-top:16px}.mt-lg{margin-top:24px}
+
+/* stat cards */
+.stat-card{position:relative;overflow:hidden}
+.stat-card .stat-label{font-size:.76rem;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;display:flex;align-items:center;gap:7px}
+.stat-card .stat-label svg{width:14px;height:14px}
+.stat-card .stat-value{font-size:1.65rem;font-weight:800;letter-spacing:-.03em;margin-top:6px;font-variant-numeric:tabular-nums}
+.stat-card .stat-delta{font-size:.78rem;font-weight:600;margin-top:4px;display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px}
+.stat-delta.up{color:var(--good);background:var(--good-soft)}
+.stat-delta.down{color:var(--risk);background:var(--risk-soft)}
+.stat-delta.flat{color:var(--text-3);background:var(--bg-sunken)}
+.stat-card .spark{position:absolute;right:12px;bottom:10px;opacity:.85}
+.stat-accent{position:absolute;top:0;left:0;right:0;height:3px;background:var(--accent-grad);opacity:0;transition:opacity .25s}
+.stat-card:hover .stat-accent{opacity:1}
+
+/* badges & pills */
+.badge{display:inline-flex;align-items:center;gap:5px;padding:2px 10px;border-radius:99px;font-size:.72rem;font-weight:700;letter-spacing:.01em;white-space:nowrap}
+.badge.good{background:var(--good-soft);color:var(--good)}
+.badge.warn{background:var(--warn-soft);color:var(--warn)}
+.badge.risk{background:var(--risk-soft);color:var(--risk)}
+.badge.info{background:var(--info-soft);color:var(--info)}
+.badge.neutral{background:var(--bg-sunken);color:var(--text-2)}
+.badge.accent{background:var(--accent-soft);color:var(--accent)}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0}
+
+/* progress bars */
+.progress{height:8px;background:var(--bg-sunken);border-radius:99px;overflow:hidden;position:relative}
+.progress .bar{height:100%;border-radius:99px;background:var(--accent-grad);transition:width .8s var(--ease);position:relative;min-width:0}
+.progress .bar.good{background:linear-gradient(90deg,#10b981,#34d399)}
+.progress .bar.warn{background:linear-gradient(90deg,#f59e0b,#fbbf24)}
+.progress .bar.risk{background:linear-gradient(90deg,#ef4444,#f87171)}
+.progress .bar::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent);animation:shimmer 2.4s infinite}
+.progress.thick{height:12px}
+
+/* ============================================================
+   forms
+   ============================================================ */
+.field{margin-bottom:14px}
+.field label{display:block;font-size:.8rem;font-weight:600;color:var(--text-2);margin-bottom:5px}
+.input,select.input,textarea.input{
+  width:100%;padding:9px 12px;border-radius:10px;
+  border:1.5px solid var(--border);background:var(--bg-input);
+  transition:border-color .18s,box-shadow .18s;
+}
+.input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+textarea.input{resize:vertical;min-height:80px}
+select.input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238e94ab' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:34px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.seg{display:inline-flex;background:var(--bg-sunken);border-radius:10px;padding:3px;gap:2px}
+.seg button{padding:6px 14px;border-radius:8px;font-size:.82rem;font-weight:600;color:var(--text-2);transition:all .18s}
+.seg button.active{background:var(--bg-card);color:var(--text);box-shadow:var(--shadow-sm)}
+.seg button.active.income-seg{color:var(--good)}
+.seg button.active.expense-seg{color:var(--risk)}
+.checkrow{display:flex;align-items:center;gap:8px;font-size:.88rem;cursor:pointer;user-select:none}
+input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);cursor:pointer}
+
+/* search bar */
+.searchbar{position:relative;flex:1;min-width:150px;max-width:300px}
+.searchbar svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--text-3);pointer-events:none}
+.searchbar input{padding-left:34px}
+
+/* ============================================================
+   tables
+   ============================================================ */
+.table-wrap{overflow-x:auto;border-radius:var(--r);border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th{text-align:left;padding:10px 14px;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);background:var(--bg-sunken);border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
+tbody tr{transition:background .12s}
+tbody tr:hover{background:var(--bg-hover)}
+tbody tr:last-child td{border-bottom:none}
+td.num{font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+td .row-actions{display:flex;gap:2px;justify-content:flex-end;opacity:.35;transition:opacity .15s}
+tr:hover .row-actions{opacity:1}
+
+/* ============================================================
+   modal
+   ============================================================ */
+.modal-overlay{position:fixed;inset:0;background:rgba(8,10,22,.6);backdrop-filter:blur(4px);z-index:100;display:flex;align-items:flex-start;justify-content:center;padding:7vh 16px 16px;animation:fadeIn .2s;overflow-y:auto}
+.modal{
+  background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-xl);
+  width:100%;max-width:520px;box-shadow:var(--shadow-lg);
+  animation:popIn .28s var(--ease);
+}
+.modal.wide{max-width:680px}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px 0}
+.modal-head h3{font-size:1.08rem;font-weight:800;letter-spacing:-.01em}
+.modal-body{padding:16px 22px 22px}
+.modal-foot{display:flex;justify-content:flex-end;gap:9px;padding-top:6px}
+
+/* ============================================================
+   toasts
+   ============================================================ */
+.toast-root{position:fixed;bottom:20px;right:20px;z-index:200;display:flex;flex-direction:column;gap:9px;max-width:min(360px,calc(100vw - 32px))}
+.toast{
+  display:flex;align-items:flex-start;gap:10px;
+  background:var(--bg-card);border:1px solid var(--border);border-radius:14px;
+  padding:12px 16px;box-shadow:var(--shadow-lg);font-size:.87rem;
+  animation:toastIn .35s var(--ease);border-left:4px solid var(--accent);
+}
+.toast.good{border-left-color:var(--good)}
+.toast.error{border-left-color:var(--risk)}
+.toast.warn{border-left-color:var(--warn)}
+.toast .t-icon{flex-shrink:0;width:18px;height:18px;margin-top:1px}
+.toast.good .t-icon{color:var(--good)}
+.toast.error .t-icon{color:var(--risk)}
+.toast.warn .t-icon{color:var(--warn)}
+.toast.out{animation:toastOut .3s var(--ease) forwards}
+
+/* ============================================================
+   misc components
+   ============================================================ */
+.empty{
+  text-align:center;padding:44px 20px;color:var(--text-3);
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+}
+.empty .e-icon{width:58px;height:58px;border-radius:18px;background:var(--accent-soft);display:grid;place-items:center;color:var(--accent);margin-bottom:4px}
+.empty .e-icon svg{width:26px;height:26px}
+.empty h4{color:var(--text);font-size:1rem;font-weight:700}
+.empty p{font-size:.86rem;max-width:340px}
+
+.insight{display:flex;gap:12px;padding:13px 15px;border-radius:13px;border:1px solid var(--border);background:var(--bg-card);align-items:flex-start;animation:fadeUp .4s var(--ease) backwards}
+.insight .i-icon{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;flex-shrink:0}
+.insight .i-icon svg{width:16px;height:16px}
+.insight.good .i-icon{background:var(--good-soft);color:var(--good)}
+.insight.warn .i-icon{background:var(--warn-soft);color:var(--warn)}
+.insight.risk .i-icon{background:var(--risk-soft);color:var(--risk)}
+.insight.info .i-icon{background:var(--info-soft);color:var(--info)}
+.insight b{font-size:.88rem;display:block}
+.insight p{font-size:.82rem;color:var(--text-2);margin-top:1px}
+
+.list-row{display:flex;align-items:center;gap:12px;padding:11px 4px;border-bottom:1px solid var(--border)}
+.list-row:last-child{border-bottom:none}
+
+/* health ring + gauges */
+.ring-wrap{display:flex;align-items:center;gap:18px}
+.ring{position:relative;flex-shrink:0}
+.ring .ring-label{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring .ring-label b{font-size:1.5rem;font-weight:800;letter-spacing:-.03em;line-height:1}
+.ring .ring-label span{font-size:.64rem;color:var(--text-3);text-transform:uppercase;letter-spacing:.1em;font-weight:700;margin-top:3px}
+.ring svg circle.track{stroke:var(--bg-sunken)}
+.ring svg circle.val{transition:stroke-dashoffset 1s var(--ease)}
+
+/* charts */
+.chart-box{width:100%;overflow:hidden}
+.chart-box svg{width:100%;height:auto;display:block}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:.78rem;color:var(--text-2);margin-top:8px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+
+/* tabs */
+.tabs{display:flex;gap:4px;border-bottom:2px solid var(--border);margin-bottom:18px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{padding:9px 16px;font-size:.88rem;font-weight:600;color:var(--text-2);border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .18s;white-space:nowrap}
+.tabs button:hover{color:var(--text)}
+.tabs button.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* filter chips */
+.chips{display:flex;gap:7px;flex-wrap:wrap}
+.chip{padding:5px 13px;border-radius:99px;font-size:.8rem;font-weight:600;color:var(--text-2);background:var(--bg-sunken);transition:all .15s;border:1px solid transparent}
+.chip:hover{color:var(--text);border-color:var(--border-2)}
+.chip.active{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+
+/* tasks */
+.task-row{display:flex;align-items:flex-start;gap:11px;padding:11px 6px;border-bottom:1px solid var(--border);transition:background .12s;border-radius:8px}
+.task-row:hover{background:var(--bg-hover)}
+.task-row.done .task-title{text-decoration:line-through;color:var(--text-3)}
+.task-check{width:19px;height:19px;border-radius:6px;border:2px solid var(--border-2);flex-shrink:0;margin-top:2px;display:grid;place-items:center;transition:all .18s;background:var(--bg-card)}
+.task-check:hover{border-color:var(--accent)}
+.task-check.checked{background:var(--accent-grad);border-color:transparent}
+.task-check svg{width:11px;height:11px;color:#fff;opacity:0;transform:scale(.4);transition:all .18s}
+.task-check.checked svg{opacity:1;transform:scale(1)}
+.task-title{font-size:.92rem;font-weight:600}
+.task-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:3px;font-size:.74rem;color:var(--text-3)}
+
+/* notes */
+.note-card{display:flex;flex-direction:column;gap:8px;cursor:pointer;position:relative}
+.note-card:hover{transform:translateY(-3px);border-color:var(--accent)}
+.note-card h4{font-size:.97rem;font-weight:700;padding-right:24px}
+.note-card .note-body{font-size:.84rem;color:var(--text-2);display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-wrap}
+.note-card .pin{position:absolute;top:14px;right:14px;color:var(--text-3)}
+.note-card .pin.pinned{color:var(--warn)}
+.note-card .pin svg{width:15px;height:15px}
+.tag{font-size:.7rem;font-weight:600;background:var(--bg-sunken);color:var(--text-2);padding:2px 9px;border-radius:99px}
+
+/* roadmap timeline */
+.phase{position:relative;padding-left:34px;padding-bottom:26px}
+.phase::before{content:'';position:absolute;left:11px;top:30px;bottom:0;width:2px;background:var(--border-2)}
+.phase:last-child::before{display:none}
+.phase-dot{position:absolute;left:0;top:3px;width:24px;height:24px;border-radius:50%;border:2.5px solid var(--border-2);background:var(--bg);display:grid;place-items:center;z-index:1;transition:all .25s}
+.phase-dot svg{width:11px;height:11px;color:#fff;opacity:0}
+.phase-dot.done{background:var(--good);border-color:var(--good)}
+.phase-dot.done svg{opacity:1}
+.phase-dot.active{border-color:var(--accent);background:var(--accent-soft)}
+.phase-dot.active::after{content:'';width:8px;height:8px;border-radius:50%;background:var(--accent);animation:pulse 2s infinite}
+
+/* metric cards */
+.metric-card .m-top{display:flex;align-items:flex-start;gap:10px}
+.metric-card .m-val{font-size:1.45rem;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums;margin:6px 0 2px}
+.metric-card .m-explain{font-size:.79rem;color:var(--text-2);margin-top:8px;padding-top:8px;border-top:1px dashed var(--border)}
+details.calc{margin-top:10px;border-top:1px dashed var(--border);padding-top:8px}
+details.calc summary{font-size:.8rem;font-weight:700;color:var(--accent);cursor:pointer;list-style:none;display:flex;align-items:center;gap:5px;user-select:none}
+details.calc summary::before{content:'▸';transition:transform .2s;font-size:.7rem}
+details.calc[open] summary::before{transform:rotate(90deg)}
+details.calc .calc-body{margin-top:10px}
+.calc-result{margin-top:10px;padding:11px 14px;border-radius:10px;background:var(--accent-soft);font-size:.88rem;font-weight:600;color:var(--accent);display:none}
+.calc-result.show{display:block;animation:fadeUp .3s var(--ease)}
+.calc-result small{display:block;font-weight:500;color:var(--text-2);margin-top:3px;font-size:.78rem}
+
+/* kbd / mono numbers */
+.mono{font-family:var(--mono);font-size:.85em}
+
+/* onboarding hero */
+.hero{
+  background:linear-gradient(135deg,rgba(99,102,241,.12),rgba(139,92,246,.07) 55%,transparent);
+  border:1px solid var(--border);border-radius:var(--r-xl);
+  padding:36px 32px;position:relative;overflow:hidden;animation:fadeUp .45s var(--ease);
+}
+.hero::after{content:'';position:absolute;top:-70px;right:-70px;width:240px;height:240px;border-radius:50%;background:radial-gradient(circle,rgba(139,92,246,.18),transparent 65%)}
+.hero h2{font-size:1.45rem;font-weight:800;letter-spacing:-.025em}
+.hero p{color:var(--text-2);max-width:520px;margin-top:6px}
+.hero .hero-actions{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
+
+/* swot */
+.swot-cell h4{font-size:.85rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.swot-cell textarea{min-height:110px}
+.swot-s h4{color:var(--good)}.swot-w h4{color:var(--risk)}.swot-o h4{color:var(--info)}.swot-t h4{color:var(--warn)}
+
+/* checklist */
+.wk-item{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--border);font-size:.9rem}
+.wk-item:last-child{border-bottom:none}
+
+/* animations */
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes popIn{from{opacity:0;transform:scale(.94) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes toastIn{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
+@keyframes toastOut{to{opacity:0;transform:translateX(40px)}}
+@keyframes shimmer{0%{transform:translateX(-100%)}60%,100%{transform:translateX(220%)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* ============================================================
+   responsive
+   ============================================================ */
+@media (max-width:1100px){
+  .grid-4{grid-template-columns:repeat(2,1fr)}
+  .grid-3{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:860px){
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0);box-shadow:var(--shadow-lg)}
+  .scrim.show{display:block}
+  .main{margin-left:0;padding:18px 16px 60px}
+  .hamburger{display:inline-flex}
+  .grid-2,.grid-hero{grid-template-columns:1fr}
+  .form-row,.form-row-3{grid-template-columns:1fr}
+  .topbar-actions .btn span.btn-txt{display:none}
+  .topbar-actions .btn{padding:8px 11px}
+}
+@media (max-width:560px){
+  .grid-3,.grid-4{grid-template-columns:1fr}
+  html{font-size:14px}
+  .ring-wrap{flex-direction:column;align-items:flex-start}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="scrim" id="scrim" data-action="close-sidebar"></div>
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="main" id="main"></main>
+</div>
+<div id="modal-root"></div>
+<div class="toast-root" id="toast-root"></div>
+<input type="file" id="import-file" accept=".json,application/json" style="display:none">
+<script>
+'use strict';
+/* ============================================================
+   BizPilot — single-file business command center
+   All data lives in localStorage under one key. No backend.
+   ============================================================ */
+
+/* ---------- tiny helpers ---------- */
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function todayISO(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function monthKey(dateStr){ return (dateStr||'').slice(0,7); }
+function thisMonthKey(){ return todayISO().slice(0,7); }
+function monthLabel(key){
+  if(!key) return '';
+  var p=key.split('-'); var names=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return names[(+p[1])-1]+' '+p[0];
+}
+function shiftMonth(key,delta){
+  var p=key.split('-'); var y=+p[0], m=+p[1]-1+delta;
+  var d=new Date(y, m, 1);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+}
+function daysUntil(dateStr){
+  if(!dateStr) return null;
+  var a=new Date(todayISO()+'T00:00:00'), b=new Date(dateStr+'T00:00:00');
+  return Math.round((b-a)/86400000);
+}
+function fmtDate(dateStr){
+  if(!dateStr) return '—';
+  var d=new Date(dateStr+'T00:00:00');
+  if(isNaN(d)) return dateStr;
+  return d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
+}
+function fmtNum(n,dec){
+  if(n==null||isNaN(n)) return '—';
+  return Number(n).toLocaleString(undefined,{minimumFractionDigits:dec||0,maximumFractionDigits:dec==null?2:dec});
+}
+function fmtMoney(n,dec){
+  if(n==null||isNaN(n)) return '—';
+  var sym=(state.settings.currency||'₱');
+  var neg=n<0; var v=Math.abs(n);
+  var s=v.toLocaleString(undefined,{minimumFractionDigits:dec==null?(v%1?2:0):dec,maximumFractionDigits:2});
+  return (neg?'−':'')+sym+s;
+}
+function fmtPct(n,dec){ if(n==null||isNaN(n)||!isFinite(n)) return '—'; return fmtNum(n,dec==null?1:dec)+'%'; }
+function clamp(n,min,max){ return Math.max(min,Math.min(max,n)); }
+function sum(arr,fn){ return arr.reduce(function(a,x){ return a+(fn?fn(x):x); },0); }
+function byId(id){ return document.getElementById(id); }
+function num(v){ var n=parseFloat(v); return isNaN(n)?0:n; }
+
+/* ---------- icons (inline SVG factory) ---------- */
+var ICONS = {
+  dashboard:'<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',
+  finance:'<path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>',
+  goals:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/>',
+  roadmap:'<path d="M9 20l-5.5-2.5v-13L9 7m0 13l6-3m-6 3V7m6 10l5.5 2.5v-13L15 4m0 13V4M9 7l6-3"/>',
+  tasks:'<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>',
+  notes:'<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/>',
+  clients:'<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>',
+  metrics:'<path d="M3 3v18h18"/><path d="M7 14l4-5 4 3 5-7"/>',
+  insights:'<path d="M9 18h6M10 22h4M12 2a7 7 0 00-4 12.7c.6.5 1 1.3 1 2.1v.2h6v-.2c0-.8.4-1.6 1-2.1A7 7 0 0012 2z"/>',
+  reviews:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M9 16l2 2 4-4"/>',
+  settings:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  edit:'<path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/>',
+  trash:'<path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z"/>',
+  check:'<path d="M20 6L9 17l-5-5"/>',
+  x:'<path d="M18 6L6 18M6 6l12 12"/>',
+  sun:'<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/>',
+  moon:'<path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/>',
+  menu:'<path d="M3 12h18M3 6h18M3 18h18"/>',
+  up:'<path d="M23 6l-9.5 9.5-5-5L1 18"/><path d="M17 6h6v6"/>',
+  down:'<path d="M23 18l-9.5-9.5-5 5L1 6"/><path d="M17 18h6v-6"/>',
+  wallet:'<path d="M21 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/>',
+  arrowdr:'<path d="M7 7l10 10M17 7v10H7"/>',
+  arrowur:'<path d="M7 17L17 7M7 7h10v10"/>',
+  pie:'<path d="M21.21 15.89A10 10 0 118 2.83"/><path d="M22 12A10 10 0 0012 2v10z"/>',
+  alert:'<path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><path d="M12 9v4M12 17h.01"/>',
+  spark:'<path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/>',
+  pin:'<path d="M12 17v5M9 10.8V5a3 3 0 116 0v5.8l2.5 3.2H6.5z"/>',
+  download:'<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>',
+  upload:'<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>',
+  refresh:'<path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>',
+  flag:'<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7"/>',
+  clock:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+  search:'<circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>',
+  calc:'<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 11h.01M12 11h.01M16 11h.01M8 15h.01M12 15h.01M16 15h.01M8 19h.01M12 19h.01M16 19h.01"/>',
+  shield:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+  cash:'<rect x="1" y="6" width="22" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M5 10h.01M19 14h.01"/>',
+  logo:'<path d="M8 22l5-6 4 3 7-9" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
+};
+function icon(name,size){
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"'+(size?' style="width:'+size+'px;height:'+size+'px"':'')+'>'+(ICONS[name]||'')+'</svg>';
+}
+
+/* ---------- state ---------- */
+var LS_KEY='bizpilot.v1';
+var DEFAULT_STATE={
+  v:1,
+  settings:{ businessName:'My Business', currency:'₱', theme:null, taxRate:8, lastBackup:null, backupNudged:false, monthlyTarget:0 },
+  finance:[],   // {id,type:'income'|'expense',amount,category,date,note,client}
+  goals:[],     // {id,title,type:'revenue'|'profit'|'custom',target,current,unit,deadline,priority,steps:[{id,text,done}],done,createdAt}
+  phases:[],    // {id,name,desc,order,tasks:[{id,title,deadline,status,priority}]}
+  tasks:[],     // {id,title,deadline,priority,bucket,done,createdAt,completedAt}
+  notes:[],     // {id,title,body,category,tags:[],pinned,updatedAt}
+  clients:[],   // {id,name,status,contact,value,note,createdAt}
+  metrics:{},   // {key:{value,updatedAt}}
+  reviews:{ monthly:{}, weekly:{ week:null, items:{} }, decisions:[], swot:{s:'',w:'',o:'',t:''} },
+  meta:{ createdAt:null }
+};
+var state=null;
+
+function deepMerge(base,extra){
+  var out=Array.isArray(base)?base.slice():Object.assign({},base);
+  if(!extra||typeof extra!=='object') return out;
+  Object.keys(extra).forEach(function(k){
+    var b=base?base[k]:undefined, e=extra[k];
+    if(e&&typeof e==='object'&&!Array.isArray(e)&&b&&typeof b==='object'&&!Array.isArray(b)) out[k]=deepMerge(b,e);
+    else out[k]=e;
+  });
+  return out;
+}
+function loadState(){
+  try{
+    var raw=localStorage.getItem(LS_KEY);
+    if(raw){
+      var parsed=JSON.parse(raw);
+      state=deepMerge(JSON.parse(JSON.stringify(DEFAULT_STATE)),parsed);
+    } else {
+      state=JSON.parse(JSON.stringify(DEFAULT_STATE));
+      state.meta.createdAt=todayISO();
+    }
+  }catch(e){
+    console.warn('BizPilot: could not parse saved data, starting fresh.',e);
+    state=JSON.parse(JSON.stringify(DEFAULT_STATE));
+    state.meta.createdAt=todayISO();
+  }
+}
+function save(){
+  try{
+    localStorage.setItem(LS_KEY,JSON.stringify(state));
+  }catch(e){
+    toast('Could not save — browser storage may be full.','error');
+  }
+}
+function commit(){ save(); render(); }
+
+/* ---------- toast ---------- */
+function toast(msg,type){
+  var root=byId('toast-root');
+  var el=document.createElement('div');
+  el.className='toast '+(type||'good');
+  var ic=type==='error'?'alert':(type==='warn'?'alert':'check');
+  el.innerHTML='<span class="t-icon">'+icon(ic)+'</span><div>'+esc(msg)+'</div>';
+  root.appendChild(el);
+  setTimeout(function(){ el.classList.add('out'); setTimeout(function(){ el.remove(); },320); },3400);
+}
+
+/* ---------- modal ---------- */
+var modalSubmitHandler=null;
+function openModal(title,bodyHTML,opts){
+  opts=opts||{};
+  modalSubmitHandler=opts.onSubmit||null;
+  var root=byId('modal-root');
+  root.innerHTML=
+    '<div class="modal-overlay" data-action="close-modal-overlay">'+
+      '<div class="modal'+(opts.wide?' wide':'')+'" role="dialog" aria-modal="true">'+
+        '<div class="modal-head"><h3>'+esc(title)+'</h3>'+
+          '<button class="btn-icon" data-action="close-modal" aria-label="Close">'+icon('x')+'</button></div>'+
+        '<div class="modal-body"><form id="modal-form" novalidate>'+bodyHTML+
+          '<div class="modal-foot">'+
+            '<button type="button" class="btn btn-ghost" data-action="close-modal">Cancel</button>'+
+            '<button type="submit" class="btn btn-primary">'+esc(opts.submitLabel||'Save')+'</button>'+
+          '</div></form></div></div></div>';
+  var first=root.querySelector('input,select,textarea');
+  if(first) setTimeout(function(){ first.focus(); },60);
+}
+function closeModal(){ byId('modal-root').innerHTML=''; modalSubmitHandler=null; }
+function fv(form,name){ var el=form.elements[name]; return el?el.value.trim():''; }
+
+/* ---------- finance computations ---------- */
+function financeTotals(entries){
+  entries=entries||state.finance;
+  var rev=0,exp=0;
+  entries.forEach(function(e){ if(e.type==='income') rev+=e.amount; else exp+=e.amount; });
+  return { revenue:rev, expenses:exp, profit:rev-exp,
+    margin: rev>0 ? (rev-exp)/rev*100 : null,
+    expenseRatio: rev>0 ? exp/rev*100 : (exp>0?Infinity:null) };
+}
+function monthlyMap(){
+  var m={};
+  state.finance.forEach(function(e){
+    var k=monthKey(e.date); if(!k) return;
+    if(!m[k]) m[k]={revenue:0,expenses:0};
+    if(e.type==='income') m[k].revenue+=e.amount; else m[k].expenses+=e.amount;
+  });
+  return m;
+}
+function sortedMonths(){ return Object.keys(monthlyMap()).sort(); }
+function lastNMonths(n){
+  var out=[],k=thisMonthKey();
+  for(var i=n-1;i>=0;i--) out.push(shiftMonth(k,-i));
+  return out;
+}
+function categoryMap(type,monthFilter){
+  var m={};
+  state.finance.forEach(function(e){
+    if(e.type!==type) return;
+    if(monthFilter && monthKey(e.date)!==monthFilter) return;
+    var c=e.category||'Other';
+    m[c]=(m[c]||0)+e.amount;
+  });
+  return m;
+}
+function topCategory(type){
+  var m=categoryMap(type), best=null;
+  Object.keys(m).forEach(function(k){ if(!best||m[k]>m[best]) best=k; });
+  return best?{name:best,amount:m[best]}:null;
+}
+function revenueGrowth(){
+  var mm=monthlyMap(), cur=thisMonthKey(), prev=shiftMonth(cur,-1);
+  var c=mm[cur]?mm[cur].revenue:0, p=mm[prev]?mm[prev].revenue:0;
+  if(p<=0) return c>0?null:null;
+  return (c-p)/p*100;
+}
+function avgMonthlyRevenue(n){
+  var months=lastNMonths(n||3), mm=monthlyMap(), tot=0, cnt=0;
+  months.forEach(function(k){ if(mm[k]){ tot+=mm[k].revenue; cnt++; } });
+  return cnt?tot/cnt:0;
+}
+function goalProgress(g){
+  var current=g.current||0;
+  if(g.type==='revenue'||g.type==='profit'){
+    var entries=state.finance.filter(function(e){
+      if(g.startDate && e.date<g.startDate) return false;
+      return true;
+    });
+    var t=financeTotals(entries);
+    current=g.type==='revenue'?t.revenue:Math.max(0,t.profit);
+  }
+  var pct=g.target>0?clamp(current/g.target*100,0,100):0;
+  return {current:current,pct:pct};
+}
+function goalStatus(g){
+  if(g.done) return {label:'Completed',cls:'good'};
+  var gp=goalProgress(g);
+  var d=daysUntil(g.deadline);
+  if(gp.pct>=100) return {label:'Target reached',cls:'good'};
+  if(d!=null&&d<0) return {label:'Overdue',cls:'risk'};
+  if(d!=null&&g.deadline){
+    var totalDays=g.createdAt?Math.max(1,Math.round((new Date(g.deadline)-new Date(g.createdAt))/86400000)):null;
+    if(totalDays){
+      var elapsed=clamp((totalDays-d)/totalDays*100,0,100);
+      if(gp.pct+12<elapsed) return {label:'At risk',cls:'warn'};
+    }
+    if(d<=7&&gp.pct<80) return {label:'At risk',cls:'warn'};
+  }
+  return {label:'On track',cls:'info'};
+}
+
+/* ---------- business health score (0–100) ---------- */
+function healthScore(){
+  var t=financeTotals();
+  if(state.finance.length===0) return null;
+  var parts=[];
+  // margin (30 pts)
+  var marginPts=0;
+  if(t.margin!=null) marginPts=clamp(t.margin/40*30,0,30);
+  parts.push({k:'Profit margin',pts:marginPts,max:30});
+  // expense control (25 pts) — expense ratio under 70% is healthy
+  var expPts=0;
+  if(t.expenseRatio!=null&&isFinite(t.expenseRatio)) expPts=clamp((1-(t.expenseRatio-30)/70)*25,0,25);
+  parts.push({k:'Expense control',pts:expPts,max:25});
+  // growth (20 pts)
+  var g=revenueGrowth(), gPts=10;
+  if(g!=null) gPts=clamp(10+g/3,0,20);
+  parts.push({k:'Revenue growth',pts:gPts,max:20});
+  // consistency: months with positive cashflow (15 pts)
+  var mm=monthlyMap(), keys=Object.keys(mm), pos=0;
+  keys.forEach(function(k){ if(mm[k].revenue-mm[k].expenses>0) pos++; });
+  var consPts=keys.length?pos/keys.length*15:0;
+  parts.push({k:'Cash-flow consistency',pts:consPts,max:15});
+  // execution: tasks not overdue (10 pts)
+  var open=state.tasks.filter(function(x){ return !x.done; });
+  var overdue=open.filter(function(x){ var d=daysUntil(x.deadline); return d!=null&&d<0; });
+  var exPts=open.length?(1-overdue.length/open.length)*10:8;
+  parts.push({k:'Execution (tasks on time)',pts:exPts,max:10});
+  var total=Math.round(sum(parts,function(p){return p.pts;}));
+  return {score:clamp(total,0,100),parts:parts};
+}
+function healthLabel(s){
+  if(s>=80) return {label:'Excellent',cls:'good'};
+  if(s>=60) return {label:'Healthy',cls:'good'};
+  if(s>=40) return {label:'Needs attention',cls:'warn'};
+  return {label:'At risk',cls:'risk'};
+}
+
+/* ---------- insights engine ---------- */
+function buildInsights(){
+  var out=[];
+  var t=financeTotals();
+  var hasData=state.finance.length>0;
+  if(!hasData){
+    out.push({sev:'info',title:'Start with your numbers',text:'Add income and expense entries in Finance — every dashboard number, chart and insight is generated from them.'});
+    return out;
+  }
+  // expense ratio
+  if(t.expenseRatio!=null&&isFinite(t.expenseRatio)){
+    if(t.expenseRatio>=90) out.push({sev:'risk',title:'Expenses are eating your revenue',text:'Expenses are '+fmtPct(t.expenseRatio)+' of revenue. Your business needs more sales or lower costs — review the biggest expense category first.'});
+    else if(t.expenseRatio>=70) out.push({sev:'warn',title:'Expenses are getting high',text:'Expenses are '+fmtPct(t.expenseRatio)+' of revenue. Aim to keep this under 70% to leave room for profit and reinvestment.'});
+    else out.push({sev:'good',title:'Spending is under control',text:'Expenses are only '+fmtPct(t.expenseRatio)+' of revenue — a healthy ratio.'});
+  } else if(t.expenses>0&&t.revenue===0){
+    out.push({sev:'risk',title:'Spending with no revenue yet',text:'You have '+fmtMoney(t.expenses)+' in expenses and no recorded income. Prioritize your first sales.'});
+  }
+  // margin
+  if(t.margin!=null){
+    if(t.margin>=30) out.push({sev:'good',title:'Your margin is healthy',text:'Net margin is '+fmtPct(t.margin)+'. Margins above 30% give you a strong buffer.'});
+    else if(t.margin>=10) out.push({sev:'info',title:'Margin is okay, but thin',text:'Net margin is '+fmtPct(t.margin)+'. Consider raising prices or trimming your top expense category to push past 30%.'});
+    else if(t.margin>=0) out.push({sev:'warn',title:'Margin is very thin',text:'Net margin is only '+fmtPct(t.margin)+'. Your offers may need better pricing, or costs need a hard look.'});
+    else out.push({sev:'risk',title:'You are operating at a loss',text:'Net profit is '+fmtMoney(t.profit)+'. Cut non-essential costs and focus on the offers with the best margins.'});
+  }
+  // growth
+  var g=revenueGrowth();
+  var mm=monthlyMap(), cur=mm[thisMonthKey()], prev=mm[shiftMonth(thisMonthKey(),-1)];
+  if(g!=null){
+    if(g>5) out.push({sev:'good',title:'Revenue is growing',text:'Revenue is up '+fmtPct(g)+' vs last month ('+fmtMoney(cur?cur.revenue:0)+' vs '+fmtMoney(prev?prev.revenue:0)+'). Double down on what is working.'});
+    else if(g<-15) out.push({sev:'risk',title:'Revenue dropped sharply',text:'Revenue is down '+fmtPct(Math.abs(g))+' vs last month. Check your pipeline — your numbers suggest you need more leads or better conversion.'});
+    else if(g<-5) out.push({sev:'warn',title:'Revenue is slipping',text:'Revenue is down '+fmtPct(Math.abs(g))+' vs last month. Worth investigating before the trend settles in.'});
+  }
+  // top expense category
+  var topExp=topCategory('expense');
+  if(topExp&&t.expenses>0){
+    var share=topExp.amount/t.expenses*100;
+    if(share>=40) out.push({sev:'warn',title:'"'+topExp.name+'" dominates your expenses',text:'It takes '+fmtPct(share)+' of all spending ('+fmtMoney(topExp.amount)+'). This category is the biggest lever if you need to cut costs.'});
+    else out.push({sev:'info',title:'Biggest expense: '+topExp.name,text:fmtMoney(topExp.amount)+' ('+fmtPct(share)+' of total spending).'});
+  }
+  // cash flow risk: current month negative
+  if(cur&&cur.revenue-cur.expenses<0){
+    out.push({sev:'risk',title:'Cash-flow risk this month',text:'This month you have spent '+fmtMoney(cur.expenses-cur.revenue)+' more than you earned. Watch outgoing payments closely.'});
+  }
+  // goals
+  state.goals.forEach(function(gl){
+    if(gl.done) return;
+    var gp=goalProgress(gl), st=goalStatus(gl);
+    if(gp.pct>=100) out.push({sev:'good',title:'Goal reached: '+gl.title,text:'You hit '+fmtPct(gp.pct,0)+' of the target. Mark it complete and set the next one.'});
+    else if(gp.pct>=80) out.push({sev:'good',title:'You are close to a goal',text:'"'+gl.title+'" is at '+fmtPct(gp.pct,0)+'. One strong push and it is done.'});
+    else if(st.cls==='risk') out.push({sev:'risk',title:'Goal overdue: '+gl.title,text:'The deadline has passed at '+fmtPct(gp.pct,0)+' progress. Re-scope it or set a new realistic deadline.'});
+    else if(st.cls==='warn') out.push({sev:'warn',title:'Goal at risk: '+gl.title,text:'Progress ('+fmtPct(gp.pct,0)+') is behind the timeline. Check the next action step.'});
+    else if(st.cls==='info'&&gp.pct>0) out.push({sev:'info',title:'On track: '+gl.title,text:fmtPct(gp.pct,0)+' complete with '+(daysUntil(gl.deadline)!=null?daysUntil(gl.deadline)+' days left.':'no deadline set.')});
+  });
+  // monthly target
+  if(state.settings.monthlyTarget>0&&cur){
+    var pctT=cur.revenue/state.settings.monthlyTarget*100;
+    if(pctT>=100) out.push({sev:'good',title:'Monthly revenue target hit',text:'You reached '+fmtPct(pctT,0)+' of your '+fmtMoney(state.settings.monthlyTarget)+' target this month.'});
+    else {
+      var dLeft=Math.max(0,new Date(thisMonthKey().split('-')[0],thisMonthKey().split('-')[1],0).getDate()-new Date().getDate());
+      out.push({sev:pctT>=60?'info':'warn',title:'Monthly target: '+fmtPct(pctT,0)+' there',text:fmtMoney(Math.max(0,state.settings.monthlyTarget-cur.revenue))+' to go with '+dLeft+' days left this month.'});
+    }
+  }
+  // metric-based insights
+  var mv=function(k){ return state.metrics[k]?state.metrics[k].value:null; };
+  var cac=mv('cac'), clv=mv('clv');
+  if(cac!=null&&clv!=null&&cac>0){
+    var ratio=clv/cac;
+    if(ratio>=3) out.push({sev:'good',title:'Customer economics look strong',text:'Lifetime value is '+fmtNum(ratio,1)+'× your acquisition cost — a healthy ratio (3× or more is the benchmark).'});
+    else if(ratio>=1) out.push({sev:'warn',title:'Acquisition cost is high vs lifetime value',text:'CLV is only '+fmtNum(ratio,1)+'× CAC. Improve retention, raise prices, or find cheaper acquisition channels.'});
+    else out.push({sev:'risk',title:'You lose money on each customer',text:'Acquisition cost exceeds lifetime value. Pause paid acquisition until the economics improve.'});
+  }
+  var roas=mv('roas');
+  if(roas!=null){
+    if(roas>=3) out.push({sev:'good',title:'Ads are paying off',text:'ROAS of '+fmtNum(roas,1)+'× means every '+fmtMoney(1)+' on ads returns '+fmtMoney(roas)+'.'});
+    else if(roas<1.5&&roas>0) out.push({sev:'warn',title:'Ad spend barely breaks even',text:'ROAS of '+fmtNum(roas,1)+'× is thin once costs are included. Test new creatives or audiences.'});
+  }
+  var churn=mv('churn');
+  if(churn!=null&&churn>8) out.push({sev:'warn',title:'Churn is high',text:fmtPct(churn)+' monthly churn means you replace your whole customer base every '+Math.round(100/churn)+' months. Focus on retention.'});
+  var conv=mv('conv');
+  if(conv!=null&&conv<1&&conv>0) out.push({sev:'warn',title:'Conversion rate is low',text:'At '+fmtPct(conv)+', your current numbers suggest you need more qualified leads or a better offer/landing experience.'});
+  // overdue tasks
+  var overdue=state.tasks.filter(function(x){ var d=daysUntil(x.deadline); return !x.done&&d!=null&&d<0; });
+  if(overdue.length>0) out.push({sev:'warn',title:overdue.length+' overdue task'+(overdue.length>1?'s':''),text:'Oldest: "'+overdue[0].title+'". Clear or reschedule overdue work to keep momentum honest.'});
+  // blocked roadmap
+  var blocked=[];
+  state.phases.forEach(function(p){ (p.tasks||[]).forEach(function(tk){ if(tk.status==='Blocked') blocked.push(tk.title); }); });
+  if(blocked.length) out.push({sev:'warn',title:blocked.length+' blocked roadmap item'+(blocked.length>1?'s':''),text:'"'+blocked[0]+'" is blocked. Unblocking it may unlock the rest of the phase.'});
+  // suggested focus
+  out.push(suggestedFocus(t));
+  // sort: risk > warn > good > info
+  var rank={risk:0,warn:1,good:2,info:3};
+  out.sort(function(a,b){ return rank[a.sev]-rank[b.sev]; });
+  return out;
+}
+function suggestedFocus(t){
+  if(t.revenue===0) return {sev:'info',title:'Suggested focus: first revenue',text:'Nothing matters more right now than landing the first paying customers. Set a small revenue goal and 3 outreach tasks.'};
+  if(t.margin!=null&&t.margin<10) return {sev:'info',title:'Suggested focus: profitability',text:'Revenue exists but profit is thin. Spend this week on pricing and cutting the top expense category.'};
+  var g=revenueGrowth();
+  if(g!=null&&g<0) return {sev:'info',title:'Suggested focus: pipeline',text:'Revenue is shrinking. Fill the top of your funnel — leads, follow-ups, and reactivating past clients.'};
+  var openGoals=state.goals.filter(function(x){return !x.done;});
+  if(openGoals.length===0) return {sev:'info',title:'Suggested focus: set a goal',text:'Your numbers are stable. Set a concrete revenue or profit goal with a deadline to aim at.'};
+  return {sev:'info',title:'Suggested focus: consistent execution',text:'Numbers look stable. Keep shipping the roadmap and review your metrics weekly.'};
+}
+
+/* ---------- SVG charts ---------- */
+function svgBarChart(months,mm,w,h){
+  w=w||620;h=h||220;
+  var pad={l:8,r:8,t:14,b:24};
+  var iw=w-pad.l-pad.r, ih=h-pad.t-pad.b;
+  var max=1;
+  months.forEach(function(k){ var d=mm[k]||{revenue:0,expenses:0}; max=Math.max(max,d.revenue,d.expenses); });
+  var n=months.length, slot=iw/n, bw=Math.min(20,slot*0.28);
+  var bars='',labels='',grid='';
+  for(var i=0;i<=3;i++){
+    var gy=pad.t+ih-(ih*i/3);
+    grid+='<line x1="'+pad.l+'" y1="'+gy+'" x2="'+(w-pad.r)+'" y2="'+gy+'" stroke="var(--chart-grid)" stroke-width="1"/>';
+  }
+  months.forEach(function(k,idx){
+    var d=mm[k]||{revenue:0,expenses:0};
+    var cx=pad.l+slot*idx+slot/2;
+    var rh=d.revenue/max*ih, eh=d.expenses/max*ih;
+    bars+='<rect x="'+(cx-bw-2)+'" y="'+(pad.t+ih-rh)+'" width="'+bw+'" height="'+Math.max(rh,1.5)+'" rx="3" fill="var(--income)" opacity="0.9"><title>'+monthLabel(k)+' revenue: '+fmtMoney(d.revenue)+'</title></rect>';
+    bars+='<rect x="'+(cx+2)+'" y="'+(pad.t+ih-eh)+'" width="'+bw+'" height="'+Math.max(eh,1.5)+'" rx="3" fill="var(--expense)" opacity="0.85"><title>'+monthLabel(k)+' expenses: '+fmtMoney(d.expenses)+'</title></rect>';
+    labels+='<text x="'+cx+'" y="'+(h-6)+'" text-anchor="middle" font-size="10" fill="var(--text-3)" font-family="var(--font)">'+monthLabel(k).split(' ')[0]+'</text>';
+  });
+  return '<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Monthly revenue vs expenses">'+grid+bars+labels+'</svg>';
+}
+function svgDonut(entries,size){
+  size=size||150;
+  var total=sum(entries,function(e){return e.value;});
+  if(total<=0) return '';
+  var r=size/2-12, c=size/2, circ=2*Math.PI*r, off=0;
+  var palette=['#6366f1','#8b5cf6','#ec4899','#f59e0b','#10b981','#3b82f6','#14b8a6','#f97316','#a855f7','#64748b'];
+  var segs='';
+  entries.forEach(function(e,i){
+    var frac=e.value/total;
+    var dash=Math.max(0,frac*circ-2);
+    segs+='<circle cx="'+c+'" cy="'+c+'" r="'+r+'" fill="none" stroke="'+palette[i%palette.length]+'" stroke-width="16" stroke-dasharray="'+dash+' '+(circ-dash)+'" stroke-dashoffset="'+(-off*circ)+'" transform="rotate(-90 '+c+' '+c+')" stroke-linecap="butt"><title>'+esc(e.label)+': '+fmtMoney(e.value)+' ('+fmtPct(frac*100,0)+')</title></circle>';
+    off+=frac;
+  });
+  return '<svg viewBox="0 0 '+size+' '+size+'" style="max-width:'+size+'px" role="img" aria-label="Category breakdown">'+segs+'</svg>';
+}
+function donutLegend(entries){
+  var total=sum(entries,function(e){return e.value;});
+  var palette=['#6366f1','#8b5cf6','#ec4899','#f59e0b','#10b981','#3b82f6','#14b8a6','#f97316','#a855f7','#64748b'];
+  return entries.map(function(e,i){
+    return '<span><span class="dot" style="background:'+palette[i%palette.length]+'"></span>'+esc(e.label)+' · <b>'+fmtPct(e.value/total*100,0)+'</b></span>';
+  }).join('');
+}
+function svgSparkline(values,w,h,color){
+  w=w||90;h=h||30;
+  if(!values||values.length<2) return '';
+  var max=Math.max.apply(null,values), min=Math.min.apply(null,values);
+  if(max===min){max=min+1;}
+  var pts=values.map(function(v,i){
+    var x=(i/(values.length-1))*(w-4)+2;
+    var y=h-3-((v-min)/(max-min))*(h-6);
+    return x.toFixed(1)+','+y.toFixed(1);
+  });
+  return '<svg viewBox="0 0 '+w+' '+h+'" style="width:'+w+'px;height:'+h+'px">'+
+    '<polyline points="'+pts.join(' ')+'" fill="none" stroke="'+(color||'var(--accent)')+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/></svg>';
+}
+function svgRing(pct,size,color,labelTop,labelBottom){
+  size=size||120;
+  var stroke=10, r=(size-stroke)/2, c=size/2, circ=2*Math.PI*r;
+  var p=clamp(pct||0,0,100);
+  return '<div class="ring" style="width:'+size+'px;height:'+size+'px">'+
+    '<svg viewBox="0 0 '+size+' '+size+'" style="width:'+size+'px;height:'+size+'px">'+
+      '<circle class="track" cx="'+c+'" cy="'+c+'" r="'+r+'" fill="none" stroke-width="'+stroke+'"/>'+
+      '<circle class="val" cx="'+c+'" cy="'+c+'" r="'+r+'" fill="none" stroke="'+(color||'url(#ringGrad)')+'" stroke-width="'+stroke+'" stroke-linecap="round" stroke-dasharray="'+circ+'" stroke-dashoffset="'+(circ*(1-p/100))+'" transform="rotate(-90 '+c+' '+c+')"/>'+
+      '<defs><linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6366f1"/><stop offset="1" stop-color="#8b5cf6"/></linearGradient></defs>'+
+    '</svg>'+
+    '<div class="ring-label"><b>'+esc(labelTop)+'</b><span>'+esc(labelBottom||'')+'</span></div></div>';
+}
+
+/* ============================================================
+   router + shell
+   ============================================================ */
+var ROUTES=[
+  {id:'dashboard',label:'Dashboard',icon:'dashboard',section:'Overview'},
+  {id:'insights',label:'Insights',icon:'insights',section:'Overview'},
+  {id:'finance',label:'Finance',icon:'finance',section:'Money'},
+  {id:'calculators',label:'Calculators',icon:'calc',section:'Money'},
+  {id:'metrics',label:'Metrics & KPIs',icon:'metrics',section:'Money'},
+  {id:'goals',label:'Goals',icon:'goals',section:'Execution'},
+  {id:'roadmap',label:'Roadmap',icon:'roadmap',section:'Execution'},
+  {id:'tasks',label:'Tasks',icon:'tasks',section:'Execution'},
+  {id:'clients',label:'Clients',icon:'clients',section:'Workspace'},
+  {id:'notes',label:'Notes',icon:'notes',section:'Workspace'},
+  {id:'reviews',label:'Reviews & Strategy',icon:'reviews',section:'Workspace'},
+  {id:'settings',label:'Settings & Data',icon:'settings',section:'System'}
+];
+function currentRoute(){
+  var h=(location.hash||'#/dashboard').replace('#/','');
+  return ROUTES.some(function(r){return r.id===h;})?h:'dashboard';
+}
+function nav(route){ location.hash='#/'+route; }
+
+/* UI-only state (not persisted) */
+var ui={
+  financeFilter:{type:'all',q:'',month:'all',category:'all'},
+  taskFilter:{status:'open',priority:'all',bucket:'all'},
+  noteFilter:{q:'',category:'all'},
+  clientFilter:'all',
+  goalFilter:'open',
+  entryFormType:'income',
+  financeTab:'entries'
+};
+
+function render(){
+  renderSidebar();
+  var route=currentRoute();
+  var main=byId('main');
+  var views={
+    dashboard:viewDashboard, insights:viewInsights, finance:viewFinance,
+    calculators:viewCalculators, metrics:viewMetrics, goals:viewGoals,
+    roadmap:viewRoadmap, tasks:viewTasks, clients:viewClients,
+    notes:viewNotes, reviews:viewReviews, settings:viewSettings
+  };
+  main.innerHTML=(views[route]||viewDashboard)();
+  main.scrollTop=0;
+}
+
+function renderSidebar(){
+  var route=currentRoute();
+  var openTasks=state.tasks.filter(function(t){ var d=daysUntil(t.deadline); return !t.done&&d!=null&&d<0; }).length;
+  var html='<div class="brand"><div class="brand-logo">'+icon('logo')+'</div><div><div class="brand-name">BizPilot</div><div class="brand-sub">Command Center</div></div></div><nav class="nav">';
+  var lastSection='';
+  ROUTES.forEach(function(r){
+    if(r.section!==lastSection){ html+='<div class="nav-section">'+esc(r.section)+'</div>'; lastSection=r.section; }
+    html+='<button class="nav-item'+(route===r.id?' active':'')+'" data-action="nav" data-route="'+r.id+'">'+icon(r.icon)+'<span>'+esc(r.label)+'</span>'+
+      (r.id==='tasks'&&openTasks>0?'<span class="nav-badge">'+openTasks+'</span>':'')+'</button>';
+  });
+  html+='</nav><div class="sidebar-foot"><div class="biz-chip"><div class="avatar">'+esc((state.settings.businessName||'B').charAt(0).toUpperCase())+'</div><div><b>'+esc(state.settings.businessName||'My Business')+'</b><span>Local data · private</span></div></div></div>';
+  byId('sidebar').innerHTML=html;
+}
+
+function topbar(title,subtitle,actionsHTML){
+  return '<div class="topbar">'+
+    '<button class="hamburger" data-action="open-sidebar" aria-label="Menu">'+icon('menu')+'</button>'+
+    '<div class="page-title"><h1>'+esc(title)+'</h1><p>'+esc(subtitle||'')+'</p></div>'+
+    '<div class="topbar-actions">'+(actionsHTML||'')+
+      '<button class="theme-toggle" data-action="toggle-theme" aria-label="Toggle theme">'+icon(document.documentElement.getAttribute('data-theme')==='dark'?'sun':'moon')+'</button>'+
+    '</div></div>';
+}
+
+function emptyState(iconName,title,text,btnHTML){
+  return '<div class="empty"><div class="e-icon">'+icon(iconName)+'</div><h4>'+esc(title)+'</h4><p>'+esc(text)+'</p>'+(btnHTML||'')+'</div>';
+}
+
+/* ============================================================
+   view: dashboard
+   ============================================================ */
+function viewDashboard(){
+  var t=financeTotals();
+  var hasData=state.finance.length>0;
+  var html=topbar('Dashboard','Hello! Here is how '+(state.settings.businessName||'your business')+' is doing today.',
+    '<button class="btn btn-primary" data-action="open-entry-modal">'+icon('plus')+'<span class="btn-txt">Add entry</span></button>');
+
+  if(!hasData && state.goals.length===0 && state.tasks.length===0){
+    html+='<div class="hero"><h2>Welcome to your business command center 🚀</h2>'+
+      '<p>Track money, set goals, plan your roadmap, manage tasks, clients and notes — everything saved privately in this browser. Start by adding your first income or expense, or load sample data to explore.</p>'+
+      '<div class="hero-actions">'+
+        '<button class="btn btn-primary" data-action="open-entry-modal">'+icon('plus')+' Add first entry</button>'+
+        '<button class="btn btn-ghost" data-action="load-sample">'+icon('spark')+' Load sample data</button>'+
+      '</div></div>';
+  }
+
+  /* KPI cards */
+  var mm=monthlyMap();
+  var months6=lastNMonths(6);
+  var revSeries=months6.map(function(k){ return mm[k]?mm[k].revenue:0; });
+  var expSeries=months6.map(function(k){ return mm[k]?mm[k].expenses:0; });
+  var profSeries=months6.map(function(k,i){ return revSeries[i]-expSeries[i]; });
+  var g=revenueGrowth();
+  var deltaHTML=g==null?'<span class="stat-delta flat">— vs last month</span>':
+    (g>=0?'<span class="stat-delta up">'+icon('up')+' '+fmtPct(g)+' MoM</span>':'<span class="stat-delta down">'+icon('down')+' '+fmtPct(Math.abs(g))+' MoM</span>');
+
+  html+='<div class="grid grid-4 mt">'+
+    statCard('Total revenue',fmtMoney(t.revenue),deltaHTML,svgSparkline(revSeries,90,30,'var(--income)'),'arrowur')+
+    statCard('Total expenses',fmtMoney(t.expenses),'<span class="stat-delta '+(t.expenseRatio!=null&&isFinite(t.expenseRatio)&&t.expenseRatio>70?'down':'flat')+'">'+(t.expenseRatio!=null&&isFinite(t.expenseRatio)?fmtPct(t.expenseRatio,0)+' of revenue':'—')+'</span>',svgSparkline(expSeries,90,30,'var(--expense)'),'arrowdr')+
+    statCard('Net profit',fmtMoney(t.profit),'<span class="stat-delta '+(t.profit>=0?'up':'down')+'">'+(t.profit>=0?'Profitable':'Loss')+'</span>',svgSparkline(profSeries,90,30,'var(--accent)'),'wallet')+
+    statCard('Profit margin',fmtPct(t.margin),'<span class="stat-delta '+(t.margin==null?'flat':(t.margin>=30?'up':(t.margin>=10?'flat':'down')))+'">'+(t.margin==null?'No revenue yet':(t.margin>=30?'Healthy':(t.margin>=10?'Thin':'Critical')))+'</span>','','pie')+
+  '</div>';
+
+  /* health + monthly chart */
+  var hs=healthScore();
+  html+='<div class="grid grid-hero mt">';
+  html+='<div class="card"><div class="card-head"><h3>Business health</h3></div>';
+  if(hs){
+    var hl=healthLabel(hs.score);
+    html+='<div class="ring-wrap">'+svgRing(hs.score,128,null,String(hs.score),'/ 100')+
+      '<div style="flex:1;min-width:0"><span class="badge '+hl.cls+'">'+hl.label+'</span><div class="mt" style="margin-top:10px">'+
+      hs.parts.map(function(p){
+        return '<div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;font-size:.76rem;color:var(--text-2)"><span>'+esc(p.k)+'</span><b>'+Math.round(p.pts)+'/'+p.max+'</b></div>'+
+          '<div class="progress" style="height:5px;margin-top:3px"><div class="bar '+(p.pts/p.max>=0.6?'good':(p.pts/p.max>=0.35?'warn':'risk'))+'" style="width:'+(p.pts/p.max*100)+'%"></div></div></div>';
+      }).join('')+'</div></div></div>';
+  } else {
+    html+=emptyState('shield','No health score yet','Add finance entries and the score is computed automatically from margin, growth, expense control and execution.');
+  }
+  html+='</div>';
+  html+='<div class="card"><div class="card-head"><h3>Monthly performance</h3><span class="sub">last 6 months</span></div>';
+  if(hasData){
+    html+='<div class="chart-box">'+svgBarChart(months6,mm)+'</div>'+
+      '<div class="legend"><span><span class="dot" style="background:var(--income)"></span>Revenue</span><span><span class="dot" style="background:var(--expense)"></span>Expenses</span></div>';
+  } else {
+    html+=emptyState('metrics','No data to chart','Your monthly revenue vs expenses chart appears here once you log entries.');
+  }
+  html+='</div></div>';
+
+  /* this month + goals + insights preview */
+  var curK=thisMonthKey(), prevK=shiftMonth(curK,-1);
+  var cur=mm[curK]||{revenue:0,expenses:0}, prev=mm[prevK]||{revenue:0,expenses:0};
+  html+='<div class="grid grid-3 mt">';
+  // month comparison card
+  html+='<div class="card"><div class="card-head"><h3>This month vs last</h3></div>'+
+    monthCompareRow('Revenue',cur.revenue,prev.revenue,false)+
+    monthCompareRow('Expenses',cur.expenses,prev.expenses,true)+
+    monthCompareRow('Profit',cur.revenue-cur.expenses,prev.revenue-prev.expenses,false)+
+    (state.settings.monthlyTarget>0?
+      '<div style="margin-top:14px"><div style="display:flex;justify-content:space-between;font-size:.8rem;color:var(--text-2)"><span>Monthly target</span><b>'+fmtMoney(cur.revenue)+' / '+fmtMoney(state.settings.monthlyTarget)+'</b></div>'+
+      '<div class="progress mt" style="margin-top:6px"><div class="bar '+(cur.revenue>=state.settings.monthlyTarget?'good':'')+'" style="width:'+clamp(cur.revenue/state.settings.monthlyTarget*100,0,100)+'%"></div></div></div>'
+      :'<p style="font-size:.78rem;color:var(--text-3);margin-top:12px">Tip: set a monthly revenue target in Settings to track it here.</p>')+
+  '</div>';
+  // goals card
+  var openGoals=state.goals.filter(function(x){return !x.done;}).slice(0,3);
+  html+='<div class="card"><div class="card-head"><h3>Goal progress</h3><span class="spacer"></span><button class="btn btn-sm btn-ghost" data-action="nav" data-route="goals">View all</button></div>';
+  if(openGoals.length){
+    openGoals.forEach(function(gl){
+      var gp=goalProgress(gl), st=goalStatus(gl);
+      html+='<div style="margin-bottom:13px"><div style="display:flex;justify-content:space-between;gap:8px;font-size:.84rem"><b style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(gl.title)+'</b><span class="badge '+st.cls+'">'+st.label+'</span></div>'+
+        '<div class="progress" style="margin-top:6px"><div class="bar '+(st.cls==='good'?'good':(st.cls==='risk'?'risk':''))+'" style="width:'+gp.pct+'%"></div></div>'+
+        '<div style="display:flex;justify-content:space-between;font-size:.72rem;color:var(--text-3);margin-top:4px"><span>'+fmtPct(gp.pct,0)+' complete</span><span>'+(daysUntil(gl.deadline)!=null?(daysUntil(gl.deadline)>=0?daysUntil(gl.deadline)+' days left':'overdue'):'no deadline')+'</span></div></div>';
+    });
+  } else {
+    html+=emptyState('goals','No active goals','Set a revenue, profit or custom goal to give your work a direction.','<button class="btn btn-sm btn-primary" data-action="open-goal-modal">'+icon('plus')+' New goal</button>');
+  }
+  html+='</div>';
+  // category leaders
+  var bestInc=topCategory('income'), bigExp=topCategory('expense');
+  html+='<div class="card"><div class="card-head"><h3>Category leaders</h3></div>';
+  if(bestInc||bigExp){
+    if(bestInc) html+='<div class="list-row"><span class="badge good">'+icon('arrowur')+' Best earner</span><div style="flex:1;min-width:0"><b style="font-size:.88rem">'+esc(bestInc.name)+'</b></div><span class="num" style="font-weight:700">'+fmtMoney(bestInc.amount)+'</span></div>';
+    if(bigExp) html+='<div class="list-row"><span class="badge risk">'+icon('arrowdr')+' Biggest cost</span><div style="flex:1;min-width:0"><b style="font-size:.88rem">'+esc(bigExp.name)+'</b></div><span class="num" style="font-weight:700">'+fmtMoney(bigExp.amount)+'</span></div>';
+    var expCats=categoryMap('expense');
+    var entries=Object.keys(expCats).map(function(k){return {label:k,value:expCats[k]};}).sort(function(a,b){return b.value-a.value;}).slice(0,6);
+    if(entries.length) html+='<div style="display:flex;gap:14px;align-items:center;margin-top:12px;flex-wrap:wrap">'+svgDonut(entries,110)+'<div class="legend" style="flex-direction:column;gap:5px;margin-top:0">'+donutLegend(entries)+'</div></div>';
+  } else {
+    html+=emptyState('pie','No categories yet','Best income source and biggest expense show up here automatically.');
+  }
+  html+='</div></div>';
+
+  /* warnings & opportunities */
+  var ins=buildInsights().filter(function(i){return i.sev!=='info'||i.title.indexOf('Suggested focus')===0;}).slice(0,4);
+  html+='<div class="card mt"><div class="card-head"><h3>Warnings & opportunities</h3><span class="spacer"></span><button class="btn btn-sm btn-ghost" data-action="nav" data-route="insights">All insights</button></div>'+
+    '<div class="grid grid-2">'+ins.map(insightHTML).join('')+'</div></div>';
+
+  /* due soon */
+  var dueSoon=state.tasks.filter(function(x){ var d=daysUntil(x.deadline); return !x.done&&d!=null&&d<=7; })
+    .sort(function(a,b){ return (a.deadline||'').localeCompare(b.deadline||''); }).slice(0,5);
+  var upcoming=upcomingMilestones().slice(0,3);
+  html+='<div class="grid grid-2 mt">';
+  html+='<div class="card"><div class="card-head"><h3>Tasks due soon</h3><span class="spacer"></span><button class="btn btn-sm btn-ghost" data-action="nav" data-route="tasks">Tasks</button></div>';
+  html+=dueSoon.length?dueSoon.map(taskRowHTML).join(''):emptyState('tasks','Nothing due this week','Tasks with deadlines in the next 7 days appear here.');
+  html+='</div>';
+  html+='<div class="card"><div class="card-head"><h3>Upcoming milestones</h3><span class="spacer"></span><button class="btn btn-sm btn-ghost" data-action="nav" data-route="roadmap">Roadmap</button></div>';
+  if(upcoming.length){
+    upcoming.forEach(function(m){
+      var d=daysUntil(m.deadline);
+      html+='<div class="list-row">'+icon('flag',15)+'<div style="flex:1;min-width:0"><b style="font-size:.88rem">'+esc(m.title)+'</b><div style="font-size:.74rem;color:var(--text-3)">'+esc(m.phase)+'</div></div><span class="badge '+(d<0?'risk':(d<=7?'warn':'neutral'))+'">'+(d<0?'overdue':fmtDate(m.deadline))+'</span></div>';
+    });
+  } else {
+    html+=emptyState('roadmap','No upcoming milestones','Add roadmap tasks with deadlines to see what is coming next.');
+  }
+  html+='</div></div>';
+  return html;
+}
+function statCard(label,value,deltaHTML,sparkHTML,iconName){
+  return '<div class="card stat-card"><div class="stat-accent"></div>'+
+    '<div class="stat-label">'+icon(iconName)+' '+esc(label)+'</div>'+
+    '<div class="stat-value">'+value+'</div>'+(deltaHTML||'')+
+    (sparkHTML?'<div class="spark">'+sparkHTML+'</div>':'')+'</div>';
+}
+function monthCompareRow(label,cur,prev,inverse){
+  var diff=prev!==0?(cur-prev)/Math.abs(prev)*100:null;
+  var good=diff==null?null:(inverse?diff<=0:diff>=0);
+  return '<div class="list-row"><span style="font-size:.85rem;color:var(--text-2);flex:1">'+esc(label)+'</span>'+
+    '<b class="num">'+fmtMoney(cur)+'</b>'+
+    (diff==null?'<span class="badge neutral">new</span>':'<span class="badge '+(good?'good':'risk')+'">'+(diff>=0?'+':'')+fmtPct(diff,0)+'</span>')+'</div>';
+}
+function insightHTML(i){
+  var ic={good:'check',warn:'alert',risk:'alert',info:'insights'}[i.sev];
+  return '<div class="insight '+i.sev+'"><div class="i-icon">'+icon(ic)+'</div><div><b>'+esc(i.title)+'</b><p>'+esc(i.text)+'</p></div></div>';
+}
+function upcomingMilestones(){
+  var out=[];
+  state.phases.forEach(function(p){
+    (p.tasks||[]).forEach(function(t){
+      if(t.status!=='Completed'&&t.deadline) out.push({title:t.title,phase:p.name,deadline:t.deadline});
+    });
+  });
+  out.sort(function(a,b){ return a.deadline.localeCompare(b.deadline); });
+  return out;
+}
+
+/* ============================================================
+   view: insights
+   ============================================================ */
+function viewInsights(){
+  var ins=buildInsights();
+  var html=topbar('Smart Insights','Automatic analysis generated from your real numbers — updated on every change.');
+  var counts={risk:0,warn:0,good:0,info:0};
+  ins.forEach(function(i){counts[i.sev]++;});
+  html+='<div class="grid grid-4">'+
+    '<div class="card stat-card"><div class="stat-label" style="color:var(--risk)">'+icon('alert')+' Risks</div><div class="stat-value">'+counts.risk+'</div></div>'+
+    '<div class="card stat-card"><div class="stat-label" style="color:var(--warn)">'+icon('alert')+' Warnings</div><div class="stat-value">'+counts.warn+'</div></div>'+
+    '<div class="card stat-card"><div class="stat-label" style="color:var(--good)">'+icon('check')+' Strengths</div><div class="stat-value">'+counts.good+'</div></div>'+
+    '<div class="card stat-card"><div class="stat-label" style="color:var(--info)">'+icon('insights')+' Notes</div><div class="stat-value">'+counts.info+'</div></div></div>';
+  html+='<div class="grid grid-2 mt">'+ins.map(insightHTML).join('')+'</div>';
+  return html;
+}
+
+/* ============================================================
+   view: finance
+   ============================================================ */
+var INCOME_CATS=['Sales','Services','Consulting','Products','Subscriptions','Commissions','Other income'];
+var EXPENSE_CATS=['Inventory / Supplies','Marketing & Ads','Software & Tools','Rent & Utilities','Salaries / Contractors','Transport','Fees & Taxes','Equipment','Other expense'];
+
+function viewFinance(){
+  var t=financeTotals();
+  var html=topbar('Finance','Every peso in and out — totals, breakdowns and cash flow update automatically.',
+    '<button class="btn btn-primary" data-action="open-entry-modal">'+icon('plus')+'<span class="btn-txt">Add entry</span></button>');
+
+  html+='<div class="grid grid-4">'+
+    statCard('Revenue',fmtMoney(t.revenue),'','','arrowur')+
+    statCard('Expenses',fmtMoney(t.expenses),'','','arrowdr')+
+    statCard('Net profit',fmtMoney(t.profit),'<span class="stat-delta '+(t.profit>=0?'up':'down')+'">'+(t.margin!=null?fmtPct(t.margin,1)+' margin':'—')+'</span>','','wallet')+
+    statCard('Expense ratio',t.expenseRatio!=null&&isFinite(t.expenseRatio)?fmtPct(t.expenseRatio,0):'—','<span class="stat-delta flat">of revenue spent</span>','','pie')+
+  '</div>';
+
+  html+='<div class="tabs mt-lg">'+
+    ['entries','monthly','categories','cashflow'].map(function(tab){
+      var labels={entries:'Entries',monthly:'Monthly breakdown',categories:'Category breakdown',cashflow:'Cash flow'};
+      return '<button class="'+(ui.financeTab===tab?'active':'')+'" data-action="finance-tab" data-tab="'+tab+'">'+labels[tab]+'</button>';
+    }).join('')+'</div>';
+
+  if(ui.financeTab==='entries') html+=financeEntriesHTML();
+  else if(ui.financeTab==='monthly') html+=financeMonthlyHTML();
+  else if(ui.financeTab==='categories') html+=financeCategoriesHTML();
+  else html+=financeCashflowHTML();
+  return html;
+}
+
+function financeEntriesHTML(){
+  var f=ui.financeFilter;
+  var months=sortedMonths().reverse();
+  var cats={};
+  state.finance.forEach(function(e){ cats[e.category||'Other']=1; });
+  var entries=state.finance.filter(function(e){
+    if(f.type!=='all'&&e.type!==f.type) return false;
+    if(f.month!=='all'&&monthKey(e.date)!==f.month) return false;
+    if(f.category!=='all'&&(e.category||'Other')!==f.category) return false;
+    if(f.q){
+      var q=f.q.toLowerCase();
+      if((e.note||'').toLowerCase().indexOf(q)<0&&(e.category||'').toLowerCase().indexOf(q)<0&&(e.client||'').toLowerCase().indexOf(q)<0) return false;
+    }
+    return true;
+  }).sort(function(a,b){ return (b.date||'').localeCompare(a.date||'')||(b.id>a.id?1:-1); });
+
+  var html='<div class="card"><div class="card-head">'+
+    '<div class="searchbar">'+icon('search')+'<input class="input" placeholder="Search note, category, client…" value="'+esc(f.q)+'" data-action-input="finance-search"></div>'+
+    '<select class="input" style="width:auto" data-action-change="finance-filter-type"><option value="all"'+(f.type==='all'?' selected':'')+'>All types</option><option value="income"'+(f.type==='income'?' selected':'')+'>Income</option><option value="expense"'+(f.type==='expense'?' selected':'')+'>Expenses</option></select>'+
+    '<select class="input" style="width:auto" data-action-change="finance-filter-month"><option value="all">All months</option>'+months.map(function(m){return '<option value="'+m+'"'+(f.month===m?' selected':'')+'>'+monthLabel(m)+'</option>';}).join('')+'</select>'+
+    '<select class="input" style="width:auto" data-action-change="finance-filter-cat"><option value="all">All categories</option>'+Object.keys(cats).sort().map(function(c){return '<option value="'+esc(c)+'"'+(f.category===c?' selected':'')+'>'+esc(c)+'</option>';}).join('')+'</select>'+
+  '</div>';
+
+  if(!entries.length){
+    html+=emptyState('finance','No entries'+(state.finance.length?' match your filters':' yet'),state.finance.length?'Try clearing the search or filters above.':'Log your first income or expense — everything else is calculated for you.','<button class="btn btn-sm btn-primary" data-action="open-entry-modal">'+icon('plus')+' Add entry</button>')+'</div>';
+    return html;
+  }
+  var ft=financeTotals(entries);
+  html+='<div class="table-wrap"><table><thead><tr><th>Date</th><th>Type</th><th>Category</th><th>Note</th><th>Client</th><th style="text-align:right">Amount</th><th></th></tr></thead><tbody>';
+  entries.forEach(function(e){
+    html+='<tr><td style="white-space:nowrap">'+fmtDate(e.date)+'</td>'+
+      '<td><span class="badge '+(e.type==='income'?'good':'risk')+'">'+(e.type==='income'?'Income':'Expense')+'</span></td>'+
+      '<td>'+esc(e.category||'Other')+'</td>'+
+      '<td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(e.note||'')+'">'+esc(e.note||'—')+'</td>'+
+      '<td>'+esc(e.client||'—')+'</td>'+
+      '<td class="num" style="text-align:right;color:'+(e.type==='income'?'var(--income)':'var(--expense)')+'">'+(e.type==='income'?'+':'−')+fmtMoney(e.amount)+'</td>'+
+      '<td><div class="row-actions"><button class="btn-icon" data-action="edit-entry" data-id="'+e.id+'" aria-label="Edit">'+icon('edit')+'</button><button class="btn-icon danger" data-action="delete-entry" data-id="'+e.id+'" aria-label="Delete">'+icon('trash')+'</button></div></td></tr>';
+  });
+  html+='</tbody><tfoot><tr><td colspan="5" style="font-weight:700">Filtered total ('+entries.length+' entries)</td><td class="num" style="text-align:right;font-weight:800;color:'+(ft.profit>=0?'var(--income)':'var(--expense)')+'">'+fmtMoney(ft.revenue-ft.expenses)+'</td><td></td></tr></tfoot></table></div></div>';
+  return html;
+}
+
+function financeMonthlyHTML(){
+  var mm=monthlyMap(), months=sortedMonths();
+  if(!months.length) return '<div class="card">'+emptyState('metrics','No monthly data yet','Add dated entries to see the month-by-month breakdown.')+'</div>';
+  var shown=months.slice(-12);
+  var html='<div class="card"><div class="card-head"><h3>Revenue vs expenses by month</h3></div><div class="chart-box">'+svgBarChart(shown.length>=6?shown.slice(-6):lastNMonths(6),mm)+'</div>'+
+    '<div class="legend"><span><span class="dot" style="background:var(--income)"></span>Revenue</span><span><span class="dot" style="background:var(--expense)"></span>Expenses</span></div></div>';
+  html+='<div class="card mt"><div class="table-wrap"><table><thead><tr><th>Month</th><th style="text-align:right">Revenue</th><th style="text-align:right">Expenses</th><th style="text-align:right">Profit</th><th style="text-align:right">Margin</th><th>Trend</th></tr></thead><tbody>';
+  shown.slice().reverse().forEach(function(k,idx,arr){
+    var d=mm[k], profit=d.revenue-d.expenses;
+    var prevKey=arr[idx+1];
+    var growth=prevKey&&mm[prevKey].revenue>0?(d.revenue-mm[prevKey].revenue)/mm[prevKey].revenue*100:null;
+    html+='<tr><td style="font-weight:600">'+monthLabel(k)+'</td>'+
+      '<td class="num" style="text-align:right;color:var(--income)">'+fmtMoney(d.revenue)+'</td>'+
+      '<td class="num" style="text-align:right;color:var(--expense)">'+fmtMoney(d.expenses)+'</td>'+
+      '<td class="num" style="text-align:right;font-weight:700;color:'+(profit>=0?'var(--income)':'var(--expense)')+'">'+fmtMoney(profit)+'</td>'+
+      '<td class="num" style="text-align:right">'+(d.revenue>0?fmtPct(profit/d.revenue*100,0):'—')+'</td>'+
+      '<td>'+(growth==null?'<span class="badge neutral">—</span>':'<span class="badge '+(growth>=0?'good':'risk')+'">'+(growth>=0?'▲':'▼')+' '+fmtPct(Math.abs(growth),0)+'</span>')+'</td></tr>';
+  });
+  html+='</tbody></table></div></div>';
+  return html;
+}
+
+function financeCategoriesHTML(){
+  var inc=categoryMap('income'), exp=categoryMap('expense');
+  var t=financeTotals();
+  function catTable(map,total,type){
+    var keys=Object.keys(map).sort(function(a,b){return map[b]-map[a];});
+    if(!keys.length) return emptyState('pie','No '+type+' categories','Categorized entries appear here with their share.');
+    var entries=keys.map(function(k){return {label:k,value:map[k]};});
+    var html='<div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-bottom:14px">'+svgDonut(entries.slice(0,8),130)+'<div class="legend" style="flex-direction:column;gap:5px;margin-top:0">'+donutLegend(entries.slice(0,8))+'</div></div>';
+    keys.forEach(function(k){
+      var pct=total>0?map[k]/total*100:0;
+      html+='<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:.84rem"><span>'+esc(k)+'</span><b class="num">'+fmtMoney(map[k])+' · '+fmtPct(pct,0)+'</b></div>'+
+        '<div class="progress" style="height:6px;margin-top:4px"><div class="bar '+(type==='income'?'good':'risk')+'" style="width:'+pct+'%"></div></div></div>';
+    });
+    return html;
+  }
+  return '<div class="grid grid-2">'+
+    '<div class="card"><div class="card-head"><h3>Income by category</h3><span class="sub">'+fmtMoney(t.revenue)+' total</span></div>'+catTable(inc,t.revenue,'income')+'</div>'+
+    '<div class="card"><div class="card-head"><h3>Expenses by category</h3><span class="sub">'+fmtMoney(t.expenses)+' total</span></div>'+catTable(exp,t.expenses,'expense')+'</div></div>';
+}
+
+function financeCashflowHTML(){
+  var mm=monthlyMap(), months=sortedMonths();
+  if(!months.length) return '<div class="card">'+emptyState('cash','No cash flow yet','Cash flow shows your running balance month by month.')+'</div>';
+  var running=0;
+  var rows=months.map(function(k){
+    var d=mm[k], net=d.revenue-d.expenses; running+=net;
+    return {k:k,net:net,running:running};
+  });
+  var t=financeTotals();
+  var avg3=avgMonthlyRevenue(3);
+  var avgExp3=(function(){ var ms=lastNMonths(3),tot=0,c=0; ms.forEach(function(k){ if(mm[k]){tot+=mm[k].expenses;c++;} }); return c?tot/c:0; })();
+  var burn=avgExp3-avg3;
+  var html='<div class="grid grid-3">'+
+    statCard('Net position',fmtMoney(t.profit),'<span class="stat-delta flat">all-time in − out</span>','','cash')+
+    statCard('Avg monthly net (3m)',fmtMoney(avg3-avgExp3),'<span class="stat-delta '+(avg3-avgExp3>=0?'up':'down')+'">'+(avg3-avgExp3>=0?'cash positive':'cash negative')+'</span>','','metrics')+
+    statCard('Runway signal',burn>0&&t.profit>0?fmtNum(t.profit/burn,1)+' mo':'—','<span class="stat-delta flat">'+(burn>0?'at current burn':'no burn — profitable')+'</span>','','clock')+
+  '</div>';
+  html+='<div class="card mt"><div class="card-head"><h3>Running balance</h3><span class="sub">cumulative profit over time</span></div><div class="table-wrap"><table><thead><tr><th>Month</th><th style="text-align:right">Net cash flow</th><th style="text-align:right">Running balance</th><th>Status</th></tr></thead><tbody>';
+  rows.slice().reverse().forEach(function(r){
+    html+='<tr><td style="font-weight:600">'+monthLabel(r.k)+'</td>'+
+      '<td class="num" style="text-align:right;color:'+(r.net>=0?'var(--income)':'var(--expense)')+'">'+(r.net>=0?'+':'')+fmtMoney(r.net)+'</td>'+
+      '<td class="num" style="text-align:right;font-weight:700">'+fmtMoney(r.running)+'</td>'+
+      '<td><span class="badge '+(r.net>=0?'good':'risk')+'">'+(r.net>=0?'Positive':'Negative')+'</span></td></tr>';
+  });
+  html+='</tbody></table></div></div>';
+  return html;
+}
+
+/* ============================================================
+   view: calculators
+   ============================================================ */
+function viewCalculators(){
+  var html=topbar('Business Calculators','Quick decision tools — results are computed instantly, nothing is saved.');
+  html+='<div class="grid grid-2">';
+  html+=calcCard('breakeven','Break-even calculator','How many units (or sales) you need to cover your costs.',
+    '<div class="form-row-3">'+
+    calcField('fixed','Fixed costs / month','e.g. 30000')+
+    calcField('price','Price per sale','e.g. 1500')+
+    calcField('varcost','Variable cost per sale','e.g. 600')+'</div>');
+  html+=calcCard('pricing','Pricing & margin calculator','Find the right price from cost and target margin — or check the margin of a current price.',
+    '<div class="form-row-3">'+
+    calcField('cost','Cost per unit','e.g. 600')+
+    calcField('targetmargin','Target margin %','e.g. 50')+
+    calcField('curprice','Current price (optional)','e.g. 1200')+'</div>');
+  html+=calcCard('tax','Tax set-aside estimator','How much of each payment to set aside so taxes never surprise you.',
+    '<div class="form-row">'+
+    calcField('income','Income amount','e.g. 50000')+
+    calcField('rate','Tax rate %','default '+(state.settings.taxRate||8))+'</div>');
+  html+=calcCard('forecast','Simple revenue forecast','Project the next months from your average revenue and an assumed growth rate.',
+    '<div class="form-row-3">'+
+    calcField('base','Monthly revenue','avg: '+Math.round(avgMonthlyRevenue(3)))+
+    calcField('growth','Monthly growth %','e.g. 5')+
+    calcField('months','Months ahead','e.g. 6')+'</div>');
+  html+=calcCard('target','Monthly target calculator','Turn a revenue target into a daily and weekly sales quota.',
+    '<div class="form-row-3">'+
+    calcField('goal','Monthly revenue target','e.g. 100000')+
+    calcField('avgsale','Average sale value','e.g. 1500')+
+    calcField('done','Already earned this month','e.g. 20000')+'</div>');
+  html+=calcCard('peroffer','Revenue per offer','Compare what each offer must produce to hit a goal.',
+    '<div class="form-row-3">'+
+    calcField('total','Revenue goal','e.g. 100000')+
+    calcField('offers','Number of offers','e.g. 3')+
+    calcField('offerprice','Price of one offer','e.g. 2500')+'</div>');
+  html+=calcCard('expshare','Expense category % calculator','What share of total spending a category takes.',
+    '<div class="form-row">'+
+    calcField('catamount','Category amount','e.g. 12000')+
+    calcField('totalexp','Total expenses','total: '+Math.round(financeTotals().expenses))+'</div>');
+  html+=calcCard('savings','Profit allocation (Profit First style)','Split a profit amount into owner pay, taxes, savings and reinvestment.',
+    '<div class="form-row">'+
+    calcField('profitamt','Profit to allocate','e.g. 40000')+
+    calcField('ownerpct','Owner pay %','e.g. 50')+'</div>');
+  html+='</div>';
+  return html;
+}
+function calcField(name,label,ph){
+  return '<div class="field"><label>'+esc(label)+'</label><input class="input" type="number" step="any" name="'+name+'" placeholder="'+esc(ph||'')+'"></div>';
+}
+function calcCard(key,title,desc,fieldsHTML){
+  return '<div class="card"><div class="card-head"><h3>'+esc(title)+'</h3></div>'+
+    '<p style="font-size:.82rem;color:var(--text-2);margin-bottom:12px">'+esc(desc)+'</p>'+
+    '<form data-calc="'+key+'">'+fieldsHTML+
+    '<button type="submit" class="btn btn-primary btn-sm">'+icon('calc')+' Calculate</button>'+
+    '<div class="calc-result" id="calc-result-'+key+'"></div></form></div>';
+}
+function runCalculator(key,form){
+  var g=function(n){ return num(form.elements[n]?form.elements[n].value:0); };
+  var out='';
+  if(key==='breakeven'){
+    var fixed=g('fixed'),price=g('price'),vc=g('varcost');
+    var cm=price-vc;
+    if(cm<=0) out='Price must be higher than variable cost — right now you lose '+fmtMoney(Math.abs(cm))+' on every sale.<small>Raise the price or cut the unit cost.</small>';
+    else { var units=Math.ceil(fixed/cm);
+      out='Break-even: <b>'+fmtNum(units,0)+' sales/month</b> ('+fmtMoney(units*price)+' revenue).<small>Each sale contributes '+fmtMoney(cm)+' ('+fmtPct(cm/price*100,0)+' contribution margin). Every sale beyond '+fmtNum(units,0)+' is profit.</small>'; }
+  } else if(key==='pricing'){
+    var cost=g('cost'),tm=g('targetmargin'),cp=g('curprice');
+    if(tm>=100) out='Target margin must be below 100%.';
+    else { var rec=cost/(1-tm/100);
+      out='Recommended price: <b>'+fmtMoney(rec)+'</b> for a '+fmtPct(tm,0)+' margin.';
+      if(cp>0){ var curM=(cp-cost)/cp*100; out+='<small>Your current price '+fmtMoney(cp)+' gives a '+fmtPct(curM,1)+' margin — '+(curM>=tm?'already at or above target.':'that is '+fmtPct(tm-curM,1)+' below target; this offer may need better pricing.')+'</small>'; }
+      else out+='<small>Markup over cost: '+fmtPct((rec-cost)/cost*100,0)+'.</small>'; }
+  } else if(key==='tax'){
+    var incv=g('income'),rate=g('rate')||state.settings.taxRate||8;
+    out='Set aside <b>'+fmtMoney(incv*rate/100)+'</b> ('+fmtPct(rate,1)+').<small>Keep '+fmtMoney(incv*(1-rate/100))+' as spendable. Move the tax amount to a separate account the day you get paid.</small>';
+  } else if(key==='forecast'){
+    var base=g('base')||avgMonthlyRevenue(3),gr=g('growth'),mo=clamp(Math.round(g('months'))||6,1,36);
+    var total=0,v=base,lines=[];
+    for(var i=1;i<=mo;i++){ v=i===1?base:v*(1+gr/100); total+=v; if(i<=3||i===mo) lines.push('Month '+i+': '+fmtMoney(v)); }
+    out='Projected total over '+mo+' months: <b>'+fmtMoney(total)+'</b><small>'+lines.join(' · ')+(mo>4?' (months in between grow at '+fmtPct(gr,1)+'/mo)':'')+'</small>';
+  } else if(key==='target'){
+    var goal=g('goal'),avg=g('avgsale'),done=g('done');
+    var remaining=Math.max(0,goal-done);
+    var now=new Date(); var daysInM=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
+    var daysLeft=Math.max(1,daysInM-now.getDate()+1);
+    out='Remaining: <b>'+fmtMoney(remaining)+'</b> → '+fmtMoney(remaining/daysLeft)+'/day · '+fmtMoney(remaining/Math.max(1,Math.ceil(daysLeft/7)))+'/week.'+
+      (avg>0?'<small>That is about '+fmtNum(Math.ceil(remaining/avg),0)+' more sales at '+fmtMoney(avg)+' each ('+fmtNum((remaining/avg/daysLeft),1)+' sales per day).</small>':'');
+  } else if(key==='peroffer'){
+    var tot=g('total'),offers=Math.max(1,Math.round(g('offers'))),op=g('offerprice');
+    out='Each offer must produce <b>'+fmtMoney(tot/offers)+'</b>.'+
+      (op>0?'<small>At '+fmtMoney(op)+' per sale that is '+fmtNum(Math.ceil(tot/offers/op),0)+' sales per offer ('+fmtNum(Math.ceil(tot/op),0)+' sales total).</small>':'');
+  } else if(key==='expshare'){
+    var ca=g('catamount'),te=g('totalexp')||financeTotals().expenses;
+    if(te<=0) out='Enter your total expenses (no expense data found).';
+    else { var sh=ca/te*100;
+      out='This category is <b>'+fmtPct(sh,1)+'</b> of total spending.<small>'+(sh>=40?'Over 40% in one category is a concentration risk — it is your biggest cost lever.':sh>=25?'A significant share. Review it quarterly.':'A modest share of spending.')+'</small>'; }
+  } else if(key==='savings'){
+    var pa=g('profitamt'),owner=clamp(g('ownerpct')||50,0,100);
+    var taxPct=Math.min(100-owner,state.settings.taxRate||8);
+    var rest=100-owner-taxPct;
+    var savePct=Math.round(rest/2), reinvest=rest-savePct;
+    out='Owner pay: <b>'+fmtMoney(pa*owner/100)+'</b> ('+owner+'%)<small>Taxes: '+fmtMoney(pa*taxPct/100)+' ('+taxPct+'%) · Savings buffer: '+fmtMoney(pa*savePct/100)+' ('+savePct+'%) · Reinvest: '+fmtMoney(pa*reinvest/100)+' ('+reinvest+'%)</small>';
+  }
+  var resEl=byId('calc-result-'+key);
+  if(resEl){ resEl.innerHTML=out; resEl.classList.add('show'); }
+}
+
+/* ============================================================
+   view: goals
+   ============================================================ */
+function viewGoals(){
+  var html=topbar('Goals','Set targets, track progress automatically, and always know the next move.',
+    '<button class="btn btn-primary" data-action="open-goal-modal">'+icon('plus')+'<span class="btn-txt">New goal</span></button>');
+  var open=state.goals.filter(function(g){return !g.done;});
+  var done=state.goals.filter(function(g){return g.done;});
+  var overdue=open.filter(function(g){ var d=daysUntil(g.deadline); return d!=null&&d<0; });
+  html+='<div class="grid grid-4">'+
+    statCard('Active goals',String(open.length),'','','goals')+
+    statCard('Completed',String(done.length),'','','check')+
+    statCard('Overdue',String(overdue.length),overdue.length?'<span class="stat-delta down">needs attention</span>':'<span class="stat-delta up">all on time</span>','','clock')+
+    statCard('Avg progress',open.length?fmtPct(sum(open,function(g){return goalProgress(g).pct;})/open.length,0):'—','','','metrics')+
+  '</div>';
+  html+='<div class="chips mt-lg">'+
+    ['open','done','all'].map(function(k){
+      var lbl={open:'Active ('+open.length+')',done:'Completed ('+done.length+')',all:'All'}[k];
+      return '<button class="chip '+(ui.goalFilter===k?'active':'')+'" data-action="goal-filter" data-val="'+k+'">'+lbl+'</button>';
+    }).join('')+'</div>';
+  var list=ui.goalFilter==='open'?open:(ui.goalFilter==='done'?done:state.goals);
+  if(!list.length){
+    html+='<div class="card mt">'+emptyState('goals','No goals here','Goals give every week a direction. Revenue and profit goals track themselves from your finance data.','<button class="btn btn-sm btn-primary" data-action="open-goal-modal">'+icon('plus')+' Create a goal</button>')+'</div>';
+    return html;
+  }
+  html+='<div class="grid grid-2 mt">';
+  list.slice().sort(function(a,b){ return (a.done?1:0)-(b.done?1:0)||(a.deadline||'9999').localeCompare(b.deadline||'9999'); }).forEach(function(g){
+    html+=goalCardHTML(g);
+  });
+  html+='</div>';
+  return html;
+}
+function goalCardHTML(g){
+  var gp=goalProgress(g), st=goalStatus(g);
+  var d=daysUntil(g.deadline);
+  var steps=g.steps||[];
+  var nextStep=steps.filter(function(s){return !s.done;})[0];
+  var prioCls={High:'risk',Medium:'warn',Low:'neutral'}[g.priority]||'neutral';
+  var typeLbl={revenue:'Revenue goal · auto-tracked',profit:'Profit goal · auto-tracked',custom:'Custom goal'}[g.type]||'Goal';
+  var html='<div class="card"><div class="card-head" style="margin-bottom:8px">'+
+    '<div style="min-width:0;flex:1"><h3 style="'+(g.done?'text-decoration:line-through;color:var(--text-3)':'')+'">'+esc(g.title)+'</h3><span class="sub">'+typeLbl+(g.startDate&&g.type!=='custom'?' from '+fmtDate(g.startDate):'')+'</span></div>'+
+    '<span class="badge '+st.cls+'">'+st.label+'</span></div>';
+  html+='<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px"><b style="font-size:1.25rem;font-variant-numeric:tabular-nums">'+(g.type==='custom'&&g.unit?fmtNum(gp.current)+' '+esc(g.unit):fmtMoney(gp.current))+'</b><span style="color:var(--text-3);font-size:.85rem">of '+(g.type==='custom'&&g.unit?fmtNum(g.target)+' '+esc(g.unit):fmtMoney(g.target))+'</span></div>';
+  html+='<div class="progress thick"><div class="bar '+(st.cls==='good'?'good':(st.cls==='risk'?'risk':(st.cls==='warn'?'warn':'')))+'" style="width:'+gp.pct+'%"></div></div>';
+  html+='<div style="display:flex;justify-content:space-between;font-size:.76rem;color:var(--text-3);margin-top:5px"><span>'+fmtPct(gp.pct,0)+' complete</span><span>'+(d==null?'no deadline':(d>=0?d+' days left ('+fmtDate(g.deadline)+')':Math.abs(d)+' days overdue'))+'</span></div>';
+  html+='<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap"><span class="badge '+prioCls+'">'+esc(g.priority||'Medium')+' priority</span>'+(steps.length?'<span class="badge neutral">'+steps.filter(function(s){return s.done;}).length+'/'+steps.length+' steps</span>':'')+'</div>';
+  if(!g.done&&nextStep) html+='<div class="insight info" style="margin-top:12px;padding:9px 12px"><div class="i-icon" style="width:26px;height:26px">'+icon('flag')+'</div><div><b style="font-size:.8rem">Next action</b><p>'+esc(nextStep.text)+'</p></div></div>';
+  else if(!g.done&&!steps.length) html+='<p style="font-size:.76rem;color:var(--text-3);margin-top:10px">Tip: add action steps so the goal always shows your next move.</p>';
+  if(steps.length){
+    html+='<div style="margin-top:10px">'+steps.map(function(s){
+      return '<div class="wk-item" style="padding:6px 2px"><button class="task-check'+(s.done?' checked':'')+'" data-action="toggle-goal-step" data-goal="'+g.id+'" data-step="'+s.id+'">'+icon('check')+'</button><span style="font-size:.84rem;'+(s.done?'text-decoration:line-through;color:var(--text-3)':'')+'">'+esc(s.text)+'</span></div>';
+    }).join('')+'</div>';
+  }
+  html+='<div style="display:flex;gap:7px;margin-top:14px;flex-wrap:wrap">'+
+    (g.done?'<button class="btn btn-sm btn-ghost" data-action="reopen-goal" data-id="'+g.id+'">'+icon('refresh')+' Reopen</button>'
+      :'<button class="btn btn-sm btn-good" data-action="complete-goal" data-id="'+g.id+'">'+icon('check')+' Mark complete</button>')+
+    (g.type==='custom'&&!g.done?'<button class="btn btn-sm btn-ghost" data-action="update-goal-progress" data-id="'+g.id+'">'+icon('metrics')+' Update progress</button>':'')+
+    '<button class="btn btn-sm btn-ghost" data-action="edit-goal" data-id="'+g.id+'">'+icon('edit')+' Edit</button>'+
+    '<button class="btn btn-sm btn-danger" data-action="delete-goal" data-id="'+g.id+'">'+icon('trash')+' Delete</button>'+
+  '</div></div>';
+  return html;
+}
+
+/* ============================================================
+   view: roadmap
+   ============================================================ */
+var ROADMAP_STATUSES=['Not Started','In Progress','Blocked','Completed'];
+function roadmapStats(){
+  var total=0,done=0,blocked=0,late=0;
+  state.phases.forEach(function(p){
+    (p.tasks||[]).forEach(function(t){
+      total++;
+      if(t.status==='Completed') done++;
+      if(t.status==='Blocked') blocked++;
+      var d=daysUntil(t.deadline);
+      if(t.status!=='Completed'&&d!=null&&d<0) late++;
+    });
+  });
+  return {total:total,done:done,blocked:blocked,late:late,pct:total?done/total*100:0};
+}
+function viewRoadmap(){
+  var rs=roadmapStats();
+  var html=topbar('Roadmap','Your business plan as phases and milestones — see exactly where you are.',
+    '<button class="btn btn-primary" data-action="open-phase-modal">'+icon('plus')+'<span class="btn-txt">New phase</span></button>');
+  html+='<div class="grid grid-4">'+
+    statCard('Overall progress',fmtPct(rs.pct,0),'','','roadmap')+
+    statCard('Milestones',rs.done+' / '+rs.total,'','','flag')+
+    statCard('Blocked',String(rs.blocked),rs.blocked?'<span class="stat-delta down">unblock these first</span>':'','','alert')+
+    statCard('Delayed',String(rs.late),rs.late?'<span class="stat-delta down">past deadline</span>':'','','clock')+
+  '</div>';
+  if(rs.total>0) html+='<div class="card mt"><div class="progress thick"><div class="bar good" style="width:'+rs.pct+'%"></div></div><p style="font-size:.78rem;color:var(--text-3);margin-top:7px">'+fmtPct(rs.pct,0)+' of all roadmap items completed</p></div>';
+  if(!state.phases.length){
+    html+='<div class="card mt">'+emptyState('roadmap','No roadmap yet','Break your business plan into phases (e.g. "Launch", "First 10 clients", "Systemize") and add milestone tasks under each.','<button class="btn btn-sm btn-primary" data-action="open-phase-modal">'+icon('plus')+' Create first phase</button>')+'</div>';
+    return html;
+  }
+  html+='<div class="card mt" style="padding:24px 24px 6px">';
+  state.phases.slice().sort(function(a,b){return (a.order||0)-(b.order||0);}).forEach(function(p){
+    var tasks=p.tasks||[];
+    var doneN=tasks.filter(function(t){return t.status==='Completed';}).length;
+    var pct=tasks.length?doneN/tasks.length*100:0;
+    var phaseState=tasks.length&&doneN===tasks.length?'done':(tasks.some(function(t){return t.status==='In Progress';})||doneN>0?'active':'');
+    html+='<div class="phase"><div class="phase-dot '+phaseState+'">'+icon('check')+'</div>'+
+      '<div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap"><div style="flex:1;min-width:200px"><b style="font-size:1.02rem">'+esc(p.name)+'</b>'+
+      (p.desc?'<p style="font-size:.82rem;color:var(--text-2);margin-top:2px">'+esc(p.desc)+'</p>':'')+'</div>'+
+      '<div style="display:flex;gap:5px"><button class="btn btn-sm btn-ghost" data-action="open-phase-task-modal" data-phase="'+p.id+'">'+icon('plus')+' Task</button>'+
+      '<button class="btn-icon" data-action="edit-phase" data-id="'+p.id+'">'+icon('edit')+'</button>'+
+      '<button class="btn-icon danger" data-action="delete-phase" data-id="'+p.id+'">'+icon('trash')+'</button></div></div>';
+    if(tasks.length){
+      html+='<div style="display:flex;align-items:center;gap:10px;margin-top:8px"><div class="progress" style="flex:1;height:6px"><div class="bar '+(pct===100?'good':'')+'" style="width:'+pct+'%"></div></div><span style="font-size:.74rem;color:var(--text-3);white-space:nowrap">'+doneN+'/'+tasks.length+'</span></div>';
+      html+='<div style="margin-top:10px">';
+      tasks.forEach(function(t){
+        var d=daysUntil(t.deadline);
+        var stCls={'Not Started':'neutral','In Progress':'info','Blocked':'risk','Completed':'good'}[t.status]||'neutral';
+        var late=t.status!=='Completed'&&d!=null&&d<0;
+        html+='<div class="list-row" style="padding:9px 0">'+
+          '<select class="input" style="width:auto;padding:4px 28px 4px 9px;font-size:.76rem;font-weight:600" data-action-change="phase-task-status" data-phase="'+p.id+'" data-task="'+t.id+'">'+
+            ROADMAP_STATUSES.map(function(s){return '<option'+(t.status===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select>'+
+          '<div style="flex:1;min-width:0"><span style="font-size:.88rem;font-weight:600;'+(t.status==='Completed'?'text-decoration:line-through;color:var(--text-3)':'')+'">'+esc(t.title)+'</span>'+
+          '<div class="task-meta">'+(t.deadline?'<span class="badge '+(late?'risk':'neutral')+'">'+icon('clock')+' '+fmtDate(t.deadline)+(late?' · late':'')+'</span>':'')+
+          (t.priority?'<span class="badge '+({High:'risk',Medium:'warn',Low:'neutral'}[t.priority]||'neutral')+'">'+esc(t.priority)+'</span>':'')+
+          '<span class="badge '+stCls+'">'+esc(t.status)+'</span></div></div>'+
+          '<div class="row-actions"><button class="btn-icon" data-action="edit-phase-task" data-phase="'+p.id+'" data-task="'+t.id+'">'+icon('edit')+'</button>'+
+          '<button class="btn-icon danger" data-action="delete-phase-task" data-phase="'+p.id+'" data-task="'+t.id+'">'+icon('trash')+'</button></div></div>';
+      });
+      html+='</div>';
+    } else {
+      html+='<p style="font-size:.8rem;color:var(--text-3);margin-top:8px">No tasks in this phase yet.</p>';
+    }
+    html+='</div>';
+  });
+  html+='</div>';
+  return html;
+}
+
+/* ============================================================
+   view: tasks
+   ============================================================ */
+function viewTasks(){
+  var open=state.tasks.filter(function(t){return !t.done;});
+  var done=state.tasks.filter(function(t){return t.done;});
+  var overdue=open.filter(function(t){ var d=daysUntil(t.deadline); return d!=null&&d<0; });
+  var donePct=state.tasks.length?done.length/state.tasks.length*100:0;
+  var html=topbar('Tasks & Actions','Daily, weekly and monthly actions that move the business forward.',
+    '<button class="btn btn-primary" data-action="open-task-modal">'+icon('plus')+'<span class="btn-txt">New task</span></button>');
+  html+='<div class="grid grid-4">'+
+    statCard('Open tasks',String(open.length),'','','tasks')+
+    statCard('Overdue',String(overdue.length),overdue.length?'<span class="stat-delta down">reschedule or do now</span>':'<span class="stat-delta up">all on time</span>','','clock')+
+    statCard('Completed',String(done.length),'','','check')+
+    statCard('Completion rate',fmtPct(donePct,0),'','','metrics')+
+  '</div>';
+  // quick add
+  html+='<div class="card mt-lg"><form data-form="quick-task" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'+
+    '<input class="input" name="title" placeholder="Quick add: what needs to get done?" style="flex:2;min-width:200px" required>'+
+    '<input class="input" type="date" name="deadline" style="width:auto">'+
+    '<select class="input" name="priority" style="width:auto"><option>Medium</option><option>High</option><option>Low</option></select>'+
+    '<select class="input" name="bucket" style="width:auto"><option value="daily">Daily</option><option value="weekly" selected>Weekly</option><option value="monthly">Monthly</option></select>'+
+    '<button class="btn btn-primary" type="submit">'+icon('plus')+' Add</button></form></div>';
+  // filters
+  var tf=ui.taskFilter;
+  html+='<div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:16px;align-items:center">'+
+    '<div class="chips">'+[['open','Open'],['overdue','Overdue'],['done','Done'],['all','All']].map(function(x){
+      return '<button class="chip '+(tf.status===x[0]?'active':'')+'" data-action="task-filter-status" data-val="'+x[0]+'">'+x[1]+'</button>';}).join('')+'</div>'+
+    '<div class="chips">'+[['all','Any priority'],['High','High'],['Medium','Medium'],['Low','Low']].map(function(x){
+      return '<button class="chip '+(tf.priority===x[0]?'active':'')+'" data-action="task-filter-priority" data-val="'+x[0]+'">'+x[1]+'</button>';}).join('')+'</div>'+
+    '<div class="chips">'+[['all','Any cadence'],['daily','Daily'],['weekly','Weekly'],['monthly','Monthly']].map(function(x){
+      return '<button class="chip '+(tf.bucket===x[0]?'active':'')+'" data-action="task-filter-bucket" data-val="'+x[0]+'">'+x[1]+'</button>';}).join('')+'</div></div>';
+  var list=state.tasks.filter(function(t){
+    if(tf.status==='open'&&t.done) return false;
+    if(tf.status==='done'&&!t.done) return false;
+    if(tf.status==='overdue'){ var d=daysUntil(t.deadline); if(t.done||d==null||d>=0) return false; }
+    if(tf.priority!=='all'&&t.priority!==tf.priority) return false;
+    if(tf.bucket!=='all'&&t.bucket!==tf.bucket) return false;
+    return true;
+  }).sort(function(a,b){
+    if(a.done!==b.done) return a.done?1:-1;
+    var pr={High:0,Medium:1,Low:2};
+    return (a.deadline||'9999').localeCompare(b.deadline||'9999')||(pr[a.priority]||1)-(pr[b.priority]||1);
+  });
+  html+='<div class="card mt">';
+  if(!list.length) html+=emptyState('tasks','No tasks here','Adjust the filters or add a task with the quick-add bar above.');
+  else html+=list.map(taskRowHTML).join('');
+  html+='</div>';
+  return html;
+}
+function taskRowHTML(t){
+  var d=daysUntil(t.deadline);
+  var late=!t.done&&d!=null&&d<0;
+  var prioCls={High:'risk',Medium:'warn',Low:'neutral'}[t.priority]||'neutral';
+  return '<div class="task-row'+(t.done?' done':'')+'">'+
+    '<button class="task-check'+(t.done?' checked':'')+'" data-action="toggle-task" data-id="'+t.id+'" aria-label="Toggle">'+icon('check')+'</button>'+
+    '<div style="flex:1;min-width:0"><div class="task-title">'+esc(t.title)+'</div>'+
+    '<div class="task-meta">'+
+      (t.deadline?'<span class="badge '+(late?'risk':(d!=null&&d<=2?'warn':'neutral'))+'">'+icon('clock')+' '+(late?Math.abs(d)+'d overdue':(d===0?'Today':(d===1?'Tomorrow':fmtDate(t.deadline))))+'</span>':'')+
+      '<span class="badge '+prioCls+'">'+esc(t.priority||'Medium')+'</span>'+
+      '<span class="badge accent">'+esc(t.bucket||'weekly')+'</span></div></div>'+
+    '<div class="row-actions"><button class="btn-icon" data-action="edit-task" data-id="'+t.id+'">'+icon('edit')+'</button>'+
+    '<button class="btn-icon danger" data-action="delete-task" data-id="'+t.id+'">'+icon('trash')+'</button></div></div>';
+}
+
+/* ============================================================
+   view: notes
+   ============================================================ */
+var NOTE_CATS=['General','Idea','Meeting','Strategy','Decision'];
+function viewNotes(){
+  var nf=ui.noteFilter;
+  var html=topbar('Notes','Ideas, meeting notes and strategy — searchable, taggable, pinnable.',
+    '<button class="btn btn-primary" data-action="open-note-modal">'+icon('plus')+'<span class="btn-txt">New note</span></button>');
+  html+='<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:16px">'+
+    '<div class="searchbar">'+icon('search')+'<input class="input" placeholder="Search notes, tags…" value="'+esc(nf.q)+'" data-action-input="note-search"></div>'+
+    '<div class="chips"><button class="chip '+(nf.category==='all'?'active':'')+'" data-action="note-filter-cat" data-val="all">All</button>'+
+    NOTE_CATS.map(function(c){return '<button class="chip '+(nf.category===c?'active':'')+'" data-action="note-filter-cat" data-val="'+c+'">'+c+'</button>';}).join('')+'</div></div>';
+  var list=state.notes.filter(function(n){
+    if(nf.category!=='all'&&n.category!==nf.category) return false;
+    if(nf.q){
+      var q=nf.q.toLowerCase();
+      var hay=(n.title+' '+n.body+' '+(n.tags||[]).join(' ')).toLowerCase();
+      if(hay.indexOf(q)<0) return false;
+    }
+    return true;
+  }).sort(function(a,b){ return (b.pinned?1:0)-(a.pinned?1:0)||(b.updatedAt||'').localeCompare(a.updatedAt||''); });
+  if(!list.length){
+    html+='<div class="card">'+emptyState('notes',state.notes.length?'No matching notes':'No notes yet','Capture business ideas, meeting outcomes and strategy thoughts before they evaporate.','<button class="btn btn-sm btn-primary" data-action="open-note-modal">'+icon('plus')+' Write a note</button>')+'</div>';
+    return html;
+  }
+  html+='<div class="grid grid-3">';
+  list.forEach(function(n){
+    var catCls={Idea:'accent',Meeting:'info',Strategy:'warn',Decision:'good',General:'neutral'}[n.category]||'neutral';
+    html+='<div class="card note-card" data-action="open-note-modal" data-id="'+n.id+'">'+
+      '<button class="btn-icon pin'+(n.pinned?' pinned':'')+'" data-action="toggle-pin" data-id="'+n.id+'" aria-label="Pin">'+icon('pin')+'</button>'+
+      '<h4>'+esc(n.title||'Untitled')+'</h4>'+
+      '<div class="note-body">'+esc(n.body||'')+'</div>'+
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:auto">'+
+        '<span class="badge '+catCls+'">'+esc(n.category||'General')+'</span>'+
+        (n.tags||[]).map(function(tg){return '<span class="tag">#'+esc(tg)+'</span>';}).join('')+
+        '<span style="margin-left:auto;font-size:.7rem;color:var(--text-3)">'+fmtDate((n.updatedAt||'').slice(0,10))+'</span></div>'+
+      '<div style="display:flex;gap:5px;margin-top:4px"><button class="btn btn-sm btn-ghost" data-action="open-note-modal" data-id="'+n.id+'">'+icon('edit')+' Edit</button>'+
+      '<button class="btn btn-sm btn-danger" data-action="delete-note" data-id="'+n.id+'">'+icon('trash')+'</button></div></div>';
+  });
+  html+='</div>';
+  return html;
+}
+
+/* ============================================================
+   view: clients (mini-CRM)
+   ============================================================ */
+var CLIENT_STATUSES=['Lead','Active','Inactive','Churned'];
+function viewClients(){
+  var html=topbar('Clients','A lightweight CRM — know who pays you and where your pipeline stands.',
+    '<button class="btn btn-primary" data-action="open-client-modal">'+icon('plus')+'<span class="btn-txt">Add client</span></button>');
+  var byStatus={}; CLIENT_STATUSES.forEach(function(s){byStatus[s]=0;});
+  state.clients.forEach(function(c){ byStatus[c.status]=(byStatus[c.status]||0)+1; });
+  var revByClient={};
+  state.finance.forEach(function(e){ if(e.type==='income'&&e.client) revByClient[e.client.toLowerCase()]=(revByClient[e.client.toLowerCase()]||0)+e.amount; });
+  var active=byStatus['Active']||0;
+  var t=financeTotals();
+  var revPerClient=active>0?t.revenue/active:null;
+  html+='<div class="grid grid-4">'+
+    statCard('Active clients',String(active),'','','clients')+
+    statCard('Leads in pipeline',String(byStatus['Lead']||0),'','','flag')+
+    statCard('Revenue / active client',revPerClient!=null?fmtMoney(revPerClient):'—','<span class="stat-delta flat">all-time revenue ÷ active</span>','','cash')+
+    statCard('Churned',String(byStatus['Churned']||0),'','','arrowdr')+
+  '</div>';
+  html+='<div class="chips mt-lg"><button class="chip '+(ui.clientFilter==='all'?'active':'')+'" data-action="client-filter" data-val="all">All ('+state.clients.length+')</button>'+
+    CLIENT_STATUSES.map(function(s){return '<button class="chip '+(ui.clientFilter===s?'active':'')+'" data-action="client-filter" data-val="'+s+'">'+s+' ('+(byStatus[s]||0)+')</button>';}).join('')+'</div>';
+  var list=state.clients.filter(function(c){ return ui.clientFilter==='all'||c.status===ui.clientFilter; })
+    .sort(function(a,b){ return (revByClient[(b.name||'').toLowerCase()]||b.value||0)-(revByClient[(a.name||'').toLowerCase()]||a.value||0); });
+  html+='<div class="card mt">';
+  if(!list.length){
+    html+=emptyState('clients',state.clients.length?'No clients with this status':'No clients yet','Track leads and clients here. Income entries tagged with a client name automatically show as tracked revenue.','<button class="btn btn-sm btn-primary" data-action="open-client-modal">'+icon('plus')+' Add first client</button>');
+  } else {
+    html+='<div class="table-wrap"><table><thead><tr><th>Client</th><th>Status</th><th>Contact</th><th style="text-align:right">Est. value / mo</th><th style="text-align:right">Tracked revenue</th><th>Note</th><th></th></tr></thead><tbody>';
+    list.forEach(function(c){
+      var stCls={Lead:'info',Active:'good',Inactive:'neutral',Churned:'risk'}[c.status]||'neutral';
+      var tracked=revByClient[(c.name||'').toLowerCase()]||0;
+      html+='<tr><td style="font-weight:700">'+esc(c.name)+'</td>'+
+        '<td><span class="badge '+stCls+'">'+esc(c.status)+'</span></td>'+
+        '<td>'+esc(c.contact||'—')+'</td>'+
+        '<td class="num" style="text-align:right">'+(c.value?fmtMoney(c.value):'—')+'</td>'+
+        '<td class="num" style="text-align:right;color:var(--income)">'+(tracked?fmtMoney(tracked):'—')+'</td>'+
+        '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(c.note||'')+'">'+esc(c.note||'—')+'</td>'+
+        '<td><div class="row-actions"><button class="btn-icon" data-action="edit-client" data-id="'+c.id+'">'+icon('edit')+'</button><button class="btn-icon danger" data-action="delete-client" data-id="'+c.id+'">'+icon('trash')+'</button></div></td></tr>';
+    });
+    html+='</tbody></table></div>';
+  }
+  html+='</div>';
+  return html;
+}
+
+/* ============================================================
+   view: metrics & KPIs
+   ============================================================ */
+var METRIC_DEFS=[
+  {key:'conv',name:'Conversion rate',unit:'%',icon:'metrics',
+    explain:'Out of everyone who sees your offer (visitors, inquiries), how many actually buy. Higher = your offer and sales process work.',
+    healthy:'2%+ for cold traffic, 10%+ for warm leads is solid.',
+    evaluate:function(v){ return v>=2?'good':(v>=1?'warn':'risk'); },
+    calc:{fields:[['visitors','Visitors / leads'],['buyers','Buyers']],fn:function(g){ var vi=g('visitors'); return vi>0?g('buyers')/vi*100:null; }}},
+  {key:'aov',name:'Average order value',unit:'money',icon:'cash',
+    explain:'How much an average sale is worth. Raising AOV (bundles, upsells) grows revenue without needing more customers.',
+    healthy:'No universal benchmark — track the trend; up is good.',
+    evaluate:function(v){ return v>0?'good':'warn'; },
+    auto:function(){ var inc=state.finance.filter(function(e){return e.type==='income';}); return inc.length?financeTotals().revenue/inc.length:null; },
+    calc:{fields:[['rev','Total revenue'],['orders','Number of orders']],fn:function(g){ var o=g('orders'); return o>0?g('rev')/o:null; }}},
+  {key:'cac',name:'Customer acquisition cost',unit:'money',icon:'arrowdr',
+    explain:'What it costs you in marketing and sales to win one new customer. Lower is better.',
+    healthy:'Healthy when CLV is at least 3× CAC.',
+    evaluate:function(v){ var clv=state.metrics.clv?state.metrics.clv.value:null; if(clv==null) return v>0?'warn':'risk'; return clv>=v*3?'good':(clv>=v?'warn':'risk'); },
+    calc:{fields:[['spend','Marketing + sales spend'],['newc','New customers gained']],fn:function(g){ var n=g('newc'); return n>0?g('spend')/n:null; }}},
+  {key:'clv',name:'Customer lifetime value',unit:'money',icon:'clients',
+    explain:'Total profit one customer brings over their whole relationship with you. The ceiling for what you can spend to acquire them.',
+    healthy:'Aim for CLV ≥ 3× CAC.',
+    evaluate:function(v){ var cac=state.metrics.cac?state.metrics.cac.value:null; if(cac==null||cac<=0) return v>0?'good':'warn'; return v>=cac*3?'good':(v>=cac?'warn':'risk'); },
+    calc:{fields:[['avgval','Avg purchase value'],['freq','Purchases per year'],['years','Years they stay']],fn:function(g){ return g('avgval')*g('freq')*g('years'); }}},
+  {key:'roas',name:'Return on ad spend',unit:'x',icon:'spark',
+    explain:'Revenue generated per unit of ad spend. ROAS of 4 means every ₱1 of ads brings ₱4 back.',
+    healthy:'3×+ is generally profitable after product costs; under 1.5× is usually losing money.',
+    evaluate:function(v){ return v>=3?'good':(v>=1.5?'warn':'risk'); },
+    calc:{fields:[['adrev','Revenue from ads'],['adspend','Ad spend']],fn:function(g){ var s=g('adspend'); return s>0?g('adrev')/s:null; }}},
+  {key:'lead',name:'Lead → customer rate',unit:'%',icon:'flag',
+    explain:'Of the leads that enter your pipeline, how many become paying customers. Shows the strength of your follow-up and sales process.',
+    healthy:'10–25% is typical for warm B2B/service pipelines.',
+    evaluate:function(v){ return v>=10?'good':(v>=5?'warn':'risk'); },
+    calc:{fields:[['leads','Leads'],['customers','Became customers']],fn:function(g){ var l=g('leads'); return l>0?g('customers')/l*100:null; }}},
+  {key:'mrr',name:'Monthly recurring revenue',unit:'money',icon:'refresh',
+    explain:'Predictable revenue that repeats every month (retainers, subscriptions). The most stable foundation a business can have.',
+    healthy:'Growing MRR that covers fixed costs = strong stability.',
+    evaluate:function(v){ return v>0?'good':'warn'; },
+    calc:{fields:[['subs','Recurring customers'],['avgfee','Avg monthly fee']],fn:function(g){ return g('subs')*g('avgfee'); }}},
+  {key:'churn',name:'Churn rate',unit:'%',icon:'arrowdr',
+    explain:'The share of customers you lose each month. High churn means you pour water into a leaking bucket.',
+    healthy:'Under 5% monthly is acceptable; under 2% is great.',
+    evaluate:function(v){ return v<=5?'good':(v<=8?'warn':'risk'); },
+    calc:{fields:[['startc','Customers at start of month'],['lost','Customers lost']],fn:function(g){ var s=g('startc'); return s>0?g('lost')/s*100:null; }}},
+  {key:'gross',name:'Gross margin',unit:'%',icon:'pie',
+    explain:'What is left after direct costs of delivering the product/service, before overhead. Shows if the core offer itself is profitable.',
+    healthy:'50%+ for services, 30%+ for physical products.',
+    evaluate:function(v){ return v>=40?'good':(v>=20?'warn':'risk'); },
+    calc:{fields:[['rev','Revenue'],['cogs','Direct costs (COGS)']],fn:function(g){ var r=g('rev'); return r>0?(r-g('cogs'))/r*100:null; }}},
+  {key:'net',name:'Net margin',unit:'%',icon:'wallet',
+    explain:'Profit after ALL costs as a share of revenue. The single best summary of business efficiency.',
+    healthy:'10% is okay, 20%+ is strong, 30%+ is excellent.',
+    evaluate:function(v){ return v>=20?'good':(v>=8?'warn':'risk'); },
+    auto:function(){ var t=financeTotals(); return t.margin; }},
+  {key:'rpc',name:'Revenue per client',unit:'money',icon:'clients',
+    explain:'Average revenue each active client generates. Often easier to grow this than to find new clients.',
+    healthy:'Track the trend — rising revenue per client means deeper relationships.',
+    evaluate:function(v){ return v>0?'good':'warn'; },
+    auto:function(){ var a=state.clients.filter(function(c){return c.status==='Active';}).length; var t=financeTotals(); return a>0?t.revenue/a:null; }}
+];
+function metricValue(def){
+  var saved=state.metrics[def.key];
+  if(saved&&saved.value!=null) return {value:saved.value,src:'saved',date:saved.updatedAt};
+  if(def.auto){ var v=def.auto(); if(v!=null&&!isNaN(v)) return {value:v,src:'auto',date:null}; }
+  return null;
+}
+function fmtMetric(def,v){
+  if(v==null||isNaN(v)) return '—';
+  if(def.unit==='money') return fmtMoney(v);
+  if(def.unit==='%') return fmtPct(v);
+  if(def.unit==='x') return fmtNum(v,2)+'×';
+  return fmtNum(v);
+}
+function viewMetrics(){
+  var html=topbar('Metrics & KPIs','Know your numbers. Each metric is explained in plain language with a health check.');
+  var tracked=0,healthy=0,risky=0;
+  METRIC_DEFS.forEach(function(d){ var mv=metricValue(d); if(mv){ tracked++; var st=d.evaluate(mv.value); if(st==='good')healthy++; if(st==='risk')risky++; } });
+  html+='<div class="grid grid-4">'+
+    statCard('Metrics tracked',tracked+' / '+METRIC_DEFS.length,'','','metrics')+
+    statCard('Healthy',String(healthy),'','','check')+
+    statCard('Risky',String(risky),risky?'<span class="stat-delta down">review below</span>':'','','alert')+
+    statCard('Last updated',lastMetricUpdate()||'—','','','clock')+
+  '</div>';
+  html+='<div class="grid grid-3 mt-lg">';
+  METRIC_DEFS.forEach(function(d){
+    var mv=metricValue(d);
+    var st=mv?d.evaluate(mv.value):null;
+    var stBadge=mv?'<span class="badge '+(st==='good'?'good':(st==='warn'?'warn':'risk'))+'">'+(st==='good'?'Healthy':(st==='warn'?'Watch':'Risky'))+'</span>':'<span class="badge neutral">Not tracked</span>';
+    html+='<div class="card metric-card"><div class="m-top"><div class="i-icon" style="width:34px;height:34px;border-radius:10px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center">'+icon(d.icon,16)+'</div>'+
+      '<div style="flex:1;min-width:0"><b style="font-size:.92rem">'+esc(d.name)+'</b><div style="margin-top:2px">'+stBadge+(mv&&mv.src==='auto'?' <span class="badge accent">auto</span>':'')+'</div></div></div>'+
+      '<div class="m-val">'+(mv?fmtMetric(d,mv.value):'—')+'</div>'+
+      (mv&&mv.date?'<div style="font-size:.7rem;color:var(--text-3)">updated '+fmtDate(mv.date.slice(0,10))+'</div>':'')+
+      '<div class="m-explain"><b style="font-size:.76rem">What it means:</b> '+esc(d.explain)+'<br><b style="font-size:.76rem">Healthy range:</b> '+esc(d.healthy)+'</div>';
+    if(d.calc){
+      html+='<details class="calc"><summary>Calculate & save</summary><div class="calc-body"><form data-metric-calc="'+d.key+'">'+
+        d.calc.fields.map(function(f){ return '<div class="field"><label>'+esc(f[1])+'</label><input class="input" type="number" step="any" name="'+f[0]+'" required></div>'; }).join('')+
+        '<button type="submit" class="btn btn-primary btn-sm">'+icon('calc')+' Calculate & save</button></form></div></details>';
+    } else {
+      html+='<details class="calc"><summary>Enter value manually</summary><div class="calc-body"><form data-metric-set="'+d.key+'">'+
+        '<div class="field"><label>Value'+(d.unit==='%'?' (%)':(d.unit==='x'?' (×)':''))+'</label><input class="input" type="number" step="any" name="val" required></div>'+
+        '<button type="submit" class="btn btn-primary btn-sm">'+icon('check')+' Save</button></form></div></details>';
+    }
+    if(state.metrics[d.key]) html+='<button class="btn btn-sm btn-ghost mt" data-action="clear-metric" data-key="'+d.key+'" style="margin-top:8px">'+icon('x')+' Clear saved value</button>';
+    html+='</div>';
+  });
+  html+='</div>';
+  return html;
+}
+function lastMetricUpdate(){
+  var latest=null;
+  Object.keys(state.metrics).forEach(function(k){ var u=state.metrics[k].updatedAt; if(u&&(!latest||u>latest)) latest=u; });
+  return latest?fmtDate(latest.slice(0,10)):null;
+}
+
+/* ============================================================
+   view: reviews & strategy
+   ============================================================ */
+var WEEKLY_CHECKLIST=[
+  'Reviewed this week’s revenue and expenses',
+  'Followed up with every open lead',
+  'Cleared or rescheduled overdue tasks',
+  'Reviewed goal progress and next actions',
+  'Planned the top 3 priorities for next week',
+  'Captured lessons or ideas in Notes'
+];
+function isoWeek(){
+  var d=new Date(); var onejan=new Date(d.getFullYear(),0,1);
+  var week=Math.ceil((((d-onejan)/86400000)+onejan.getDay()+1)/7);
+  return d.getFullYear()+'-W'+String(week).padStart(2,'0');
+}
+function viewReviews(){
+  var html=topbar('Reviews & Strategy','Step back from the day-to-day: monthly reviews, weekly checklist, SWOT and decision log.');
+  // monthly review
+  var months=lastNMonths(6).reverse();
+  var selected=ui.reviewMonth||thisMonthKey();
+  var mm=monthlyMap();
+  var md=mm[selected]||{revenue:0,expenses:0};
+  var rv=state.reviews.monthly[selected]||{};
+  html+='<div class="grid grid-2">';
+  html+='<div class="card"><div class="card-head"><h3>Monthly review</h3><span class="spacer"></span>'+
+    '<select class="input" style="width:auto" data-action-change="review-month">'+months.map(function(k){return '<option value="'+k+'"'+(selected===k?' selected':'')+'>'+monthLabel(k)+'</option>';}).join('')+'</select></div>'+
+    '<div class="grid grid-3" style="gap:10px;margin-bottom:14px">'+
+      '<div style="background:var(--bg-sunken);border-radius:10px;padding:10px"><div style="font-size:.68rem;color:var(--text-3);text-transform:uppercase;font-weight:700;letter-spacing:.06em">Revenue</div><b class="num" style="font-size:1.05rem;color:var(--income)">'+fmtMoney(md.revenue)+'</b></div>'+
+      '<div style="background:var(--bg-sunken);border-radius:10px;padding:10px"><div style="font-size:.68rem;color:var(--text-3);text-transform:uppercase;font-weight:700;letter-spacing:.06em">Expenses</div><b class="num" style="font-size:1.05rem;color:var(--expense)">'+fmtMoney(md.expenses)+'</b></div>'+
+      '<div style="background:var(--bg-sunken);border-radius:10px;padding:10px"><div style="font-size:.68rem;color:var(--text-3);text-transform:uppercase;font-weight:700;letter-spacing:.06em">Profit</div><b class="num" style="font-size:1.05rem">'+fmtMoney(md.revenue-md.expenses)+'</b></div></div>'+
+    '<form data-form="monthly-review"><input type="hidden" name="month" value="'+selected+'">'+
+      '<div class="field"><label>🏆 Wins this month</label><textarea class="input" name="wins" rows="2" placeholder="What went well?">'+esc(rv.wins||'')+'</textarea></div>'+
+      '<div class="field"><label>🧱 Problems & bottlenecks</label><textarea class="input" name="problems" rows="2" placeholder="What slowed you down?">'+esc(rv.problems||'')+'</textarea></div>'+
+      '<div class="field"><label>📚 Lessons learned</label><textarea class="input" name="lessons" rows="2" placeholder="What did the numbers teach you?">'+esc(rv.lessons||'')+'</textarea></div>'+
+      '<div class="field"><label>🎯 Focus for next month</label><textarea class="input" name="focus" rows="2" placeholder="The one thing that matters most next month">'+esc(rv.focus||'')+'</textarea></div>'+
+      '<button class="btn btn-primary" type="submit">'+icon('check')+' Save review</button>'+(rv.savedAt?'<span style="font-size:.74rem;color:var(--text-3);margin-left:10px">saved '+fmtDate(rv.savedAt.slice(0,10))+'</span>':'')+'</form></div>';
+  // weekly checklist
+  var wk=state.reviews.weekly;
+  var curWeek=isoWeek();
+  if(wk.week!==curWeek){ /* new week resets visually but only on interaction */ }
+  var items=wk.week===curWeek?(wk.items||{}):{};
+  var doneCount=WEEKLY_CHECKLIST.filter(function(_,i){return items[i];}).length;
+  html+='<div><div class="card"><div class="card-head"><h3>Weekly review checklist</h3><span class="sub">'+curWeek+'</span><span class="spacer"></span><span class="badge '+(doneCount===WEEKLY_CHECKLIST.length?'good':'neutral')+'">'+doneCount+'/'+WEEKLY_CHECKLIST.length+'</span></div>'+
+    '<div class="progress" style="margin-bottom:12px"><div class="bar '+(doneCount===WEEKLY_CHECKLIST.length?'good':'')+'" style="width:'+(doneCount/WEEKLY_CHECKLIST.length*100)+'%"></div></div>'+
+    WEEKLY_CHECKLIST.map(function(item,i){
+      return '<div class="wk-item"><button class="task-check'+(items[i]?' checked':'')+'" data-action="toggle-weekly" data-idx="'+i+'">'+icon('check')+'</button><span style="'+(items[i]?'text-decoration:line-through;color:var(--text-3)':'')+'">'+esc(item)+'</span></div>';
+    }).join('')+'</div>';
+  // decision log
+  html+='<div class="card mt"><div class="card-head"><h3>Decision log</h3><span class="sub">big calls, written down</span></div>'+
+    '<form data-form="decision" style="display:flex;gap:8px;margin-bottom:12px"><input class="input" name="text" placeholder="What did you decide, and why?" required style="flex:1"><button class="btn btn-primary btn-sm" type="submit">'+icon('plus')+'</button></form>';
+  if(state.reviews.decisions.length){
+    state.reviews.decisions.slice().reverse().slice(0,8).forEach(function(dec){
+      html+='<div class="list-row"><div style="flex:1;min-width:0"><span style="font-size:.86rem">'+esc(dec.text)+'</span><div style="font-size:.7rem;color:var(--text-3)">'+fmtDate(dec.date)+'</div></div><button class="btn-icon danger" data-action="delete-decision" data-id="'+dec.id+'">'+icon('trash')+'</button></div>';
+    });
+  } else html+='<p style="font-size:.8rem;color:var(--text-3)">Future-you will thank present-you for writing decisions down.</p>';
+  html+='</div></div></div>';
+  // SWOT
+  var sw=state.reviews.swot||{s:'',w:'',o:'',t:''};
+  html+='<div class="card mt"><div class="card-head"><h3>SWOT analysis</h3><span class="sub">auto-saves as you type away from the field</span></div>'+
+    '<div class="grid grid-2"><div class="swot-cell swot-s"><h4>'+icon('check')+' Strengths</h4><textarea class="input" data-swot="s" placeholder="What do you do better than anyone?">'+esc(sw.s)+'</textarea></div>'+
+    '<div class="swot-cell swot-w"><h4>'+icon('alert')+' Weaknesses</h4><textarea class="input" data-swot="w" placeholder="Where are you exposed?">'+esc(sw.w)+'</textarea></div>'+
+    '<div class="swot-cell swot-o"><h4>'+icon('arrowur')+' Opportunities</h4><textarea class="input" data-swot="o" placeholder="What could you capture next?">'+esc(sw.o)+'</textarea></div>'+
+    '<div class="swot-cell swot-t"><h4>'+icon('flag')+' Threats</h4><textarea class="input" data-swot="t" placeholder="What could hurt the business?">'+esc(sw.t)+'</textarea></div></div></div>';
+  return html;
+}
+
+/* ============================================================
+   view: settings & data
+   ============================================================ */
+function viewSettings(){
+  var s=state.settings;
+  var entryCount=state.finance.length+state.goals.length+state.tasks.length+state.notes.length+state.clients.length;
+  var html=topbar('Settings & Data','Your business profile, plus full control of your data.');
+  html+='<div class="grid grid-2">';
+  html+='<div class="card"><div class="card-head"><h3>Business profile</h3></div>'+
+    '<form data-form="settings">'+
+    '<div class="field"><label>Business name</label><input class="input" name="businessName" value="'+esc(s.businessName)+'" required></div>'+
+    '<div class="form-row"><div class="field"><label>Currency symbol</label><select class="input" name="currency">'+
+      ['₱','$','€','£','¥','₹','A$','C$'].map(function(c){return '<option'+(s.currency===c?' selected':'')+'>'+c+'</option>';}).join('')+
+    '</select></div>'+
+    '<div class="field"><label>Default tax rate (%)</label><input class="input" type="number" step="any" min="0" max="60" name="taxRate" value="'+esc(s.taxRate)+'"></div></div>'+
+    '<div class="field"><label>Monthly revenue target ('+esc(s.currency)+')</label><input class="input" type="number" step="any" min="0" name="monthlyTarget" value="'+(s.monthlyTarget||'')+'" placeholder="e.g. 100000"><p style="font-size:.74rem;color:var(--text-3);margin-top:4px">Used on the dashboard and in insights to track each month’s pace.</p></div>'+
+    '<button class="btn btn-primary" type="submit">'+icon('check')+' Save settings</button></form></div>';
+  html+='<div><div class="card"><div class="card-head"><h3>Backup & restore</h3></div>'+
+    '<p style="font-size:.84rem;color:var(--text-2);margin-bottom:14px">All data lives only in this browser’s localStorage ('+entryCount+' records). Export a backup regularly — clearing browser data would erase everything.'+
+    (s.lastBackup?' Last backup: <b>'+fmtDate(s.lastBackup)+'</b>.':' <b>No backup yet.</b>')+'</p>'+
+    '<div style="display:flex;gap:9px;flex-wrap:wrap">'+
+    '<button class="btn btn-primary" data-action="export-data">'+icon('download')+' Export JSON backup</button>'+
+    '<button class="btn btn-ghost" data-action="import-data">'+icon('upload')+' Import backup</button></div></div>';
+  html+='<div class="card mt"><div class="card-head"><h3>Sample data & reset</h3></div>'+
+    '<p style="font-size:.84rem;color:var(--text-2);margin-bottom:14px">Load realistic demo data to explore every feature, or wipe everything and start fresh.</p>'+
+    '<div style="display:flex;gap:9px;flex-wrap:wrap">'+
+    '<button class="btn btn-ghost" data-action="load-sample">'+icon('spark')+' Load sample data</button>'+
+    '<button class="btn btn-danger" data-action="reset-data">'+icon('trash')+' Reset all data</button></div></div>';
+  html+='<div class="card mt"><div class="card-head"><h3>About</h3></div>'+
+    '<p style="font-size:.84rem;color:var(--text-2)">BizPilot is a single-file, local-first business command center. No accounts, no servers, no tracking — your numbers never leave this device. Works offline once loaded.</p></div></div></div>';
+  return html;
+}
+
+/* ============================================================
+   modals
+   ============================================================ */
+function entryModal(entry){
+  var isEdit=!!entry;
+  entry=entry||{type:ui.entryFormType||'income',date:todayISO()};
+  var type=entry.type;
+  var cats=type==='income'?INCOME_CATS:EXPENSE_CATS;
+  var existing={};
+  state.finance.forEach(function(e){ if(e.type===type) existing[e.category]=1; });
+  cats.forEach(function(c){ existing[c]=1; });
+  var body=
+    '<input type="hidden" name="id" value="'+(entry.id||'')+'">'+
+    '<div class="field"><label>Type</label><div class="seg">'+
+      '<button type="button" class="'+(type==='income'?'active income-seg':'')+'" data-action="entry-type" data-val="income">↑ Income</button>'+
+      '<button type="button" class="'+(type==='expense'?'active expense-seg':'')+'" data-action="entry-type" data-val="expense">↓ Expense</button></div>'+
+      '<input type="hidden" name="type" value="'+type+'"></div>'+
+    '<div class="form-row"><div class="field"><label>Amount ('+esc(state.settings.currency)+') *</label><input class="input" type="number" step="any" min="0.01" name="amount" value="'+(entry.amount||'')+'" required placeholder="0.00"></div>'+
+    '<div class="field"><label>Date *</label><input class="input" type="date" name="date" value="'+esc(entry.date||todayISO())+'" required></div></div>'+
+    '<div class="form-row"><div class="field"><label>Category</label><select class="input" name="category">'+
+      Object.keys(existing).map(function(c){return '<option'+(entry.category===c?' selected':'')+'>'+esc(c)+'</option>';}).join('')+
+      '<option value="__new__">+ New category…</option></select></div>'+
+    '<div class="field"><label>New category name</label><input class="input" name="newCategory" placeholder="only if “New category” chosen"></div></div>'+
+    '<div class="field"><label>Client (optional — links to CRM)</label><input class="input" name="client" value="'+esc(entry.client||'')+'" list="client-list" placeholder="e.g. Acme Co."><datalist id="client-list">'+
+      state.clients.map(function(c){return '<option value="'+esc(c.name)+'">';}).join('')+'</datalist></div>'+
+    '<div class="field"><label>Note</label><input class="input" name="note" value="'+esc(entry.note||'')+'" placeholder="What was this for?"></div>';
+  openModal(isEdit?'Edit entry':'Add income / expense',body,{onSubmit:function(form){
+    var amount=num(fv(form,'amount'));
+    var date=fv(form,'date');
+    if(amount<=0){ toast('Enter an amount greater than zero.','error'); return false; }
+    if(!date){ toast('Pick a date.','error'); return false; }
+    var cat=fv(form,'category');
+    if(cat==='__new__'){ cat=fv(form,'newCategory')||'Other'; }
+    var id=fv(form,'id');
+    var data={type:fv(form,'type'),amount:amount,date:date,category:cat,note:fv(form,'note'),client:fv(form,'client')};
+    if(id){
+      var e=state.finance.find(function(x){return x.id===id;});
+      if(e) Object.assign(e,data);
+      toast('Entry updated.');
+    } else {
+      data.id=uid();
+      state.finance.push(data);
+      toast((data.type==='income'?'Income':'Expense')+' of '+fmtMoney(amount)+' added.');
+    }
+    return true;
+  }});
+}
+function goalModal(goal){
+  var isEdit=!!goal;
+  goal=goal||{type:'revenue',priority:'Medium',startDate:todayISO()};
+  var stepsText=(goal.steps||[]).map(function(s){return s.text;}).join('\n');
+  var body=
+    '<input type="hidden" name="id" value="'+(goal.id||'')+'">'+
+    '<div class="field"><label>Goal title *</label><input class="input" name="title" value="'+esc(goal.title||'')+'" required placeholder="e.g. Reach ₱100k revenue"></div>'+
+    '<div class="form-row"><div class="field"><label>Type</label><select class="input" name="type">'+
+      '<option value="revenue"'+(goal.type==='revenue'?' selected':'')+'>Revenue (auto-tracked)</option>'+
+      '<option value="profit"'+(goal.type==='profit'?' selected':'')+'>Profit (auto-tracked)</option>'+
+      '<option value="custom"'+(goal.type==='custom'?' selected':'')+'>Custom metric (manual)</option></select></div>'+
+    '<div class="field"><label>Priority</label><select class="input" name="priority">'+
+      ['High','Medium','Low'].map(function(p){return '<option'+(goal.priority===p?' selected':'')+'>'+p+'</option>';}).join('')+'</select></div></div>'+
+    '<div class="form-row"><div class="field"><label>Target *</label><input class="input" type="number" step="any" min="0.01" name="target" value="'+(goal.target||'')+'" required placeholder="e.g. 100000"></div>'+
+    '<div class="field"><label>Unit (custom goals)</label><input class="input" name="unit" value="'+esc(goal.unit||'')+'" placeholder="e.g. clients, posts"></div></div>'+
+    '<div class="form-row"><div class="field"><label>Count progress from</label><input class="input" type="date" name="startDate" value="'+esc(goal.startDate||todayISO())+'"></div>'+
+    '<div class="field"><label>Deadline</label><input class="input" type="date" name="deadline" value="'+esc(goal.deadline||'')+'"></div></div>'+
+    '<div class="field"><label>Action steps (one per line)</label><textarea class="input" name="steps" rows="4" placeholder="Step 1…\nStep 2…">'+esc(stepsText)+'</textarea></div>';
+  openModal(isEdit?'Edit goal':'New goal',body,{onSubmit:function(form){
+    var title=fv(form,'title');
+    var target=num(fv(form,'target'));
+    if(!title){ toast('Give the goal a title.','error'); return false; }
+    if(target<=0){ toast('Set a target greater than zero.','error'); return false; }
+    var lines=fv(form,'steps').split('\n').map(function(l){return l.trim();}).filter(Boolean);
+    var id=fv(form,'id');
+    var existingSteps=isEdit&&goal.steps?goal.steps:[];
+    var steps=lines.map(function(text){
+      var match=existingSteps.find(function(s){return s.text===text;});
+      return match||{id:uid(),text:text,done:false};
+    });
+    var data={title:title,type:fv(form,'type'),target:target,unit:fv(form,'unit'),startDate:fv(form,'startDate'),deadline:fv(form,'deadline'),priority:fv(form,'priority'),steps:steps};
+    if(id){
+      var g=state.goals.find(function(x){return x.id===id;});
+      if(g) Object.assign(g,data);
+      toast('Goal updated.');
+    } else {
+      data.id=uid(); data.done=false; data.current=0; data.createdAt=todayISO();
+      state.goals.push(data);
+      toast('Goal created. Go get it!');
+    }
+    return true;
+  }});
+}
+function taskModal(task){
+  var isEdit=!!task;
+  task=task||{priority:'Medium',bucket:'weekly'};
+  var body=
+    '<input type="hidden" name="id" value="'+(task.id||'')+'">'+
+    '<div class="field"><label>Task *</label><input class="input" name="title" value="'+esc(task.title||'')+'" required placeholder="What needs to get done?"></div>'+
+    '<div class="form-row-3"><div class="field"><label>Deadline</label><input class="input" type="date" name="deadline" value="'+esc(task.deadline||'')+'"></div>'+
+    '<div class="field"><label>Priority</label><select class="input" name="priority">'+['High','Medium','Low'].map(function(p){return '<option'+(task.priority===p?' selected':'')+'>'+p+'</option>';}).join('')+'</select></div>'+
+    '<div class="field"><label>Cadence</label><select class="input" name="bucket">'+[['daily','Daily'],['weekly','Weekly'],['monthly','Monthly']].map(function(b){return '<option value="'+b[0]+'"'+(task.bucket===b[0]?' selected':'')+'>'+b[1]+'</option>';}).join('')+'</select></div></div>';
+  openModal(isEdit?'Edit task':'New task',body,{onSubmit:function(form){
+    var title=fv(form,'title');
+    if(!title){ toast('Give the task a title.','error'); return false; }
+    var id=fv(form,'id');
+    var data={title:title,deadline:fv(form,'deadline'),priority:fv(form,'priority'),bucket:fv(form,'bucket')};
+    if(id){
+      var t=state.tasks.find(function(x){return x.id===id;});
+      if(t) Object.assign(t,data);
+      toast('Task updated.');
+    } else {
+      data.id=uid(); data.done=false; data.createdAt=todayISO();
+      state.tasks.push(data);
+      toast('Task added.');
+    }
+    return true;
+  }});
+}
+function noteModal(note){
+  var isEdit=!!note;
+  note=note||{category:'General'};
+  var body=
+    '<input type="hidden" name="id" value="'+(note.id||'')+'">'+
+    '<div class="field"><label>Title *</label><input class="input" name="title" value="'+esc(note.title||'')+'" required placeholder="Note title"></div>'+
+    '<div class="form-row"><div class="field"><label>Category</label><select class="input" name="category">'+
+      NOTE_CATS.map(function(c){return '<option'+(note.category===c?' selected':'')+'>'+c+'</option>';}).join('')+'</select></div>'+
+    '<div class="field"><label>Tags (comma separated)</label><input class="input" name="tags" value="'+esc((note.tags||[]).join(', '))+'" placeholder="pricing, q3"></div></div>'+
+    '<div class="field"><label>Content</label><textarea class="input" name="body" rows="7" placeholder="Write it down…">'+esc(note.body||'')+'</textarea></div>'+
+    '<label class="checkrow"><input type="checkbox" name="pinned"'+(note.pinned?' checked':'')+'> Pin this note to the top</label>';
+  openModal(isEdit?'Edit note':'New note',body,{wide:true,onSubmit:function(form){
+    var title=fv(form,'title');
+    if(!title){ toast('Give the note a title.','error'); return false; }
+    var tags=fv(form,'tags').split(',').map(function(t){return t.trim().replace(/^#/,'');}).filter(Boolean);
+    var id=fv(form,'id');
+    var data={title:title,body:form.elements['body'].value,category:fv(form,'category'),tags:tags,pinned:form.elements['pinned'].checked,updatedAt:new Date().toISOString()};
+    if(id){
+      var n=state.notes.find(function(x){return x.id===id;});
+      if(n) Object.assign(n,data);
+      toast('Note saved.');
+    } else {
+      data.id=uid();
+      state.notes.push(data);
+      toast('Note created.');
+    }
+    return true;
+  }});
+}
+function clientModal(client){
+  var isEdit=!!client;
+  client=client||{status:'Lead'};
+  var body=
+    '<input type="hidden" name="id" value="'+(client.id||'')+'">'+
+    '<div class="field"><label>Client name *</label><input class="input" name="name" value="'+esc(client.name||'')+'" required placeholder="Person or company"></div>'+
+    '<div class="form-row"><div class="field"><label>Status</label><select class="input" name="status">'+
+      CLIENT_STATUSES.map(function(s){return '<option'+(client.status===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select></div>'+
+    '<div class="field"><label>Est. monthly value ('+esc(state.settings.currency)+')</label><input class="input" type="number" step="any" min="0" name="value" value="'+(client.value||'')+'"></div></div>'+
+    '<div class="field"><label>Contact (email / phone / handle)</label><input class="input" name="contact" value="'+esc(client.contact||'')+'"></div>'+
+    '<div class="field"><label>Notes</label><textarea class="input" name="note" rows="3" placeholder="Context, needs, history…">'+esc(client.note||'')+'</textarea></div>';
+  openModal(isEdit?'Edit client':'Add client',body,{onSubmit:function(form){
+    var name=fv(form,'name');
+    if(!name){ toast('Enter the client name.','error'); return false; }
+    var id=fv(form,'id');
+    var data={name:name,status:fv(form,'status'),value:num(fv(form,'value')),contact:fv(form,'contact'),note:form.elements['note'].value};
+    if(id){
+      var c=state.clients.find(function(x){return x.id===id;});
+      if(c) Object.assign(c,data);
+      toast('Client updated.');
+    } else {
+      data.id=uid(); data.createdAt=todayISO();
+      state.clients.push(data);
+      toast('Client added.');
+    }
+    return true;
+  }});
+}
+function phaseModal(phase){
+  var isEdit=!!phase;
+  phase=phase||{};
+  var body=
+    '<input type="hidden" name="id" value="'+(phase.id||'')+'">'+
+    '<div class="field"><label>Phase name *</label><input class="input" name="name" value="'+esc(phase.name||'')+'" required placeholder="e.g. Phase 1 — Launch"></div>'+
+    '<div class="field"><label>Description</label><textarea class="input" name="desc" rows="2" placeholder="What does this phase achieve?">'+esc(phase.desc||'')+'</textarea></div>';
+  openModal(isEdit?'Edit phase':'New roadmap phase',body,{onSubmit:function(form){
+    var name=fv(form,'name');
+    if(!name){ toast('Give the phase a name.','error'); return false; }
+    var id=fv(form,'id');
+    if(id){
+      var p=state.phases.find(function(x){return x.id===id;});
+      if(p){ p.name=name; p.desc=form.elements['desc'].value; }
+      toast('Phase updated.');
+    } else {
+      state.phases.push({id:uid(),name:name,desc:form.elements['desc'].value,order:state.phases.length,tasks:[]});
+      toast('Phase added to roadmap.');
+    }
+    return true;
+  }});
+}
+function phaseTaskModal(phaseId,task){
+  var isEdit=!!task;
+  task=task||{status:'Not Started',priority:'Medium'};
+  var body=
+    '<input type="hidden" name="phaseId" value="'+phaseId+'"><input type="hidden" name="id" value="'+(task.id||'')+'">'+
+    '<div class="field"><label>Milestone / task *</label><input class="input" name="title" value="'+esc(task.title||'')+'" required placeholder="e.g. Launch landing page"></div>'+
+    '<div class="form-row-3"><div class="field"><label>Deadline</label><input class="input" type="date" name="deadline" value="'+esc(task.deadline||'')+'"></div>'+
+    '<div class="field"><label>Status</label><select class="input" name="status">'+ROADMAP_STATUSES.map(function(s){return '<option'+(task.status===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select></div>'+
+    '<div class="field"><label>Priority</label><select class="input" name="priority">'+['High','Medium','Low'].map(function(p){return '<option'+(task.priority===p?' selected':'')+'>'+p+'</option>';}).join('')+'</select></div></div>';
+  openModal(isEdit?'Edit roadmap task':'Add roadmap task',body,{onSubmit:function(form){
+    var title=fv(form,'title');
+    if(!title){ toast('Give it a title.','error'); return false; }
+    var phase=state.phases.find(function(p){return p.id===fv(form,'phaseId');});
+    if(!phase){ toast('Phase not found.','error'); return false; }
+    var id=fv(form,'id');
+    var data={title:title,deadline:fv(form,'deadline'),status:fv(form,'status'),priority:fv(form,'priority')};
+    if(id){
+      var t=(phase.tasks||[]).find(function(x){return x.id===id;});
+      if(t) Object.assign(t,data);
+      toast('Roadmap task updated.');
+    } else {
+      data.id=uid();
+      phase.tasks=phase.tasks||[];
+      phase.tasks.push(data);
+      toast('Task added to "'+phase.name+'".');
+    }
+    return true;
+  }});
+}
+function updateGoalProgressModal(goal){
+  var gp=goalProgress(goal);
+  var body=
+    '<input type="hidden" name="id" value="'+goal.id+'">'+
+    '<p style="font-size:.86rem;color:var(--text-2);margin-bottom:12px">Currently at <b>'+fmtNum(gp.current)+(goal.unit?' '+esc(goal.unit):'')+'</b> of '+fmtNum(goal.target)+(goal.unit?' '+esc(goal.unit):'')+'.</p>'+
+    '<div class="field"><label>New progress value</label><input class="input" type="number" step="any" min="0" name="current" value="'+(goal.current||0)+'" required></div>';
+  openModal('Update progress — '+goal.title,body,{submitLabel:'Update',onSubmit:function(form){
+    var g=state.goals.find(function(x){return x.id===fv(form,'id');});
+    if(g){ g.current=num(fv(form,'current')); toast('Progress updated — '+fmtPct(goalProgress(g).pct,0)+' of target.'); }
+    return true;
+  }});
+}
+
+/* ============================================================
+   data management
+   ============================================================ */
+function exportData(){
+  try{
+    var blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='bizpilot-backup-'+todayISO()+'.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); },2000);
+    state.settings.lastBackup=todayISO();
+    commit();
+    toast('Backup exported — keep it somewhere safe.');
+  }catch(e){ toast('Export failed: '+e.message,'error'); }
+}
+function importData(file){
+  var reader=new FileReader();
+  reader.onload=function(){
+    try{
+      var data=JSON.parse(reader.result);
+      if(!data||typeof data!=='object'||!data.settings||(!Array.isArray(data.finance))) throw new Error('This file is not a BizPilot backup.');
+      state=deepMerge(JSON.parse(JSON.stringify(DEFAULT_STATE)),data);
+      commit();
+      applyTheme();
+      toast('Backup imported — '+state.finance.length+' finance entries restored.');
+    }catch(e){
+      toast('Import failed: '+e.message,'error');
+    }
+  };
+  reader.onerror=function(){ toast('Could not read the file.','error'); };
+  reader.readAsText(file);
+}
+function resetData(){
+  var body='<p style="font-size:.88rem;color:var(--text-2);margin-bottom:12px">This permanently deletes <b>everything</b> — finance entries, goals, roadmap, tasks, notes, clients, metrics and reviews. There is no undo.</p>'+
+    '<div class="field"><label>Type <b>DELETE</b> to confirm</label><input class="input" name="confirm" placeholder="DELETE" autocomplete="off"></div>';
+  openModal('Reset all data',body,{submitLabel:'Erase everything',onSubmit:function(form){
+    if(fv(form,'confirm')!=='DELETE'){ toast('Type DELETE (in capitals) to confirm.','warn'); return false; }
+    var theme=state.settings.theme;
+    state=JSON.parse(JSON.stringify(DEFAULT_STATE));
+    state.meta.createdAt=todayISO();
+    state.settings.theme=theme;
+    toast('All data erased. Fresh start!','warn');
+    return true;
+  }});
+}
+
+/* ---------- sample data ---------- */
+function loadSampleData(){
+  var mk=function(off){ return shiftMonth(thisMonthKey(),off); };
+  var d=function(off,day){ return mk(off)+'-'+String(day).padStart(2,'0'); };
+  var fin=[];
+  function inc(off,day,amt,cat,note,client){ fin.push({id:uid(),type:'income',amount:amt,date:d(off,day),category:cat,note:note,client:client||''}); }
+  function exp(off,day,amt,cat,note){ fin.push({id:uid(),type:'expense',amount:amt,date:d(off,day),category:cat,note:note,client:''}); }
+  // 5 months of history + current month — a growing design studio
+  inc(-5,5,28000,'Services','Brand identity project','Lumina Café');     exp(-5,3,4500,'Software & Tools','Design suite subscriptions');
+  inc(-5,18,12000,'Consulting','Marketing consult','Harbor Dental');     exp(-5,10,6000,'Marketing & Ads','FB ads test');
+  exp(-5,25,3000,'Transport','Client meetings');
+  inc(-4,7,35000,'Services','Website design','Verde Realty');            exp(-4,4,4500,'Software & Tools','Subscriptions');
+  inc(-4,20,9000,'Subscriptions','Retainer — socials','Lumina Café');    exp(-4,15,8000,'Salaries / Contractors','Freelance dev');
+  exp(-4,22,5500,'Marketing & Ads','IG promo');
+  inc(-3,6,42000,'Services','E-commerce build','PetPals Shop');          exp(-3,5,4500,'Software & Tools','Subscriptions');
+  inc(-3,15,9000,'Subscriptions','Retainer — socials','Lumina Café');    exp(-3,12,9500,'Salaries / Contractors','Freelance dev');
+  inc(-3,27,15000,'Consulting','Brand workshop','Harbor Dental');        exp(-3,20,7000,'Marketing & Ads','Google ads');
+  inc(-2,8,38000,'Services','Brand refresh','Verde Realty');             exp(-2,5,4500,'Software & Tools','Subscriptions');
+  inc(-2,16,9000,'Subscriptions','Retainer — socials','Lumina Café');    exp(-2,14,12000,'Salaries / Contractors','Freelance dev + VA');
+  inc(-2,24,18000,'Products','Template pack sales');                     exp(-2,21,8000,'Marketing & Ads','Ads scale-up');
+  exp(-2,27,2500,'Fees & Taxes','Payment processor fees');
+  inc(-1,5,52000,'Services','Full rebrand','Northwind Gym');             exp(-1,4,4800,'Software & Tools','Subscriptions + AI tools');
+  inc(-1,14,9000,'Subscriptions','Retainer — socials','Lumina Café');    exp(-1,11,14000,'Salaries / Contractors','Freelance dev + VA');
+  inc(-1,21,22000,'Products','Template pack sales');                     exp(-1,18,9000,'Marketing & Ads','Ads');
+  inc(-1,27,10000,'Consulting','Strategy session','PetPals Shop');       exp(-1,25,3500,'Rent & Utilities','Co-working desk');
+  inc(0,4,30000,'Services','Website sprint','Harbor Dental');            exp(0,3,4800,'Software & Tools','Subscriptions');
+  inc(0,8,9000,'Subscriptions','Retainer — socials','Lumina Café');      exp(0,6,7000,'Marketing & Ads','Ads');
+  inc(0,9,12000,'Products','Template pack sales');                       exp(0,8,8000,'Salaries / Contractors','Freelance dev');
+  state.finance=fin;
+  state.clients=[
+    {id:uid(),name:'Lumina Café',status:'Active',contact:'maria@luminacafe.ph',value:9000,note:'Monthly social retainer since Feb. Loves quick turnarounds.',createdAt:d(-5,1)},
+    {id:uid(),name:'Harbor Dental',status:'Active',contact:'doc.reyes@harbordental.ph',value:12000,note:'Repeat consulting; pitching website maintenance next.',createdAt:d(-5,10)},
+    {id:uid(),name:'Verde Realty',status:'Active',contact:'+63 917 555 0142',value:15000,note:'Two projects done. High budget, slow approvals.',createdAt:d(-4,2)},
+    {id:uid(),name:'PetPals Shop',status:'Active',contact:'hello@petpals.ph',value:10000,note:'E-comm client. Interested in ads management.',createdAt:d(-3,1)},
+    {id:uid(),name:'Northwind Gym',status:'Lead',contact:'ig: @northwindgym',value:20000,note:'Rebrand done; proposing ongoing content package.',createdAt:d(-1,1)},
+    {id:uid(),name:'Sunrise Bakery',status:'Lead',contact:'fb: SunriseBakeryQC',value:8000,note:'Inquiry from referral. Follow up Friday.',createdAt:d(0,2)},
+    {id:uid(),name:'OldTown Print',status:'Churned',contact:'—',value:0,note:'One-off logo client, price sensitive.',createdAt:d(-5,5)}
+  ];
+  var deadline1=shiftMonth(thisMonthKey(),2)+'-28';
+  state.goals=[
+    {id:uid(),title:'Hit ₱120k revenue this quarter',type:'revenue',target:120000,startDate:mk(-1)+'-01',deadline:deadline1,priority:'High',done:false,current:0,createdAt:d(-1,1),
+      steps:[{id:uid(),text:'Close Northwind content package',done:false},{id:uid(),text:'Launch template pack v2',done:false},{id:uid(),text:'Ask 3 past clients for referrals',done:true}]},
+    {id:uid(),title:'Reach 6 active retainer clients',type:'custom',target:6,unit:'clients',current:4,deadline:shiftMonth(thisMonthKey(),3)+'-15',priority:'Medium',done:false,createdAt:d(-2,1),
+      steps:[{id:uid(),text:'Productize the social media retainer offer',done:true},{id:uid(),text:'Pitch retainer to PetPals',done:false}]},
+    {id:uid(),title:'Build 1-month expense buffer',type:'profit',target:60000,startDate:mk(-2)+'-01',deadline:shiftMonth(thisMonthKey(),1)+'-30',priority:'Medium',done:false,current:0,createdAt:d(-2,5),steps:[]}
+  ];
+  state.phases=[
+    {id:uid(),name:'Phase 1 — Stabilize',desc:'Consistent income and clean finances.',order:0,tasks:[
+      {id:uid(),title:'Set up finance tracking',status:'Completed',deadline:d(-2,15),priority:'High'},
+      {id:uid(),title:'Standardize proposals & contracts',status:'Completed',deadline:d(-1,10),priority:'Medium'},
+      {id:uid(),title:'Move 2 clients to retainers',status:'In Progress',deadline:d(0,25),priority:'High'}]},
+    {id:uid(),name:'Phase 2 — Productize',desc:'Sell offers, not hours.',order:1,tasks:[
+      {id:uid(),title:'Launch template pack v2',status:'In Progress',deadline:d(0,20),priority:'High'},
+      {id:uid(),title:'Record offer walkthrough video',status:'Not Started',deadline:shiftMonth(thisMonthKey(),1)+'-10',priority:'Medium'},
+      {id:uid(),title:'Set up affiliate/referral program',status:'Blocked',deadline:shiftMonth(thisMonthKey(),1)+'-20',priority:'Low'}]},
+    {id:uid(),name:'Phase 3 — Scale',desc:'Team, systems and steady pipeline.',order:2,tasks:[
+      {id:uid(),title:'Hire part-time designer',status:'Not Started',deadline:shiftMonth(thisMonthKey(),2)+'-15',priority:'Medium'},
+      {id:uid(),title:'Document delivery SOPs',status:'Not Started',deadline:shiftMonth(thisMonthKey(),2)+'-28',priority:'Medium'}]}
+  ];
+  state.tasks=[
+    {id:uid(),title:'Follow up with Sunrise Bakery lead',deadline:todayISO(),priority:'High',bucket:'daily',done:false,createdAt:todayISO()},
+    {id:uid(),title:'Send Northwind content package proposal',deadline:d(0,Math.min(28,new Date().getDate()+3)),priority:'High',bucket:'weekly',done:false,createdAt:todayISO()},
+    {id:uid(),title:'Publish 3 portfolio posts',deadline:d(0,Math.min(28,new Date().getDate()+5)),priority:'Medium',bucket:'weekly',done:false,createdAt:todayISO()},
+    {id:uid(),title:'Reconcile this month’s expenses',deadline:d(0,28),priority:'Medium',bucket:'monthly',done:false,createdAt:todayISO()},
+    {id:uid(),title:'Review ad performance',deadline:d(-1,28),priority:'Medium',bucket:'weekly',done:false,createdAt:d(-1,20)},
+    {id:uid(),title:'Invoice Harbor Dental',deadline:d(0,Math.max(1,new Date().getDate()-2)),priority:'High',bucket:'monthly',done:true,createdAt:d(0,1),completedAt:todayISO()}
+  ];
+  state.notes=[
+    {id:uid(),title:'Idea: “Website-in-a-week” offer',body:'Fixed scope, fixed price (₱45k), delivered in 5 working days.\n\n- Pre-built component library\n- Client fills content form before start\n- Only 2 revision rounds\n\nCould run 2 per month alongside retainers = ₱90k baseline.',category:'Idea',tags:['offer','pricing'],pinned:true,updatedAt:new Date().toISOString()},
+    {id:uid(),title:'Meeting — Northwind Gym kickoff',body:'Attendees: Coach Dan, Aly (manager)\n\n- They want a “premium but approachable” feel\n- Competitor: FitHub (avoid their neon look)\n- Budget approved for rebrand; content package pending\n- Next: send proposal by Friday',category:'Meeting',tags:['northwind','client'],pinned:false,updatedAt:new Date(Date.now()-86400000*2).toISOString()},
+    {id:uid(),title:'Strategy: retainers over projects',body:'Projects = feast/famine. Retainers = predictable MRR.\n\nTarget: 60% of revenue from retainers by Q4.\nLevers: productized social package, maintenance plans, ads management.',category:'Strategy',tags:['mrr','focus'],pinned:true,updatedAt:new Date(Date.now()-86400000*5).toISOString()},
+    {id:uid(),title:'Decision: raised template pack price',body:'Moved from ₱899 to ₱1,299 after 40 sales. Conversion held steady — keep the new price.',category:'Decision',tags:['pricing'],pinned:false,updatedAt:new Date(Date.now()-86400000*9).toISOString()}
+  ];
+  var nowIso=new Date().toISOString();
+  state.metrics={
+    conv:{value:3.2,updatedAt:nowIso},
+    cac:{value:1800,updatedAt:nowIso},
+    clv:{value:27000,updatedAt:nowIso},
+    roas:{value:3.4,updatedAt:nowIso},
+    lead:{value:18,updatedAt:nowIso},
+    mrr:{value:9000,updatedAt:nowIso},
+    churn:{value:4,updatedAt:nowIso},
+    gross:{value:58,updatedAt:nowIso}
+  };
+  state.reviews.decisions=[
+    {id:uid(),text:'Stopped taking logo-only projects under ₱10k — poor margin, high revision load.',date:d(-1,12)},
+    {id:uid(),text:'Committed to publishing portfolio content 3× weekly for 90 days.',date:d(0,2)}
+  ];
+  state.reviews.swot={
+    s:'Fast turnarounds; strong brand-design portfolio; repeat clients trust us.',
+    w:'Revenue still 70% project-based; founder is the bottleneck for design work.',
+    o:'Local gyms/cafés digitizing; template products scale without hours; ads management upsell.',
+    t:'AI design tools pushing prices down; two strong agencies in the same niche.'
+  };
+  var lastM=mk(-1);
+  state.reviews.monthly[lastM]={wins:'Biggest month yet (₱93k). Template pack became a real second income stream.',problems:'Contractor costs creeping up; ads ROAS dipped mid-month.',lessons:'Productized offers sell easier than custom quotes.',focus:'Close 2 retainer deals and launch template pack v2.',savedAt:nowIso};
+  state.settings.businessName=state.settings.businessName==='My Business'?'Studio Hiraya':state.settings.businessName;
+  state.settings.monthlyTarget=state.settings.monthlyTarget||100000;
+  commit();
+  toast('Sample data loaded — explore every section, then reset when ready.');
+}
+
+/* ============================================================
+   theme
+   ============================================================ */
+function applyTheme(){
+  var t=state.settings.theme;
+  if(!t) t=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';
+  document.documentElement.setAttribute('data-theme',t);
+}
+function toggleTheme(){
+  var cur=document.documentElement.getAttribute('data-theme');
+  state.settings.theme=cur==='dark'?'light':'dark';
+  save();
+  applyTheme();
+  render();
+}
+
+/* ============================================================
+   event delegation
+   ============================================================ */
+function findEntry(id){ return state.finance.find(function(x){return x.id===id;}); }
+
+document.addEventListener('click',function(e){
+  var el=e.target.closest('[data-action]');
+  if(!el) return;
+  var action=el.getAttribute('data-action');
+  var id=el.getAttribute('data-id');
+
+  /* navigation & shell */
+  if(action==='nav'){ nav(el.getAttribute('data-route')); byId('sidebar').classList.remove('open'); byId('scrim').classList.remove('show'); return; }
+  if(action==='open-sidebar'){ byId('sidebar').classList.add('open'); byId('scrim').classList.add('show'); return; }
+  if(action==='close-sidebar'){ byId('sidebar').classList.remove('open'); byId('scrim').classList.remove('show'); return; }
+  if(action==='toggle-theme'){ toggleTheme(); return; }
+  if(action==='close-modal'){ closeModal(); return; }
+  if(action==='close-modal-overlay'){ if(e.target===el) closeModal(); return; }
+
+  /* finance */
+  if(action==='open-entry-modal'){ entryModal(); return; }
+  if(action==='edit-entry'){ var en=findEntry(id); if(en) entryModal(en); return; }
+  if(action==='delete-entry'){
+    var en2=findEntry(id);
+    if(en2&&confirm('Delete this '+en2.type+' of '+fmtMoney(en2.amount)+'?')){
+      state.finance=state.finance.filter(function(x){return x.id!==id;});
+      commit(); toast('Entry deleted.','warn');
+    } return;
+  }
+  if(action==='finance-tab'){ ui.financeTab=el.getAttribute('data-tab'); render(); return; }
+  if(action==='entry-type'){
+    var form=el.closest('form');
+    if(form){
+      var draft={
+        id:fv(form,'id')||undefined,
+        type:el.getAttribute('data-val'),
+        amount:num(fv(form,'amount'))||'',
+        date:fv(form,'date'),
+        note:fv(form,'note'),
+        client:fv(form,'client')
+      };
+      ui.entryFormType=draft.type;
+      entryModal(draft.id?Object.assign({},findEntry(draft.id),draft):draft);
+      if(!draft.id){ /* keep as new entry */ }
+    }
+    return;
+  }
+
+  /* goals */
+  if(action==='open-goal-modal'){ goalModal(); return; }
+  if(action==='goal-filter'){ ui.goalFilter=el.getAttribute('data-val'); render(); return; }
+  if(action==='edit-goal'){ var g=state.goals.find(function(x){return x.id===id;}); if(g) goalModal(g); return; }
+  if(action==='delete-goal'){
+    var g2=state.goals.find(function(x){return x.id===id;});
+    if(g2&&confirm('Delete goal "'+g2.title+'"?')){
+      state.goals=state.goals.filter(function(x){return x.id!==id;});
+      commit(); toast('Goal deleted.','warn');
+    } return;
+  }
+  if(action==='complete-goal'){
+    var g3=state.goals.find(function(x){return x.id===id;});
+    if(g3){ g3.done=true; g3.completedAt=todayISO(); commit(); toast('🎉 Goal completed: '+g3.title); } return;
+  }
+  if(action==='reopen-goal'){
+    var g4=state.goals.find(function(x){return x.id===id;});
+    if(g4){ g4.done=false; commit(); toast('Goal reopened.'); } return;
+  }
+  if(action==='update-goal-progress'){
+    var g5=state.goals.find(function(x){return x.id===id;});
+    if(g5) updateGoalProgressModal(g5); return;
+  }
+  if(action==='toggle-goal-step'){
+    var g6=state.goals.find(function(x){return x.id===el.getAttribute('data-goal');});
+    if(g6){
+      var st=(g6.steps||[]).find(function(s){return s.id===el.getAttribute('data-step');});
+      if(st){ st.done=!st.done; commit(); }
+    } return;
+  }
+
+  /* roadmap */
+  if(action==='open-phase-modal'){ phaseModal(); return; }
+  if(action==='edit-phase'){ var p=state.phases.find(function(x){return x.id===id;}); if(p) phaseModal(p); return; }
+  if(action==='delete-phase'){
+    var p2=state.phases.find(function(x){return x.id===id;});
+    if(p2&&confirm('Delete phase "'+p2.name+'" and its '+(p2.tasks||[]).length+' task(s)?')){
+      state.phases=state.phases.filter(function(x){return x.id!==id;});
+      commit(); toast('Phase deleted.','warn');
+    } return;
+  }
+  if(action==='open-phase-task-modal'){ phaseTaskModal(el.getAttribute('data-phase')); return; }
+  if(action==='edit-phase-task'){
+    var p3=state.phases.find(function(x){return x.id===el.getAttribute('data-phase');});
+    if(p3){ var pt=(p3.tasks||[]).find(function(t){return t.id===el.getAttribute('data-task');});
+      if(pt) phaseTaskModal(p3.id,pt); } return;
+  }
+  if(action==='delete-phase-task'){
+    var p4=state.phases.find(function(x){return x.id===el.getAttribute('data-phase');});
+    if(p4){
+      var tid=el.getAttribute('data-task');
+      var ptt=(p4.tasks||[]).find(function(t){return t.id===tid;});
+      if(ptt&&confirm('Delete roadmap task "'+ptt.title+'"?')){
+        p4.tasks=p4.tasks.filter(function(t){return t.id!==tid;});
+        commit(); toast('Roadmap task deleted.','warn');
+      }
+    } return;
+  }
+
+  /* tasks */
+  if(action==='open-task-modal'){ taskModal(); return; }
+  if(action==='edit-task'){ var t=state.tasks.find(function(x){return x.id===id;}); if(t) taskModal(t); return; }
+  if(action==='delete-task'){
+    var t2=state.tasks.find(function(x){return x.id===id;});
+    if(t2&&confirm('Delete task "'+t2.title+'"?')){
+      state.tasks=state.tasks.filter(function(x){return x.id!==id;});
+      commit(); toast('Task deleted.','warn');
+    } return;
+  }
+  if(action==='toggle-task'){
+    var t3=state.tasks.find(function(x){return x.id===id;});
+    if(t3){ t3.done=!t3.done; t3.completedAt=t3.done?todayISO():null; commit(); if(t3.done) toast('Nice — task done.'); } return;
+  }
+  if(action==='task-filter-status'){ ui.taskFilter.status=el.getAttribute('data-val'); render(); return; }
+  if(action==='task-filter-priority'){ ui.taskFilter.priority=el.getAttribute('data-val'); render(); return; }
+  if(action==='task-filter-bucket'){ ui.taskFilter.bucket=el.getAttribute('data-val'); render(); return; }
+
+  /* notes */
+  if(action==='toggle-pin'){
+    e.stopPropagation();
+    var n=state.notes.find(function(x){return x.id===id;});
+    if(n){ n.pinned=!n.pinned; commit(); } return;
+  }
+  if(action==='delete-note'){
+    e.stopPropagation();
+    var n2=state.notes.find(function(x){return x.id===id;});
+    if(n2&&confirm('Delete note "'+n2.title+'"?')){
+      state.notes=state.notes.filter(function(x){return x.id!==id;});
+      commit(); toast('Note deleted.','warn');
+    } return;
+  }
+  if(action==='open-note-modal'){
+    var n3=id?state.notes.find(function(x){return x.id===id;}):null;
+    noteModal(n3); return;
+  }
+  if(action==='note-filter-cat'){ ui.noteFilter.category=el.getAttribute('data-val'); render(); return; }
+
+  /* clients */
+  if(action==='open-client-modal'){ clientModal(); return; }
+  if(action==='edit-client'){ var c=state.clients.find(function(x){return x.id===id;}); if(c) clientModal(c); return; }
+  if(action==='delete-client'){
+    var c2=state.clients.find(function(x){return x.id===id;});
+    if(c2&&confirm('Delete client "'+c2.name+'"?')){
+      state.clients=state.clients.filter(function(x){return x.id!==id;});
+      commit(); toast('Client deleted.','warn');
+    } return;
+  }
+  if(action==='client-filter'){ ui.clientFilter=el.getAttribute('data-val'); render(); return; }
+
+  /* reviews */
+  if(action==='toggle-weekly'){
+    var wk=state.reviews.weekly, cw=isoWeek();
+    if(wk.week!==cw){ wk.week=cw; wk.items={}; }
+    var idx=el.getAttribute('data-idx');
+    wk.items[idx]=!wk.items[idx];
+    commit(); return;
+  }
+  if(action==='delete-decision'){
+    state.reviews.decisions=state.reviews.decisions.filter(function(x){return x.id!==id;});
+    commit(); toast('Decision removed.','warn'); return;
+  }
+
+  /* metrics */
+  if(action==='clear-metric'){
+    delete state.metrics[el.getAttribute('data-key')];
+    commit(); toast('Saved metric cleared.'); return;
+  }
+
+  /* data management */
+  if(action==='export-data'){ exportData(); return; }
+  if(action==='import-data'){ byId('import-file').click(); return; }
+  if(action==='reset-data'){ resetData(); return; }
+  if(action==='load-sample'){
+    if(state.finance.length===0||confirm('Loading sample data replaces your current data. Continue?')) loadSampleData();
+    return;
+  }
+});
+
+/* form submissions */
+document.addEventListener('submit',function(e){
+  var form=e.target;
+  e.preventDefault();
+
+  if(form.id==='modal-form'){
+    if(modalSubmitHandler){
+      var ok=modalSubmitHandler(form);
+      if(ok!==false){ closeModal(); commit(); }
+    } else closeModal();
+    return;
+  }
+  var calcKey=form.getAttribute('data-calc');
+  if(calcKey){ runCalculator(calcKey,form); return; }
+
+  var mCalc=form.getAttribute('data-metric-calc');
+  if(mCalc){
+    var def=METRIC_DEFS.find(function(d){return d.key===mCalc;});
+    if(def&&def.calc){
+      var g=function(n){ return num(form.elements[n]?form.elements[n].value:0); };
+      var v=def.calc.fn(g);
+      if(v==null||isNaN(v)||!isFinite(v)){ toast('Check the inputs — the result is not a valid number.','error'); return; }
+      state.metrics[mCalc]={value:Math.round(v*100)/100,updatedAt:new Date().toISOString()};
+      commit();
+      toast(def.name+' saved: '+fmtMetric(def,v));
+    }
+    return;
+  }
+  var mSet=form.getAttribute('data-metric-set');
+  if(mSet){
+    var def2=METRIC_DEFS.find(function(d){return d.key===mSet;});
+    var v2=num(form.elements['val'].value);
+    state.metrics[mSet]={value:v2,updatedAt:new Date().toISOString()};
+    commit();
+    toast((def2?def2.name:'Metric')+' saved.');
+    return;
+  }
+
+  var kind=form.getAttribute('data-form');
+  if(kind==='quick-task'){
+    var title=fv(form,'title');
+    if(!title){ toast('Type a task first.','warn'); return; }
+    state.tasks.push({id:uid(),title:title,deadline:fv(form,'deadline'),priority:fv(form,'priority'),bucket:fv(form,'bucket'),done:false,createdAt:todayISO()});
+    commit(); toast('Task added.');
+    return;
+  }
+  if(kind==='monthly-review'){
+    var mo=fv(form,'month');
+    state.reviews.monthly[mo]={
+      wins:form.elements['wins'].value,
+      problems:form.elements['problems'].value,
+      lessons:form.elements['lessons'].value,
+      focus:form.elements['focus'].value,
+      savedAt:new Date().toISOString()
+    };
+    commit(); toast('Monthly review for '+monthLabel(mo)+' saved.');
+    return;
+  }
+  if(kind==='decision'){
+    var txt=fv(form,'text');
+    if(!txt) return;
+    state.reviews.decisions.push({id:uid(),text:txt,date:todayISO()});
+    commit(); toast('Decision logged.');
+    return;
+  }
+  if(kind==='settings'){
+    state.settings.businessName=fv(form,'businessName')||'My Business';
+    state.settings.currency=fv(form,'currency')||'₱';
+    state.settings.taxRate=clamp(num(fv(form,'taxRate')),0,60);
+    state.settings.monthlyTarget=Math.max(0,num(fv(form,'monthlyTarget')));
+    commit(); toast('Settings saved.');
+    return;
+  }
+});
+
+/* live inputs (search) — re-render but keep focus */
+document.addEventListener('input',function(e){
+  var el=e.target;
+  var act=el.getAttribute('data-action-input');
+  if(!act) return;
+  if(act==='finance-search') ui.financeFilter.q=el.value;
+  if(act==='note-search') ui.noteFilter.q=el.value;
+  var pos=el.selectionStart;
+  render();
+  var again=document.querySelector('[data-action-input="'+act+'"]');
+  if(again){ again.focus(); try{ again.setSelectionRange(pos,pos); }catch(_){} }
+});
+
+/* selects & misc change events */
+document.addEventListener('change',function(e){
+  var el=e.target;
+  var act=el.getAttribute('data-action-change');
+  if(act==='finance-filter-type'){ ui.financeFilter.type=el.value; render(); return; }
+  if(act==='finance-filter-month'){ ui.financeFilter.month=el.value; render(); return; }
+  if(act==='finance-filter-cat'){ ui.financeFilter.category=el.value; render(); return; }
+  if(act==='review-month'){ ui.reviewMonth=el.value; render(); return; }
+  if(act==='phase-task-status'){
+    var phase=state.phases.find(function(p){return p.id===el.getAttribute('data-phase');});
+    if(phase){
+      var t=(phase.tasks||[]).find(function(x){return x.id===el.getAttribute('data-task');});
+      if(t){ t.status=el.value; commit(); if(el.value==='Completed') toast('Milestone completed 🏁'); }
+    }
+    return;
+  }
+  /* SWOT auto-save on blur/change */
+  var swotKey=el.getAttribute('data-swot');
+  if(swotKey){
+    state.reviews.swot=state.reviews.swot||{s:'',w:'',o:'',t:''};
+    state.reviews.swot[swotKey]=el.value;
+    save();
+    toast('SWOT saved.');
+    return;
+  }
+  /* backup file import */
+  if(el.id==='import-file'){
+    if(el.files&&el.files[0]) importData(el.files[0]);
+    el.value='';
+    return;
+  }
+});
+
+/* keyboard: Escape closes modal / sidebar */
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){
+    if(byId('modal-root').innerHTML) closeModal();
+    byId('sidebar').classList.remove('open');
+    byId('scrim').classList.remove('show');
+  }
+});
+
+window.addEventListener('hashchange',render);
+
+/* ============================================================
+   init
+   ============================================================ */
+loadState();
+applyTheme();
+render();
+
+/* backup reminder — once per session if data exists and backup is stale */
+(function(){
+  var records=state.finance.length+state.notes.length+state.goals.length+state.tasks.length;
+  if(records<10) return;
+  var lb=state.settings.lastBackup;
+  var stale=!lb||daysUntil(lb)<=-7;
+  if(stale){
+    setTimeout(function(){
+      toast(lb?'Your last backup was over a week ago — export a fresh one from Settings.':'Tip: your data lives only in this browser. Export a JSON backup from Settings & Data.','warn');
+    },1800);
+  }
+})();
+</script>
+</body>
+</html>
