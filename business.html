@@ -481,6 +481,12 @@ details.calc .calc-body{margin-top:10px}
   html{font-size:14px}
   .ring-wrap{flex-direction:column;align-items:flex-start}
 }
+/* inline modal errors */
+.modal-error{background:var(--risk-soft);color:var(--risk);border:1.5px solid var(--risk);border-radius:10px;padding:10px 14px;font-size:.86rem;font-weight:600;margin-bottom:14px;animation:fadeUp .25s var(--ease)}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+.img-thumb{width:42px;height:42px;object-fit:cover;border-radius:9px;border:1px solid var(--border);background:var(--bg-sunken);flex-shrink:0}
+.img-thumb-lg{width:64px;height:64px;object-fit:cover;border-radius:12px;border:1px solid var(--border);background:var(--bg-sunken)}
+.img-placeholder{display:grid;place-items:center;color:var(--text-3)}
 /* print system */
 #print-area{display:none}
 .swatches{display:flex;gap:8px;flex-wrap:wrap}
@@ -693,6 +699,22 @@ function toast(msg,type){
   el.innerHTML='<span class="t-icon">'+icon(ic)+'</span><div>'+esc(msg)+'</div>';
   root.appendChild(el);
   setTimeout(function(){ el.classList.add('out'); setTimeout(function(){ el.remove(); },320); },3400);
+  if(type==='error'||type==='warn') modalInlineError(msg);
+}
+/* show validation errors INSIDE the open modal so a rejected save is unmissable */
+function modalInlineError(msg){
+  var form=byId('modal-form');
+  if(!form) return;
+  var err=form.querySelector('.modal-error');
+  if(!err){
+    err=document.createElement('div');
+    err.className='modal-error';
+    form.insertBefore(err,form.firstChild);
+  }
+  err.textContent='⚠ '+msg;
+  var modal=form.closest('.modal');
+  if(modal){ modal.style.animation='none'; void modal.offsetWidth; modal.style.animation='shake .45s var(--ease)'; }
+  if(err.scrollIntoView) try{ err.scrollIntoView({block:'nearest'}); }catch(_){ }
 }
 
 /* ---------- visible failure: nothing breaks silently ---------- */
@@ -1130,7 +1152,12 @@ function renderSidebar(){
     html+='<button class="nav-item" data-action="custom-module-new" style="opacity:.75">'+icon('plus')+'<span>New module…</span></button>';
   }
   html+='</nav><div class="sidebar-foot"><div class="biz-chip"><div class="avatar">'+esc((state.settings.businessName||'B').charAt(0).toUpperCase())+'</div><div><b>'+esc(state.settings.businessName||'My Business')+'</b><span>Local data · private</span></div></div></div>';
-  byId('sidebar').innerHTML=html;
+  var sb=byId('sidebar');
+  var navEl=sb.querySelector('.nav');
+  var keepScroll=navEl?navEl.scrollTop:0;
+  sb.innerHTML=html;
+  var navNew=sb.querySelector('.nav');
+  if(navNew) navNew.scrollTop=keepScroll;
 }
 
 function topbar(title,subtitle,actionsHTML){
@@ -3557,7 +3584,9 @@ function viewProducts(){
     html+='<div class="table-wrap"><table><thead><tr><th>Product</th><th>Category</th>'+productAttrs().map(function(a){return '<th>'+esc(a)+'</th>';}).join('')+'<th style="text-align:right">Price</th><th style="text-align:right">Cost</th><th style="text-align:right">Margin</th><th>Stock</th><th></th></tr></thead><tbody>';
     list.forEach(function(p){
       var margin=p.price>0?(p.price-(p.cost||0))/p.price*100:null;
-      html+='<tr><td><b>'+esc(p.name)+'</b>'+(p.sku?'<div style="font-size:.7rem;color:var(--text-3)" class="mono">'+esc(p.sku)+'</div>':'')+'</td>'+
+      html+='<tr><td><div style="display:flex;align-items:center;gap:10px">'+
+        (p.photo?'<img class="img-thumb" src="'+p.photo+'" alt="">':'<span class="img-thumb img-placeholder">'+icon('box',16)+'</span>')+
+        '<div><b>'+esc(p.name)+'</b>'+(p.sku?'<div style="font-size:.7rem;color:var(--text-3)" class="mono">'+esc(p.sku)+'</div>':'')+'</div></div></td>'+
         '<td><span class="badge accent">'+esc(p.category||'General')+'</span></td>'+
         productAttrs().map(function(a){return '<td>'+esc((p.attrs||{})[a]||'—')+'</td>';}).join('')+
         '<td class="num" style="text-align:right;font-weight:700">'+fmtMoney(p.price)+'</td>'+
@@ -3568,6 +3597,7 @@ function viewProducts(){
           stockBadge(p)+
           '<button class="btn-icon" data-action="stock-adjust" data-id="'+p.id+'" data-delta="1" title="+1 stock" style="width:22px;height:22px">+</button></div></td>'+
         '<td><div class="row-actions">'+
+          '<button class="btn-icon" data-action="product-duplicate" data-id="'+p.id+'" title="Duplicate (new scent/color variant)">'+icon('plus')+'</button>'+
           '<button class="btn-icon" data-action="product-restock" data-id="'+p.id+'" title="Restock">'+icon('refresh')+'</button>'+
           '<button class="btn-icon" data-action="product-edit" data-id="'+p.id+'">'+icon('edit')+'</button>'+
           '<button class="btn-icon danger" data-action="product-delete" data-id="'+p.id+'">'+icon('trash')+'</button></div></td></tr>';
@@ -3606,7 +3636,13 @@ function productModal(p){
     '<div class="field"><label>Cost to make</label><input class="input" type="number" step="any" min="0" name="cost" value="'+(p.cost!=null?p.cost:'')+'"></div>'+
     '<div class="field"><label>Stock on hand</label><input class="input" type="number" step="1" name="stock" value="'+(p.stock!=null?p.stock:0)+'"></div></div>'+
     '<div class="form-row"><div class="field"><label>Low-stock alert at</label><input class="input" type="number" step="1" min="0" name="lowStock" value="'+(p.lowStock!=null?p.lowStock:5)+'"></div>'+
-    '<div class="field"><label>Notes</label><input class="input" name="desc" value="'+esc(p.desc||'')+'" placeholder="e.g. 8oz soy wax, 40h burn"></div></div>';
+    '<div class="field"><label>Notes</label><input class="input" name="desc" value="'+esc(p.desc||'')+'" placeholder="e.g. 8oz soy wax, 40h burn"></div></div>'+
+    '<div class="field"><label>Product photo</label><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'+
+      '<img class="img-thumb-lg img-prev" src="'+(p.photo||'')+'" style="'+(p.photo?'':'display:none')+'" alt="">'+
+      '<input type="file" accept="image/*,.heic,.heif" class="input img-input" style="flex:1;min-width:150px;padding:7px">'+
+      '<input type="hidden" name="photo" value="'+esc(p.photo||'')+'">'+
+      (p.photo?'<button type="button" class="btn btn-sm btn-danger" data-action="img-clear">'+icon('x')+' Remove</button>':'')+
+    '</div><p style="font-size:.72rem;color:var(--text-3);margin-top:5px">JPG, PNG, WebP, GIF — auto-compressed to stay light. HEIC works in Safari; elsewhere convert to JPG first. Photos sync to your Firebase cloud along with everything else.</p></div>';
   openModal(isEdit?'Edit product':'Add product',body,{onSubmit:function(form){
     var name=fv(form,'name');
     if(!name){ toast('Give the product a name.','error'); return false; }
@@ -3615,7 +3651,7 @@ function productModal(p){
     var attrs={};
     productAttrs().forEach(function(a){ var v=fv(form,'attr_'+a); if(v) attrs[a]=v; });
     var id=fv(form,'id');
-    var data={name:name,category:fv(form,'category'),sku:fv(form,'sku'),price:price,cost:num(fv(form,'cost')),stock:Math.round(num(fv(form,'stock'))),lowStock:Math.round(num(fv(form,'lowStock'))),attrs:attrs,desc:fv(form,'desc'),active:true};
+    var data={name:name,category:fv(form,'category'),sku:fv(form,'sku'),price:price,cost:num(fv(form,'cost')),stock:Math.round(num(fv(form,'stock'))),lowStock:Math.round(num(fv(form,'lowStock'))),attrs:attrs,desc:fv(form,'desc'),photo:form.elements['photo']?form.elements['photo'].value:'',active:true};
     if(id){
       var ex=findProduct(id);
       if(ex) Object.assign(ex,data);
@@ -3818,10 +3854,18 @@ function printOrderSlip(o){
 
 /* ---------- custom module builder ---------- */
 var CM_ICONS=['notes','box','clients','flag','spark','cash','truck','calc','metrics','goals'];
-var CM_TYPES=[['text','Text'],['number','Number'],['money','Money'],['date','Date'],['select','Dropdown'],['check','Checkbox']];
+var CM_TYPES=[['text','Text'],['number','Number'],['money','Money'],['date','Date'],['select','Dropdown'],['check','Checkbox'],['image','Photo / file']];
 function findModule(id){ return (state.customModules||[]).find(function(m){return m.id===id;}); }
 function cmFormatCell(f,v){
   if(v==null||v==='') return '—';
+  if(f.type==='image'){
+    if(typeof v==='object'&&v&&v.data){
+      if((v.data||'').indexOf('data:image')===0) return '<img class="img-thumb" src="'+v.data+'" alt="">';
+      return '<a href="'+v.data+'" download="'+esc(v.name||'file')+'" class="badge accent">📎 '+esc(v.name||'file')+'</a>';
+    }
+    if(String(v).indexOf('data:image')===0) return '<img class="img-thumb" src="'+v+'" alt="">';
+    return '—';
+  }
   if(f.type==='money') return fmtMoney(num(v));
   if(f.type==='number') return fmtNum(num(v));
   if(f.type==='date') return fmtDate(v);
@@ -3940,6 +3984,17 @@ function cmRecordModal(m,rec){
     m.fields.map(function(f){
       var v=rec[f.key];
       if(f.type==='check') return '<label class="checkrow" style="margin-bottom:12px"><input type="checkbox" name="'+f.key+'"'+(v?' checked':'')+'> '+esc(f.label)+'</label>';
+      if(f.type==='image'){
+        var cur=(v&&typeof v==='object')?v.data:(v||'');
+        var isImg=(cur||'').indexOf('data:image')===0;
+        return '<div class="field"><label>'+esc(f.label)+'</label><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'+
+          '<img class="img-thumb-lg img-prev" src="'+(isImg?cur:'')+'" style="'+(isImg?'':'display:none')+'" alt="">'+
+          (cur&&!isImg?'<span class="badge accent">📎 '+esc((v&&v.name)||'file')+'</span>':'')+
+          '<input type="file" class="input img-input" style="flex:1;min-width:140px;padding:7px" data-keep-name="1">'+
+          '<input type="hidden" name="'+f.key+'" value="'+esc(cur||'')+'"><input type="hidden" name="'+f.key+'__name" value="'+esc((v&&typeof v==='object'&&v.name)||'')+'">'+
+          (cur?'<button type="button" class="btn btn-sm btn-danger" data-action="img-clear">'+icon('x')+' Remove</button>':'')+
+        '</div></div>';
+      }
       if(f.type==='select') return '<div class="field"><label>'+esc(f.label)+'</label><select class="input" name="'+f.key+'"><option value="">—</option>'+
         (f.options||[]).map(function(op){return '<option'+(v===op?' selected':'')+'>'+esc(op)+'</option>';}).join('')+'</select></div>';
       var inputType=f.type==='date'?'date':(f.type==='money'||f.type==='number'?'number':'text');
@@ -3952,6 +4007,11 @@ function cmRecordModal(m,rec){
     mod.fields.forEach(function(f){
       if(f.type==='check') data[f.key]=form.elements[f.key].checked;
       else if(f.type==='money'||f.type==='number') data[f.key]=form.elements[f.key].value===''?null:num(form.elements[f.key].value);
+      else if(f.type==='image'){
+        var dv=form.elements[f.key]?form.elements[f.key].value:'';
+        var nm=form.elements[f.key+'__name']?form.elements[f.key+'__name'].value:'';
+        data[f.key]=dv?{data:dv,name:nm}:null;
+      }
       else data[f.key]=fv(form,f.key);
     });
     var rid=fv(form,'rid');
@@ -4225,6 +4285,7 @@ function exportCSV(what,id){
       rows5.push(m.fields.map(function(f){
         var v=r[f.key];
         if(f.type==='check') return v?'Yes':'No';
+        if(f.type==='image') return v?((v.name||'photo')):'';
         return v==null?'':v;
       }));
     });
@@ -4315,6 +4376,99 @@ document.addEventListener('keydown',function(e){
     e.preventDefault();
     var first=document.querySelector('#palette-results .palette-item');
     if(first) first.click();
+  }
+});
+
+/* ============================================================
+   v5 additions: image/file uploads, product duplicate
+   ============================================================ */
+
+/* Compress images client-side so they fit in localStorage and
+   sync cleanly to Firebase. Non-image files under 300KB are kept
+   as downloadable attachments. */
+function processUploadFile(file,cb){
+  if(!file){ cb(null,null,'No file selected.'); return; }
+  var isImage=/^image\//.test(file.type)||/\.(heic|heif)$/i.test(file.name||'');
+  if(!isImage){
+    if(file.size>300*1024){ cb(null,null,'Non-image files must be under 300 KB (browser storage is limited). For bigger files, keep a link in a text field instead.'); return; }
+    var fr=new FileReader();
+    fr.onload=function(){ cb(fr.result,file.name,null); };
+    fr.onerror=function(){ cb(null,null,'Could not read the file.'); };
+    fr.readAsDataURL(file);
+    return;
+  }
+  var reader=new FileReader();
+  reader.onload=function(){
+    var img=new Image();
+    img.onload=function(){
+      try{
+        var max=720, w=img.width, h=img.height;
+        var scale=Math.min(1,max/Math.max(w,h));
+        var canvas=document.createElement('canvas');
+        canvas.width=Math.max(1,Math.round(w*scale));
+        canvas.height=Math.max(1,Math.round(h*scale));
+        canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+        var out=canvas.toDataURL('image/jpeg',0.72);
+        if(out.length>900*1024){ out=canvas.toDataURL('image/jpeg',0.5); }
+        cb(out,file.name,null);
+      }catch(err){ cb(null,null,'Could not process this image: '+err.message); }
+    };
+    img.onerror=function(){ cb(null,null,'This browser cannot decode that format. HEIC only works in Safari — please convert to JPG or PNG (your phone’s share menu usually offers this).'); };
+    img.src=reader.result;
+  };
+  reader.onerror=function(){ cb(null,null,'Could not read the file.'); };
+  reader.readAsDataURL(file);
+}
+
+/* file inputs inside modals: process → stash in hidden input + live preview */
+document.addEventListener('change',function(e){
+  var el=e.target;
+  if(!el.classList||!el.classList.contains('img-input')) return;
+  var file=el.files&&el.files[0];
+  if(!file) return;
+  var wrap=el.parentElement;
+  var hidden=wrap.querySelector('input[type="hidden"]');
+  var prev=wrap.querySelector('.img-prev');
+  el.disabled=true;
+  processUploadFile(file,function(dataURL,name,err){
+    el.disabled=false;
+    if(err){ toast(err,'error'); el.value=''; return; }
+    if(hidden) hidden.value=dataURL;
+    var nameHidden=wrap.querySelector('input[name$="__name"]');
+    if(nameHidden) nameHidden.value=name||'';
+    if(prev&&dataURL.indexOf('data:image')===0){ prev.src=dataURL; prev.style.display=''; }
+    toast('File attached ('+Math.round(dataURL.length*0.75/1024)+' KB after compression). Click Save to keep it.');
+  });
+});
+
+document.addEventListener('click',function(e){
+  var el=e.target.closest('[data-action]');
+  if(!el) return;
+  var action=el.getAttribute('data-action');
+  if(action==='img-clear'){
+    var wrap=el.parentElement;
+    var hidden=wrap.querySelector('input[type="hidden"]');
+    var prev=wrap.querySelector('.img-prev');
+    if(hidden) hidden.value='';
+    var nameHidden=wrap.querySelector('input[name$="__name"]');
+    if(nameHidden) nameHidden.value='';
+    if(prev){ prev.src=''; prev.style.display='none'; }
+    el.style.display='none';
+    toast('Photo removed — click Save to confirm.');
+    return;
+  }
+  if(action==='product-duplicate'){
+    var p=findProduct(el.getAttribute('data-id'));
+    if(p){
+      var copy=JSON.parse(JSON.stringify(p));
+      delete copy.id;
+      copy.name=p.name+' (variant)';
+      copy.sku=p.sku?p.sku+'-2':'';
+      copy.stock=0;
+      productModal(copy);
+      toast('Prefilled from "'+p.name+'" — change the scent/color, set stock, then Save.');
+    }
+    return;
   }
 });
 
