@@ -90,7 +90,7 @@ html[data-theme="dark"]{
    base
    ============================================================ */
 *{box-sizing:border-box;margin:0;padding:0}
-html{font-size:15px}
+html{font-size:13.5px}
 body{
   font-family:var(--font);
   background:var(--bg);
@@ -117,7 +117,7 @@ a{color:var(--accent);text-decoration:none}
    ============================================================ */
 .app{display:flex;min-height:100vh}
 .sidebar{
-  position:fixed;inset:0 auto 0 0;width:248px;z-index:60;
+  position:fixed;inset:0 auto 0 0;width:232px;z-index:60;
   background:var(--bg-sidebar);
   display:flex;flex-direction:column;
   padding:18px 12px;
@@ -132,8 +132,8 @@ a{color:var(--accent);text-decoration:none}
 .nav{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:2px}
 .nav-section{font-size:.64rem;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--sidebar-text);opacity:.65;padding:14px 12px 5px}
 .nav-item{
-  display:flex;align-items:center;gap:11px;
-  padding:8px 12px;border-radius:9px;
+  display:flex;align-items:center;gap:10px;
+  padding:6.5px 11px;border-radius:9px;
   color:var(--sidebar-text);font-size:.9rem;font-weight:500;
   transition:background .15s,color .15s,transform .1s;
   width:100%;text-align:left;position:relative;
@@ -149,14 +149,14 @@ a{color:var(--accent);text-decoration:none}
 .biz-chip .avatar{width:30px;height:30px;border-radius:8px;background:var(--accent-grad);display:grid;place-items:center;color:#fff;font-weight:700;font-size:.8rem;flex-shrink:0}
 .biz-chip b{color:#fff;display:block;font-size:.84rem;line-height:1.2;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
-.main{flex:1;margin-left:248px;min-width:0;padding:26px 30px 70px;animation:fadeIn .35s var(--ease)}
+.main{flex:1;margin-left:232px;min-width:0;padding:20px 26px 60px;animation:fadeIn .35s var(--ease)}
 
 /* topbar */
-.topbar{display:flex;align-items:center;gap:14px;margin-bottom:24px;flex-wrap:wrap}
-.page-title h1{font-size:1.5rem;font-weight:800;letter-spacing:-.025em;line-height:1.2}
+.topbar{display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+.page-title h1{font-size:1.32rem;font-weight:800;letter-spacing:-.025em;line-height:1.2}
 .page-title p{color:var(--text-2);font-size:.88rem;margin-top:2px}
 .topbar-actions{margin-left:auto;display:flex;gap:9px;align-items:center;flex-wrap:wrap}
-.hamburger{display:none;width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--bg-card);align-items:center;justify-content:center;box-shadow:var(--shadow-sm)}
+.hamburger{display:none;width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--bg-card);align-items:center;justify-content:center;box-shadow:var(--shadow-sm)}
 .hamburger svg{width:19px;height:19px}
 .scrim{display:none;position:fixed;inset:0;background:rgba(8,10,20,.55);z-index:55;backdrop-filter:blur(2px);animation:fadeIn .2s}
 
@@ -164,8 +164,8 @@ a{color:var(--accent);text-decoration:none}
    buttons
    ============================================================ */
 .btn{
-  display:inline-flex;align-items:center;gap:7px;
-  padding:8px 16px;border-radius:10px;
+  display:inline-flex;align-items:center;gap:6px;
+  padding:7px 14px;border-radius:10px;
   font-size:.88rem;font-weight:600;
   border:1px solid transparent;
   transition:all .18s var(--ease);
@@ -189,7 +189,7 @@ a{color:var(--accent);text-decoration:none}
 .btn-block{width:100%;justify-content:center}
 
 /* theme toggle */
-.theme-toggle{width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--bg-card);display:inline-flex;align-items:center;justify-content:center;box-shadow:var(--shadow-sm);transition:all .2s}
+.theme-toggle{width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--bg-card);display:inline-flex;align-items:center;justify-content:center;box-shadow:var(--shadow-sm);transition:all .2s}
 .theme-toggle:hover{border-color:var(--accent);color:var(--accent);transform:rotate(15deg)}
 .theme-toggle svg{width:17px;height:17px}
 
@@ -198,7 +198,7 @@ a{color:var(--accent);text-decoration:none}
    ============================================================ */
 .card{
   background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-lg);
-  padding:20px;box-shadow:var(--shadow-sm);
+  padding:16px 18px;box-shadow:var(--shadow-sm);
   transition:box-shadow .25s var(--ease),transform .25s var(--ease),border-color .25s;
   animation:fadeUp .4s var(--ease) backwards;
 }
@@ -207,7 +207,7 @@ a{color:var(--accent);text-decoration:none}
 .card-head h3{font-size:1rem;font-weight:700;letter-spacing:-.01em}
 .card-head .sub{font-size:.8rem;color:var(--text-3)}
 .card-head .spacer{margin-left:auto}
-.grid{display:grid;gap:16px}
+.grid{display:grid;gap:13px}
 .grid-2{grid-template-columns:repeat(2,1fr)}
 .grid-3{grid-template-columns:repeat(3,1fr)}
 .grid-4{grid-template-columns:repeat(4,1fr)}
@@ -217,13 +217,13 @@ a{color:var(--accent);text-decoration:none}
 .grid > .card:nth-child(4){animation-delay:.15s}
 .grid > .card:nth-child(5){animation-delay:.2s}
 .grid > .card:nth-child(6){animation-delay:.25s}
-.mt{margin-top:16px}.mt-lg{margin-top:24px}
+.mt{margin-top:13px}.mt-lg{margin-top:20px}
 
 /* stat cards */
 .stat-card{position:relative;overflow:hidden}
 .stat-card .stat-label{font-size:.76rem;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;display:flex;align-items:center;gap:7px}
 .stat-card .stat-label svg{width:14px;height:14px}
-.stat-card .stat-value{font-size:1.65rem;font-weight:800;letter-spacing:-.03em;margin-top:6px;font-variant-numeric:tabular-nums}
+.stat-card .stat-value{font-size:1.42rem;font-weight:800;letter-spacing:-.03em;margin-top:6px;font-variant-numeric:tabular-nums}
 .stat-card .stat-delta{font-size:.78rem;font-weight:600;margin-top:4px;display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px}
 .stat-delta.up{color:var(--good);background:var(--good-soft)}
 .stat-delta.down{color:var(--risk);background:var(--risk-soft)}
@@ -257,7 +257,7 @@ a{color:var(--accent);text-decoration:none}
 .field{margin-bottom:14px}
 .field label{display:block;font-size:.8rem;font-weight:600;color:var(--text-2);margin-bottom:5px}
 .input,select.input,textarea.input{
-  width:100%;padding:9px 12px;border-radius:10px;
+  width:100%;padding:8px 11px;border-radius:10px;
   border:1.5px solid var(--border);background:var(--bg-input);
   transition:border-color .18s,box-shadow .18s;
 }
@@ -284,8 +284,8 @@ input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);cursor:po
    ============================================================ */
 .table-wrap{overflow-x:auto;border-radius:var(--r);border:1px solid var(--border)}
 table{width:100%;border-collapse:collapse;font-size:.88rem}
-th{text-align:left;padding:10px 14px;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);background:var(--bg-sunken);border-bottom:1px solid var(--border);white-space:nowrap}
-td{padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
+th{text-align:left;padding:8px 12px;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);background:var(--bg-sunken);border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:8px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
 tbody tr{transition:background .12s}
 tbody tr:hover{background:var(--bg-hover)}
 tbody tr:last-child td{border-bottom:none}
@@ -469,7 +469,7 @@ details.calc .calc-body{margin-top:10px}
   .sidebar{transform:translateX(-100%)}
   .sidebar.open{transform:translateX(0);box-shadow:var(--shadow-lg)}
   .scrim.show{display:block}
-  .main{margin-left:0;padding:18px 16px 60px}
+  .main{margin-left:0;padding:16px 14px 56px}
   .hamburger{display:inline-flex}
   .grid-2,.grid-hero{grid-template-columns:1fr}
   .form-row,.form-row-3{grid-template-columns:1fr}
@@ -483,13 +483,18 @@ details.calc .calc-body{margin-top:10px}
 }
 /* depth & polish */
 body{background-image:radial-gradient(1100px 500px at 18% -8%,var(--accent-soft),transparent 60%)}
-.stat-icon{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);flex-shrink:0}
+.stat-icon{width:29px;height:29px;border-radius:9px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);flex-shrink:0}
 .stat-icon svg{width:16px;height:16px}
 .stat-card .stat-value{margin-top:10px}
 .card:hover{transform:translateY(-2px)}
-.acct-card{position:relative;overflow:hidden}
+.acct-card{position:relative;overflow:hidden;border-top:3px solid var(--acct-color,var(--accent))}
+.acct-logo{width:34px;height:34px;border-radius:9px;object-fit:cover;border:1px solid var(--border);cursor:zoom-in}
+.acct-chip{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;flex-shrink:0}
+.acct-chip svg{width:16px;height:16px}
+.color-dot{width:24px;height:24px;border-radius:50%;border:2.5px solid transparent;cursor:pointer;transition:transform .15s}
+.color-dot:hover{transform:scale(1.18)}
 .acct-card::after{content:'';position:absolute;top:-40px;right:-40px;width:130px;height:130px;border-radius:50%;background:radial-gradient(circle,var(--accent-soft),transparent 70%)}
-.acct-balance{font-size:1.7rem;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.acct-balance{font-size:1.42rem;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
 /* inline modal errors */
 .modal-error{background:var(--risk-soft);color:var(--risk);border:1.5px solid var(--risk);border-radius:10px;padding:10px 14px;font-size:.86rem;font-weight:600;margin-bottom:14px;animation:fadeUp .25s var(--ease)}
 @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
@@ -2603,9 +2608,9 @@ function loadSampleData(){
   // accounts
   var aBank=uid(),aGcash=uid(),aCash=uid();
   state.accounts=[
-    {id:aBank,name:'BPI Business Checking',type:'Bank',opening:35000,note:'Main operating account',adjust:[]},
-    {id:aGcash,name:'GCash Business',type:'E-wallet',opening:8000,note:'Customer payments',adjust:[]},
-    {id:aCash,name:'Cash box',type:'Cash',opening:3500,note:'Market days & COD change',adjust:[]}
+    {id:aBank,name:'BPI Business Checking',type:'Bank',opening:35000,note:'Main operating account',color:'#B11116',logo:'',adjust:[]},
+    {id:aGcash,name:'GCash Business',type:'E-wallet',opening:8000,note:'Customer payments',color:'#007DFE',logo:'',adjust:[]},
+    {id:aCash,name:'Cash box',type:'Cash',opening:3500,note:'Market days & COD change',color:'#10b981',logo:'',adjust:[]}
   ];
   state.transfers=[
     {id:uid(),from:aGcash,to:aBank,amount:6000,date:d(0,Math.max(1,new Date().getDate()-4)),note:'Weekly sweep to bank'}
@@ -5195,17 +5200,15 @@ function viewAccounts(){
     statCard('True position',fmtMoney(totalCash+recv),'<span class="stat-delta flat">cash + receivables</span>','','shield')+
     statCard('This month P&L',fmtMoney(cur.revenue-cur.expenses),'<span class="stat-delta '+(cur.revenue-cur.expenses>=0?'up':'down')+'">'+fmtMoney(cur.revenue)+' in · '+fmtMoney(cur.expenses)+' out</span>','','metrics')+
   '</div>';
-  html+='<div class="grid grid-3 mt" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr))">'+
-    '<div class="card" style="display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:6px;border-style:dashed;cursor:pointer" data-action="account-new">'+
-      '<span class="stat-icon">'+icon('plus')+'</span><b style="font-size:.92rem">Add bank / e-wallet / cash</b>'+
-      '<span style="font-size:.76rem;color:var(--text-3)">Track where every peso sits.</span></div>';
+  html+='<div class="grid grid-3 mt" style="grid-template-columns:repeat(auto-fill,minmax(225px,1fr))">';
   accts.forEach(function(a){
     var bal=accountBalance(a);
     var flow=accountMonthFlow(a,mk);
-    var typeCls={'Bank':'info','E-wallet':'accent','Cash':'good','Other':'neutral'}[a.type]||'neutral';
-    html+='<div class="card acct-card">'+
-      '<div style="display:flex;align-items:flex-start;gap:9px"><span class="stat-icon">'+icon(a.type==='Cash'?'cash':'bank')+'</span>'+
-      '<div style="flex:1;min-width:0"><b style="font-size:.95rem;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(a.name)+'</b><span class="badge '+typeCls+'">'+esc(a.type)+'</span></div></div>'+
+    var col=a.color||brandColorFor(a.name);
+    html+='<div class="card acct-card" style="--acct-color:'+col+'">'+
+      '<div style="display:flex;align-items:flex-start;gap:9px">'+
+      (a.logo?'<img class="acct-logo" src="'+a.logo+'" alt="">':'<span class="acct-chip" style="background:'+col+'22;color:'+col+'">'+icon(a.type==='Cash'?'cash':'bank')+'</span>')+
+      '<div style="flex:1;min-width:0"><b style="font-size:.95rem;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(a.name)+'</b><span class="badge" style="background:'+col+'1d;color:'+col+'">'+esc(a.type)+'</span></div></div>'+
       '<div class="acct-balance" style="margin-top:12px;color:'+(bal>=0?'var(--text)':'var(--risk)')+'">'+fmtMoney(bal)+'</div>'+
       '<div style="font-size:.74rem;color:var(--text-3);margin-top:2px">this month: <span style="color:var(--good)">+'+fmtMoney(flow.inn)+'</span> · <span style="color:var(--risk)">−'+fmtMoney(flow.out)+'</span></div>'+
       (a.note?'<div style="font-size:.74rem;color:var(--text-3);margin-top:5px">'+esc(a.note)+'</div>':'')+
@@ -5214,6 +5217,9 @@ function viewAccounts(){
         '<button class="btn-icon" data-action="account-edit" data-id="'+a.id+'">'+icon('edit')+'</button>'+
         '<button class="btn-icon danger" data-action="account-delete" data-id="'+a.id+'">'+icon('trash')+'</button></div></div>';
   });
+  html+='<div class="card" style="display:flex;flex-direction:column;justify-content:center;align-items:center;gap:5px;border-style:dashed;cursor:pointer;text-align:center;min-height:140px" data-action="account-new">'+
+    '<span class="stat-icon">'+icon('plus')+'</span><b style="font-size:.85rem">Add account</b>'+
+    '<span style="font-size:.72rem;color:var(--text-3)">bank · e-wallet · cash</span></div>';
   html+='</div>';
   if(!accts.length){
     html+='<div class="card mt">'+emptyState('bank','No accounts yet','Add your bank account, GCash/Maya wallet and cash box with their current balances. New income and expenses can then be assigned to an account, so each balance stays accurate.','<button class="btn btn-sm btn-primary" data-action="account-new">'+icon('plus')+' Add first account</button>')+'</div>';
@@ -5244,27 +5250,50 @@ function viewAccounts(){
   html+='</div>';
   return html;
 }
+var BRAND_COLORS=[
+  ['gcash','#007DFE'],['maya','#00B14F'],['paymaya','#00B14F'],['bpi','#B11116'],['bdo','#00308F'],
+  ['metrobank','#0033A0'],['unionbank','#FF6F00'],['landbank','#00703C'],['security','#1B5633'],
+  ['seabank','#00BCD4'],['gotyme','#00D66B'],['cimb','#ED1C24'],['paypal','#003087'],['cash','#10b981']
+];
+function brandColorFor(name){
+  var n=(name||'').toLowerCase();
+  for(var i=0;i<BRAND_COLORS.length;i++){ if(n.indexOf(BRAND_COLORS[i][0])>=0) return BRAND_COLORS[i][1]; }
+  return '#6366f1';
+}
 function accountModal(a){
   var isEdit=!!a;
   a=a||{type:'Bank',opening:0};
+  var curColor=a.color||brandColorFor(a.name||'');
   var body=
     '<input type="hidden" name="id" value="'+(a.id||'')+'">'+
-    '<div class="field"><label>Account name *</label><input class="input" name="name" value="'+esc(a.name||'')+'" required placeholder="e.g. BPI Checking, GCash, Cash box"></div>'+
+    '<div class="field"><label>Account name *</label><input class="input" name="name" value="'+esc(a.name||'')+'" required placeholder="e.g. BPI Checking, GCash, Cash box" data-acct-name="1"><p style="font-size:.7rem;color:var(--text-3);margin-top:4px">Type a known bank or wallet (GCash, BPI, BDO, Maya…) and the brand color is picked automatically.</p></div>'+
     '<div class="form-row"><div class="field"><label>Type</label><select class="input" name="type">'+
       ACCOUNT_TYPES.map(function(tp){return '<option'+(a.type===tp?' selected':'')+'>'+tp+'</option>';}).join('')+'</select></div>'+
     '<div class="field"><label>'+(isEdit?'Opening balance':'Current balance')+' ('+esc(state.settings.currency)+')</label><input class="input" type="number" step="any" name="opening" value="'+(a.opening!=null?a.opening:'')+'"></div></div>'+
+    '<div class="field"><label>Brand color</label><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
+      '<input type="color" name="color" value="'+esc(curColor)+'" style="width:42px;height:30px;border:none;border-radius:8px;cursor:pointer;background:none" data-acct-color="1">'+
+      BRAND_COLORS.slice(0,9).map(function(bc){return '<button type="button" class="color-dot" style="background:'+bc[1]+'" title="'+bc[0]+'" data-action="acct-swatch" data-color="'+bc[1]+'"></button>';}).join('')+
+    '</div></div>'+
+    '<div class="field"><label>Logo (optional — upload the bank/wallet logo or any photo)</label><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'+
+      '<img class="img-thumb img-prev" src="'+(a.logo||'')+'" style="'+(a.logo?'':'display:none')+'" alt="">'+
+      '<input type="file" accept="image/*,.heic,.heif" class="input img-input" style="flex:1;min-width:140px;padding:6px">'+
+      '<input type="hidden" name="logo" value="'+esc(a.logo||'')+'">'+
+      (a.logo?'<button type="button" class="btn btn-sm btn-danger" data-action="img-clear">'+icon('x')+' Remove</button>':'')+
+    '</div></div>'+
     '<div class="field"><label>Note</label><input class="input" name="note" value="'+esc(a.note||'')+'" placeholder="What is this account for?"></div>'+
     (isEdit?'':'<p style="font-size:.74rem;color:var(--text-3)">Enter the balance as it is right now — from here on, assigned income, expenses and transfers keep it up to date. Use Reconcile anytime to match reality.</p>');
   openModal(isEdit?'Edit account':'Add account',body,{onSubmit:function(form){
     var name=fv(form,'name');
     if(!name){ toast('Give the account a name.','error'); return false; }
     var id=fv(form,'id');
+    var color=fv(form,'color')||brandColorFor(name);
+    var logo=form.elements['logo']?form.elements['logo'].value:'';
     if(id){
       var ex=findAccount(id);
-      if(ex){ ex.name=name; ex.type=fv(form,'type'); ex.opening=num(fv(form,'opening')); ex.note=fv(form,'note'); }
+      if(ex){ ex.name=name; ex.type=fv(form,'type'); ex.opening=num(fv(form,'opening')); ex.note=fv(form,'note'); ex.color=color; ex.logo=logo; }
       toast('Account updated.');
     } else {
-      state.accounts.push({id:uid(),name:name,type:fv(form,'type'),opening:num(fv(form,'opening')),note:fv(form,'note'),adjust:[]});
+      state.accounts.push({id:uid(),name:name,type:fv(form,'type'),opening:num(fv(form,'opening')),note:fv(form,'note'),color:color,logo:logo,adjust:[]});
       toast('"'+name+'" added — assign entries to it to keep the balance live.');
     }
     return true;
@@ -5307,12 +5336,29 @@ function reconcileModal(a){
   }});
 }
 
+document.addEventListener('input',function(e){
+  var el=e.target;
+  if(el.getAttribute&&el.getAttribute('data-acct-name')){
+    var form=el.closest('form');
+    var colorInput=form&&form.elements['color'];
+    if(colorInput&&!colorInput.getAttribute('data-touched')) colorInput.value=brandColorFor(el.value);
+  }
+});
+document.addEventListener('change',function(e){
+  if(e.target.getAttribute&&e.target.getAttribute('data-acct-color')) e.target.setAttribute('data-touched','1');
+});
+
 /* v9 wiring */
 document.addEventListener('click',function(e){
   var el=e.target.closest('[data-action]');
   if(!el) return;
   var action=el.getAttribute('data-action');
   var id=el.getAttribute('data-id');
+  if(action==='acct-swatch'){
+    var form=el.closest('form');
+    if(form&&form.elements['color']){ form.elements['color'].value=el.getAttribute('data-color'); form.elements['color'].setAttribute('data-touched','1'); }
+    return;
+  }
   if(action==='account-new'){ accountModal(); return; }
   if(action==='account-edit'){ var a=findAccount(id); if(a) accountModal(a); return; }
   if(action==='account-reconcile'){ var a2=findAccount(id); if(a2) reconcileModal(a2); return; }
