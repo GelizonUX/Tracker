@@ -1050,8 +1050,8 @@ function buildInsights(){
   var ut=utangTotals();
   if(ut.total>0){
     var avgRev=avgMonthlyRevenue(3);
-    if(avgRev>0&&ut.total>avgRev*0.3) out.push({sev:'warn',title:'Utang is piling up',text:fmtMoney(ut.total)+' is sitting in your lista — that is '+fmtPct(ut.total/avgRev*100,0)+' of a typical month\'s revenue. Collect gently but consistently.'});
-    else out.push({sev:'info',title:'Lista balance: '+fmtMoney(ut.total),text:ut.customers+' customer'+(ut.customers>1?'s':'')+' with open utang. Payments are recorded as income only when cash actually arrives.'});
+    if(avgRev>0&&ut.total>avgRev*0.3) out.push({sev:'warn',title:'Customer credit is piling up',text:fmtMoney(ut.total)+' is sitting in your credit ledger — that is '+fmtPct(ut.total/avgRev*100,0)+' of a typical month\'s revenue. Collect gently but consistently.'});
+    else out.push({sev:'info',title:'Credit ledger balance: '+fmtMoney(ut.total),text:ut.customers+' customer'+(ut.customers>1?'s':'')+' with open credit. Payments are recorded as income only when cash actually arrives.'});
   }
   var evs=phSeasonalEvents();
   if(evs.length){
@@ -1175,7 +1175,7 @@ var ROUTES=[
   {id:'metrics',label:'Metrics & KPIs',icon:'metrics',section:'Money'},
   {id:'products',label:'Products & Stock',icon:'box',section:'Shop'},
   {id:'orders',label:'Orders',icon:'truck',section:'Shop'},
-  {id:'utang',label:'Utang / Lista',icon:'ledger',section:'Shop'},
+  {id:'utang',label:'Customer Credit',icon:'ledger',section:'Shop'},
   {id:'goals',label:'Goals',icon:'goals',section:'Execution'},
   {id:'roadmap',label:'Roadmap',icon:'roadmap',section:'Execution'},
   {id:'tasks',label:'Tasks',icon:'tasks',section:'Execution'},
@@ -2716,9 +2716,9 @@ function loadSampleData(){
   state.finance.push({id:uid(),type:'income',amount:988,date:d(0,Math.max(1,new Date().getDate()-1)),category:'Sales',note:'Order ORD-0002 (“Thinking of You” Gift Box×1, Citrus Burst Candle×1)',client:'Joanna Reyes',offer:''});
   // utang / lista
   state.utang=[
-    {id:uid(),clientName:'Mika Santos',amount:698,date:d(-1,18),note:'2 Lavender candles — bayad sa sweldo',settled:false,
+    {id:uid(),clientName:'Mika Santos',amount:698,date:d(-1,18),note:'2 Lavender candles — will pay on payday',settled:false,
       payments:[{id:uid(),amount:300,date:d(0,Math.max(1,new Date().getDate()-5)),note:'partial — GCash'}]},
-    {id:uid(),clientName:'Carlo Dizon',amount:1047,date:d(-2,10),note:'Gift box + candle, birthday ng nanay',settled:false,payments:[]}
+    {id:uid(),clientName:'Carlo Dizon',amount:1047,date:d(-2,10),note:'Gift box + candle for mom\'s birthday',settled:false,payments:[]}
   ];
   // a sample custom module to show the builder
   var supF1='f'+uid(),supF2='f'+uid(),supF3='f'+uid(),supF4='f'+uid();
@@ -5540,7 +5540,7 @@ function todayPanelHTML(){
   if(lowMat.length) items.push({cls:'warn',icon:'box',text:'<b>'+esc(lowMat[0].name)+'</b> running out — restock materials',route:'products'});
   // utang overdue
   var od=utangOverdue();
-  if(od.count) items.push({cls:'warn',icon:'ledger',text:'<b>'+od.count+'</b> lista entr'+(od.count>1?'ies':'y')+' 30+ days old ('+fmtMoney(od.total)+') — singilin na nang mahinahon',route:'utang'});
+  if(od.count) items.push({cls:'warn',icon:'ledger',text:'<b>'+od.count+'</b> credit entr'+(od.count>1?'ies':'y')+' 30+ days old ('+fmtMoney(od.total)+') — time for a gentle reminder',route:'utang'});
   // seasonal radar
   var ev=phSeasonalEvents()[0];
   if(ev){
@@ -5783,7 +5783,9 @@ var TL={
   'Orders this month':'Orders ngayong buwan','Best month':'Pinakamagandang buwan',
   /* misc visible */
   'Today':'Ngayon','Scan & prefill from photo (beta)':'I-scan at i-prefill mula sa litrato (beta)',
-  'Utang / Lista':'Utang / Lista','Total utang':'Kabuuang utang','30+ days old':'30+ araw na','Settled all-time':'Nabayaran na (lahat)'
+  'Customer Credit':'Utang / Lista','Total credit owed':'Kabuuang utang','30+ days old':'30+ araw na','Settled all-time':'Nabayaran na (lahat)',
+  'Add credit':'Ilista','Record payment':'Hulog / Bayad','balance':'balanse','payment':'hulog','fully paid':'bayad na lahat','Credit':'Utang',
+  'The digital credit notebook — customer tabs, partial payments, nothing forgotten.':'Ang digital na listahan — utang ng mga suki, hulog-hulog na bayad, walang nakakalimutan.'
 };
 function tr(s){
   if(state&&state.settings&&state.settings.lang==='tl'&&TL[s]) return TL[s];
@@ -5924,11 +5926,11 @@ function viewUtang(){
   var mk=thisMonthKey();
   var collected=0;
   (state.utang||[]).forEach(function(u){ (u.payments||[]).forEach(function(p){ if(monthKey(p.date)===mk) collected+=p.amount; }); });
-  var html=topbar('Utang / Lista','Ang digital na listahan — credit ng mga suki, hulog-hulog na bayad, walang nakakalimutan.',
-    '<button class="btn btn-primary" data-action="utang-new">'+icon('plus')+'<span class="btn-txt">Ilista</span></button>');
+  var html=topbar('Customer Credit','The digital credit notebook — customer tabs, partial payments, nothing forgotten.',
+    '<button class="btn btn-primary" data-action="utang-new">'+icon('plus')+'<span class="btn-txt">'+esc(tr('Add credit'))+'</span></button>');
   html+='<div class="grid grid-4">'+
-    statCard('Total utang',fmtMoney(ut.total),'<span class="stat-delta flat">'+ut.customers+' customer'+(ut.customers===1?'':'s')+'</span>','','ledger')+
-    statCard('30+ days old',fmtMoney(od.total),od.count?'<span class="stat-delta down">'+od.count+' to follow up</span>':'<span class="stat-delta up">walang matagal na</span>','','clock')+
+    statCard('Total credit owed',fmtMoney(ut.total),'<span class="stat-delta flat">'+ut.customers+' customer'+(ut.customers===1?'':'s')+'</span>','','ledger')+
+    statCard('30+ days old',fmtMoney(od.total),od.count?'<span class="stat-delta down">'+od.count+' to follow up</span>':'<span class="stat-delta up">nothing aging</span>','','clock')+
     statCard('Collected this month',fmtMoney(collected),'<span class="stat-delta up">recorded as income on payment</span>','','cash')+
     statCard('Settled all-time',String((state.utang||[]).filter(function(u){return u.settled||utangBalance(u)<=0;}).length),'','','check')+
   '</div>';
@@ -5939,7 +5941,7 @@ function viewUtang(){
   });
   html+='<div class="card mt-lg">';
   if(!list.length){
-    html+=emptyState('ledger','Walang utang sa lista','Kapag may suki na "bayad sa sweldo," ilista dito. Track partial payments (hulog), and the income is only counted when cash actually arrives — honest cash-basis bookkeeping.','<button class="btn btn-sm btn-primary" data-action="utang-new">'+icon('plus')+' Ilista ang una</button>');
+    html+=emptyState('ledger','No customer credit yet','When a regular customer says "I\'ll pay later," record it here. Track partial payments, and income is only counted when cash actually arrives — honest cash-basis bookkeeping.','<button class="btn btn-sm btn-primary" data-action="utang-new">'+icon('plus')+' '+esc(tr('Add credit'))+'</button>');
   } else {
     // group by customer
     var groups={};
@@ -5954,25 +5956,25 @@ function viewUtang(){
       var bal=sum(entries.filter(function(u){return !u.settled;}),utangBalance);
       html+='<div style="border-bottom:1px solid var(--border);padding:12px 2px">'+
         '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><b style="font-size:.95rem;flex:1">'+esc(name)+'</b>'+
-        (bal>0?'<span class="badge '+(entries.some(function(u){return !u.settled&&-daysUntil(u.date)>=30;})?'warn':'accent')+'" style="font-size:.8rem">balance: '+fmtMoney(bal)+'</span>':'<span class="badge good">'+icon('check')+' bayad na lahat</span>')+'</div>';
+        (bal>0?'<span class="badge '+(entries.some(function(u){return !u.settled&&-daysUntil(u.date)>=30;})?'warn':'accent')+'" style="font-size:.8rem">'+esc(tr('balance'))+': '+fmtMoney(bal)+'</span>':'<span class="badge good">'+icon('check')+' '+esc(tr('fully paid'))+'</span>')+'</div>';
       entries.forEach(function(u){
         var b=utangBalance(u);
         var done=u.settled||b<=0;
         var age=-daysUntil(u.date);
         html+='<div style="margin-top:8px;padding:9px 12px;background:var(--bg-sunken);border-radius:10px">'+
           '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
-          '<span style="flex:1;font-size:.86rem;'+(done?'text-decoration:line-through;color:var(--text-3)':'')+'">'+esc(u.note||'Utang')+'</span>'+
+          '<span style="flex:1;font-size:.86rem;'+(done?'text-decoration:line-through;color:var(--text-3)':'')+'">'+esc(u.note||tr('Credit'))+'</span>'+
           '<span style="font-size:.72rem;color:var(--text-3)">'+fmtDate(u.date)+(!done&&age>=30?' · <b style="color:var(--warn)">'+age+'d</b>':'')+'</span>'+
           '<b class="num" style="font-size:.9rem;'+(done?'color:var(--text-3)':'')+'">'+fmtMoney(u.amount)+'</b></div>';
         if((u.payments||[]).length){
           html+='<div style="margin-top:5px;font-size:.74rem;color:var(--text-2)">'+u.payments.map(function(p){
-            return '↳ hulog '+fmtMoney(p.amount)+' · '+fmtDate(p.date)+(p.note?' ('+esc(p.note)+')':'');
+            return '↳ '+esc(tr('payment'))+' '+fmtMoney(p.amount)+' · '+fmtDate(p.date)+(p.note?' ('+esc(p.note)+')':'');
           }).join('<br>')+'</div>';
         }
         if(!done){
           html+='<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">'+
-            '<span class="badge risk">balanse: '+fmtMoney(b)+'</span>'+
-            '<button class="btn btn-sm btn-good" data-action="utang-pay" data-id="'+u.id+'">'+icon('cash')+' Hulog / Bayad</button>'+
+            '<span class="badge risk">'+esc(tr('balance'))+': '+fmtMoney(b)+'</span>'+
+            '<button class="btn btn-sm btn-good" data-action="utang-pay" data-id="'+u.id+'">'+icon('cash')+' '+esc(tr('Record payment'))+'</button>'+
             '<button class="btn-icon" data-action="utang-edit" data-id="'+u.id+'">'+icon('edit')+'</button>'+
             '<button class="btn-icon danger" data-action="utang-delete" data-id="'+u.id+'">'+icon('trash')+'</button></div>';
         } else {
@@ -5984,7 +5986,7 @@ function viewUtang(){
     });
   }
   html+='</div>';
-  html+='<p style="font-size:.74rem;color:var(--text-3);margin-top:10px">💡 Cash-basis ito: ang utang ay hindi pa kita. Income is recorded only when a hulog/bayad is received — kaya tugma lagi ang P&L sa totoong pera.</p>';
+  html+='<p style="font-size:.74rem;color:var(--text-3);margin-top:10px">💡 Cash-basis: credit is not income yet. Income is recorded only when a payment is received — so your P&L always matches real money.</p>';
   return html;
 }
 function utangModal(u){
@@ -5992,26 +5994,26 @@ function utangModal(u){
   u=u||{date:todayISO()};
   var body=
     '<input type="hidden" name="id" value="'+(u.id||'')+'">'+
-    '<div class="field"><label>Customer *</label><input class="input" name="clientName" value="'+esc(u.clientName||'')+'" list="ut-clients" required placeholder="Sino ang umutang?"><datalist id="ut-clients">'+
+    '<div class="field"><label>Customer *</label><input class="input" name="clientName" value="'+esc(u.clientName||'')+'" list="ut-clients" required placeholder="Who owes you?"><datalist id="ut-clients">'+
       state.clients.map(function(c){return '<option value="'+esc(c.name)+'">';}).join('')+'</datalist></div>'+
-    '<div class="form-row"><div class="field"><label>Halaga ('+esc(state.settings.currency)+') *</label><input class="input" type="number" step="any" min="0.01" name="amount" value="'+(u.amount||'')+'" required></div>'+
-    '<div class="field"><label>Petsa</label><input class="input" type="date" name="date" value="'+esc(u.date||todayISO())+'"></div></div>'+
-    '<div class="field"><label>Para saan</label><input class="input" name="note" value="'+esc(u.note||'')+'" placeholder="e.g. 2 candles — bayad sa sweldo"></div>'+
-    (isEdit?'':'<p style="font-size:.72rem;color:var(--text-3)">Hindi pa ito kita — mare-record ang income kapag nagbayad na (kahit hulog-hulog).</p>');
-  openModal(isEdit?'Edit lista':'Ilista ang utang',body,{submitLabel:isEdit?'Save':'Ilista',onSubmit:function(form){
+    '<div class="form-row"><div class="field"><label>Amount ('+esc(state.settings.currency)+') *</label><input class="input" type="number" step="any" min="0.01" name="amount" value="'+(u.amount||'')+'" required></div>'+
+    '<div class="field"><label>Date</label><input class="input" type="date" name="date" value="'+esc(u.date||todayISO())+'"></div></div>'+
+    '<div class="field"><label>What for</label><input class="input" name="note" value="'+esc(u.note||'')+'" placeholder="e.g. 2 candles — will pay on payday"></div>'+
+    (isEdit?'':'<p style="font-size:.72rem;color:var(--text-3)">This is not income yet — income is recorded when they pay (even partially).</p>');
+  openModal(isEdit?'Edit credit entry':'Add customer credit',body,{submitLabel:isEdit?'Save':'Add credit',onSubmit:function(form){
     var nm=fv(form,'clientName');
     var amount=num(fv(form,'amount'));
-    if(!nm){ toast('Sino ang umutang? Enter the customer name.','error'); return false; }
+    if(!nm){ toast('Enter the customer name.','error'); return false; }
     if(amount<=0){ toast('Enter an amount greater than zero.','error'); return false; }
     var id=fv(form,'id');
     if(id){
       var ex=state.utang.find(function(x){return x.id===id;});
       if(ex){ ex.clientName=nm; ex.amount=amount; ex.date=fv(form,'date'); ex.note=fv(form,'note'); }
-      toast('Lista updated.');
+      toast('Credit entry updated.');
     } else {
       state.utang.push({id:uid(),clientName:nm,amount:amount,date:fv(form,'date')||todayISO(),note:fv(form,'note'),payments:[],settled:false});
-      ensureClient({clientName:nm,contact:'',number:'lista'});
-      toast('Nailista na — '+fmtMoney(amount)+' kay '+nm+'.');
+      ensureClient({clientName:nm,contact:'',number:'credit'});
+      toast('Credit recorded — '+fmtMoney(amount)+' for '+nm+'.');
     }
     return true;
   }});
@@ -6020,28 +6022,28 @@ function utangPayModal(u){
   var bal=utangBalance(u);
   var body=
     '<input type="hidden" name="id" value="'+u.id+'">'+
-    '<p style="font-size:.86rem;color:var(--text-2);margin-bottom:12px"><b>'+esc(u.clientName)+'</b> — balanse: <b>'+fmtMoney(bal)+'</b>'+(u.note?' ('+esc(u.note)+')':'')+'</p>'+
-    '<div class="form-row"><div class="field"><label>Halaga ng bayad ('+esc(state.settings.currency)+') *</label><input class="input" type="number" step="any" min="0.01" max="'+bal+'" name="amount" value="'+bal+'" required></div>'+
-    '<div class="field"><label>Petsa</label><input class="input" type="date" name="date" value="'+todayISO()+'"></div></div>'+
-    '<div class="field"><label>Note</label><input class="input" name="note" placeholder="e.g. GCash, cash sa pickup…"></div>'+
+    '<p style="font-size:.86rem;color:var(--text-2);margin-bottom:12px"><b>'+esc(u.clientName)+'</b> — '+esc(tr('balance'))+': <b>'+fmtMoney(bal)+'</b>'+(u.note?' ('+esc(u.note)+')':'')+'</p>'+
+    '<div class="form-row"><div class="field"><label>Payment amount ('+esc(state.settings.currency)+') *</label><input class="input" type="number" step="any" min="0.01" max="'+bal+'" name="amount" value="'+bal+'" required></div>'+
+    '<div class="field"><label>Date</label><input class="input" type="date" name="date" value="'+todayISO()+'"></div></div>'+
+    '<div class="field"><label>Note</label><input class="input" name="note" placeholder="e.g. GCash, cash on pickup…"></div>'+
     '<label class="checkrow"><input type="checkbox" name="asIncome" checked> Record as income in Finance (cash received)</label>'+
     ((state.accounts||[]).length?'<div class="field" style="margin-top:10px"><label>Deposit to account</label><select class="input" name="account"><option value="">— unassigned —</option>'+
       state.accounts.map(function(a){return '<option value="'+a.id+'">'+esc(a.name)+'</option>';}).join('')+'</select></div>':'');
-  openModal('Hulog / Bayad — '+u.clientName,body,{submitLabel:'I-record ang bayad',onSubmit:function(form){
+  openModal(tr('Record payment')+' — '+u.clientName,body,{submitLabel:'Record payment',onSubmit:function(form){
     var ux=state.utang.find(function(x){return x.id===fv(form,'id');});
     if(!ux) return true;
     var amount=num(fv(form,'amount'));
     var b=utangBalance(ux);
     if(amount<=0){ toast('Enter an amount greater than zero.','error'); return false; }
-    if(amount>b+0.001){ toast('Sobra sa balanse ('+fmtMoney(b)+').','error'); return false; }
+    if(amount>b+0.001){ toast('That exceeds the remaining balance ('+fmtMoney(b)+').','error'); return false; }
     var date=fv(form,'date')||todayISO();
     ux.payments=ux.payments||[];
     ux.payments.push({id:uid(),amount:amount,date:date,note:fv(form,'note')});
     if(utangBalance(ux)<=0) ux.settled=true;
     if(form.elements['asIncome'].checked){
-      state.finance.push({id:uid(),type:'income',amount:amount,date:date,category:'Sales',note:'Hulog sa utang'+(ux.note?' — '+ux.note:'')+(fv(form,'note')?' ('+fv(form,'note')+')':''),client:ux.clientName,offer:'',account:form.elements['account']?fv(form,'account'):''});
+      state.finance.push({id:uid(),type:'income',amount:amount,date:date,category:'Sales',note:'Credit payment'+(ux.note?' — '+ux.note:'')+(fv(form,'note')?' ('+fv(form,'note')+')':''),client:ux.clientName,offer:'',account:form.elements['account']?fv(form,'account'):''});
     }
-    toast(ux.settled?'🎉 Bayad na nang buo si '+ux.clientName+'!':'Hulog na-record — natitira: '+fmtMoney(utangBalance(ux)));
+    toast(ux.settled?'🎉 '+ux.clientName+' is fully paid!':'Payment recorded — remaining: '+fmtMoney(utangBalance(ux)));
     return true;
   }});
 }
@@ -6052,7 +6054,7 @@ function payQRDocHTML(){
   if(!s.payQR) return '';
   return '<h2>Scan to pay</h2><div style="display:flex;gap:14px;align-items:center">'+
     '<img src="'+s.payQR+'" style="width:150px;height:150px;object-fit:contain;border:1px solid #ccc;border-radius:8px">'+
-    (s.payQRLabel?'<div style="font-size:.95rem"><b>'+esc(s.payQRLabel)+'</b><br><span style="font-size:.8rem;color:#555">Send a screenshot after paying. Salamat po! 💛</span></div>':'')+
+    (s.payQRLabel?'<div style="font-size:.95rem"><b>'+esc(s.payQRLabel)+'</b><br><span style="font-size:.8rem;color:#555">Send a screenshot after paying. Thank you! 💛</span></div>':'')+
     '</div>';
 }
 
@@ -6104,10 +6106,10 @@ document.addEventListener('click',function(e){
   if(action==='utang-pay'){ var u2=state.utang.find(function(x){return x.id===id;}); if(u2) utangPayModal(u2); return; }
   if(action==='utang-delete'){
     var u3=state.utang.find(function(x){return x.id===id;});
-    if(u3&&confirm('Delete this lista entry for '+u3.clientName+'? Payments already recorded as income stay in Finance.')){
+    if(u3&&confirm('Delete this credit entry for '+u3.clientName+'? Payments already recorded as income stay in Finance.')){
       snapshotForUndo();
       state.utang=state.utang.filter(function(x){return x.id!==id;});
-      commit(); toast('Lista entry deleted.','warn',{undo:true});
+      commit(); toast('Credit entry deleted.','warn',{undo:true});
     }
     return;
   }
