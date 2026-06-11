@@ -484,8 +484,23 @@ details.calc .calc-body{margin-top:10px}
 /* inline modal errors */
 .modal-error{background:var(--risk-soft);color:var(--risk);border:1.5px solid var(--risk);border-radius:10px;padding:10px 14px;font-size:.86rem;font-weight:600;margin-bottom:14px;animation:fadeUp .25s var(--ease)}
 @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
-.img-thumb{width:42px;height:42px;object-fit:cover;border-radius:9px;border:1px solid var(--border);background:var(--bg-sunken);flex-shrink:0}
-.img-thumb-lg{width:64px;height:64px;object-fit:cover;border-radius:12px;border:1px solid var(--border);background:var(--bg-sunken)}
+.img-thumb{width:42px;height:42px;object-fit:cover;border-radius:9px;border:1px solid var(--border);background:var(--bg-sunken);flex-shrink:0;cursor:zoom-in}
+.img-thumb-lg{width:64px;height:64px;object-fit:cover;border-radius:12px;border:1px solid var(--border);background:var(--bg-sunken);cursor:zoom-in}
+.lightbox{position:fixed;inset:0;z-index:400;background:rgba(5,7,15,.88);display:flex;align-items:center;justify-content:center;padding:24px;animation:fadeIn .2s;cursor:zoom-out}
+.lightbox img{max-width:92vw;max-height:88vh;border-radius:14px;box-shadow:var(--shadow-lg);animation:popIn .25s var(--ease)}
+.lightbox .lb-close{position:fixed;top:18px;right:18px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.12);color:#fff;display:grid;place-items:center}
+/* kanban board */
+.kb-board{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;align-items:start}
+.kb-col{background:var(--bg-sunken);border-radius:14px;padding:10px;min-height:120px}
+.kb-col.drag-over{outline:2px dashed var(--accent);outline-offset:-2px}
+.kb-col h4{font-size:.74rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--text-2);padding:2px 6px 8px;display:flex;justify-content:space-between}
+.kb-card{background:var(--bg-card);border:1px solid var(--border);border-radius:11px;padding:10px 12px;margin-bottom:8px;cursor:grab;box-shadow:var(--shadow-sm);transition:transform .15s,box-shadow .15s}
+.kb-card:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+.kb-card.dragging{opacity:.5}
+@media (max-width:900px){.kb-board{grid-template-columns:repeat(2,1fr)}}
+/* bulk bar */
+.bulk-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--accent-soft);border:1px solid var(--accent);border-radius:12px;padding:9px 14px;margin-bottom:14px;animation:fadeUp .25s var(--ease)}
+@media print{ .pr-doc .pr-page-break{page-break-after:always} #print-area .cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px} #print-area .cat-grid img{width:100%;height:150px;object-fit:cover;border-radius:8px} }
 .img-placeholder{display:grid;place-items:center;color:var(--text-3)}
 /* print system */
 #print-area{display:none}
@@ -522,6 +537,7 @@ details.calc .calc-body{margin-top:10px}
 <div id="modal-root"></div>
 <div class="toast-root" id="toast-root"></div>
 <div id="print-area"></div>
+<div id="lightbox-root"></div>
 <input type="file" id="import-file" accept=".json,application/json" style="display:none">
 <script>
 'use strict';
@@ -635,13 +651,14 @@ var DEFAULT_STATE={
     customCats:{ income:[], expense:[] },
     sync:{ url:'https://love-notes-eae0b-default-rtdb.firebaseio.com', path:'bizpilot', enabled:false, lastSync:null },
     productCats:['Candle','Keychain','Gift Box'], productAttrs:['Scent','Color'],
-    moduleLabels:{}, bizAddress:'', bizPhone:'' },
+    moduleLabels:{}, bizAddress:'', bizPhone:'', onboarded:false },
   invoices:[],  // {id,number,client,desc,amount,issueDate,dueDate,status,paidDate,createdAt}
   recurring:[], // {id,type,amount,category,note,client,day,active,lastPosted,startMonth}
   offers:[],    // {id,name,price,desc}
   products:[],  // {id,name,sku,category,price,cost,stock,lowStock,attrs:{},active,desc}
   orders:[],    // {id,number,clientName,contact,address,items:[{productId,name,qty,price}],shipFee,discount,status,payStatus,orderDate,deliveryDate,note,incomeRecorded}
   customModules:[], // {id,name,icon,fields:[{key,label,type,options}],records:[]}
+  materials:[],     // {id,name,unit,stock,lowStock,cost}  — raw materials; products reference via bom
   finance:[],   // {id,type:'income'|'expense',amount,category,date,note,client}
   goals:[],     // {id,title,type:'revenue'|'profit'|'custom',target,current,unit,deadline,priority,steps:[{id,text,done}],done,createdAt}
   phases:[],    // {id,name,desc,order,tasks:[{id,title,deadline,status,priority}]}
@@ -976,6 +993,17 @@ function buildInsights(){
   // inventory & orders
   var low=(state.products||[]).filter(function(p){ return p.active!==false&&p.stock<=(p.lowStock!=null?p.lowStock:5); });
   if(low.length) out.push({sev:'warn',title:low.length+' product'+(low.length>1?'s':'')+' low on stock',text:'"'+low[0].name+'" has only '+low[0].stock+' left. Restock before orders stall.'});
+  var lowMat=(state.materials||[]).filter(function(m){ return m.stock<=(m.lowStock!=null?m.lowStock:0); });
+  if(lowMat.length) out.push({sev:'warn',title:'Raw materials running low',text:'"'+lowMat[0].name+'" is at '+fmtNum(lowMat[0].stock)+' '+(lowMat[0].unit||'units')+'. Reorder before production stops.'});
+  var oldestUnpaid=null;
+  (state.orders||[]).forEach(function(o){
+    if(o.payStatus==='Paid'||o.status==='Cancelled') return;
+    var d=-daysUntil(o.orderDate);
+    if(d>=3&&(!oldestUnpaid||d>oldestUnpaid.d)) oldestUnpaid={o:o,d:d};
+  });
+  if(oldestUnpaid) out.push({sev:'warn',title:'Follow up on '+oldestUnpaid.o.number,text:oldestUnpaid.o.clientName+' has not paid for '+oldestUnpaid.d+' days ('+fmtMoney(orderTotal(oldestUnpaid.o))+'). A friendly nudge today usually does it.'});
+  var wb=winBackList();
+  if(wb.length) out.push({sev:'info',title:wb.length+' customer'+(wb.length>1?'s':'')+' ready for a win-back message',text:wb[0].name+' last bought '+wb[0].days+' days ago. A candle burns out in ~6 weeks — perfect timing to say hi.'});
   var openOrders=(state.orders||[]).filter(function(o){ return o.status!=='Delivered'&&o.status!=='Cancelled'; });
   var unpaidOrders=(state.orders||[]).filter(function(o){ return o.payStatus!=='Paid'&&o.status!=='Cancelled'; });
   if(openOrders.length) out.push({sev:'info',title:openOrders.length+' order'+(openOrders.length>1?'s':'')+' to fulfill',text:(unpaidOrders.length?unpaidOrders.length+' still unpaid ('+fmtMoney(sum(unpaidOrders,orderTotal))+'). ':'')+'Keep deliveries moving — happy gifting customers reorder.'});
@@ -1883,6 +1911,7 @@ function viewClients(){
     statCard('Revenue / active client',revPerClient!=null?fmtMoney(revPerClient):'—','<span class="stat-delta flat">all-time revenue ÷ active</span>','','cash')+
     statCard('Churned',String(byStatus['Churned']||0),'','','arrowdr')+
   '</div>';
+  html+=winBackCardHTML();
   html+='<div class="chips mt-lg"><button class="chip '+(ui.clientFilter==='all'?'active':'')+'" data-action="client-filter" data-val="all">All ('+state.clients.length+')</button>'+
     CLIENT_STATUSES.map(function(s){return '<button class="chip '+(ui.clientFilter===s?'active':'')+'" data-action="client-filter" data-val="'+s+'">'+s+' ('+(byStatus[s]||0)+')</button>';}).join('')+'</div>';
   var list=state.clients.filter(function(c){ return ui.clientFilter==='all'||c.status===ui.clientFilter; })
@@ -2389,6 +2418,7 @@ function importData(file){
       var data=JSON.parse(reader.result);
       if(!data||typeof data!=='object'||!data.settings||(!Array.isArray(data.finance))) throw new Error('This file is not a BizPilot backup.');
       state=deepMerge(JSON.parse(JSON.stringify(DEFAULT_STATE)),data);
+      state.settings.onboarded=true;
       commit();
       applyTheme();
       toast('Backup imported — '+state.finance.length+' finance entries restored.');
@@ -2542,11 +2572,26 @@ function loadSampleData(){
     {id:pKeyB,name:'Tassel Keychain',sku:'KEY-TAS',category:'Keychain',price:99,cost:35,stock:35,lowStock:10,attrs:{Color:'Blush'},desc:'',active:true},
     {id:pBox,name:'“Thinking of You” Gift Box',sku:'BOX-TOY',category:'Gift Box',price:599,cost:260,stock:9,lowStock:5,attrs:{Scent:'Mixed',Color:'Kraft'},desc:'Candle + keychain + handwritten card',active:true}
   ];
+  // raw materials + recipes
+  var mWax=uid(),mWick=uid(),mJar=uid(),mOilLav=uid(),mBox=uid(),mRibbon=uid();
+  state.materials=[
+    {id:mWax,name:'Soy wax',unit:'g',stock:4500,lowStock:1000,cost:0.32},
+    {id:mWick,name:'Cotton wicks',unit:'pcs',stock:60,lowStock:20,cost:4},
+    {id:mJar,name:'8oz amber jars',unit:'pcs',stock:38,lowStock:12,cost:38},
+    {id:mOilLav,name:'Fragrance oil (assorted)',unit:'ml',stock:900,lowStock:200,cost:1.8},
+    {id:mBox,name:'Kraft gift boxes',unit:'pcs',stock:18,lowStock:8,cost:22},
+    {id:mRibbon,name:'Satin ribbon',unit:'m',stock:25,lowStock:10,cost:6}
+  ];
+  var candleBom=[{materialId:mWax,qty:180},{materialId:mWick,qty:1},{materialId:mJar,qty:1},{materialId:mOilLav,qty:12}];
+  state.products.forEach(function(p){
+    if(p.category==='Candle') p.bom=JSON.parse(JSON.stringify(candleBom));
+    if(p.category==='Gift Box') p.bom=[{materialId:mBox,qty:1},{materialId:mRibbon,qty:0.5}];
+  });
   // orders
   state.orders=[
-    {id:uid(),number:'ORD-0001',clientName:'Mika Santos',contact:'0917 555 2210',address:'21 Sampaguita St, Brgy. Malanday\nMarikina City',items:[{productId:pLav,name:'Lavender Dream Candle',qty:2,price:349},{productId:pKeyA,name:'Initial Letter Keychain',qty:1,price:129}],shipFee:80,discount:0,status:'Preparing',payStatus:'Unpaid',orderDate:todayISO(),deliveryDate:d(0,Math.min(28,new Date().getDate()+2)),note:'Gift wrap, card says “Happy Birthday Lola!”',incomeRecorded:false},
-    {id:uid(),number:'ORD-0002',clientName:'Joanna Reyes',contact:'fb: joanna.reyes',address:'Unit 4B, Greenview Residences\nQuezon City',items:[{productId:pBox,name:'“Thinking of You” Gift Box',qty:1,price:599},{productId:pCit,name:'Citrus Burst Candle',qty:1,price:379}],shipFee:60,discount:50,status:'Delivered',payStatus:'Paid',orderDate:d(0,Math.max(1,new Date().getDate()-3)),deliveryDate:d(0,Math.max(1,new Date().getDate()-1)),note:'',incomeRecorded:true},
-    {id:uid(),number:'ORD-0003',clientName:'Carlo Dizon',contact:'0998 555 7344',address:'Pickup — SM North meetup',items:[{productId:pVan,name:'Vanilla Glow Candle',qty:3,price:349}],shipFee:0,discount:0,status:'Pending',payStatus:'Unpaid',orderDate:todayISO(),deliveryDate:d(0,Math.min(28,new Date().getDate()+4)),note:'',incomeRecorded:false}
+    {id:uid(),number:'ORD-0001',clientName:'Mika Santos',contact:'0917 555 2210',address:'21 Sampaguita St, Brgy. Malanday\nMarikina City',items:[{productId:pLav,name:'Lavender Dream Candle',qty:2,price:349},{productId:pKeyA,name:'Initial Letter Keychain',qty:1,price:129}],shipFee:80,discount:0,status:'Preparing',payStatus:'Unpaid',payMethod:'GCash',orderDate:todayISO(),deliveryDate:d(0,Math.min(28,new Date().getDate()+2)),note:'Gift wrap, card says “Happy Birthday Lola!”',incomeRecorded:false},
+    {id:uid(),number:'ORD-0002',clientName:'Joanna Reyes',contact:'fb: joanna.reyes',address:'Unit 4B, Greenview Residences\nQuezon City',items:[{productId:pBox,name:'“Thinking of You” Gift Box',qty:1,price:599},{productId:pCit,name:'Citrus Burst Candle',qty:1,price:379}],shipFee:60,discount:50,status:'Delivered',payStatus:'Paid',payMethod:'GCash',paidDate:d(0,Math.max(1,new Date().getDate()-1)),orderDate:d(0,Math.max(1,new Date().getDate()-3)),deliveryDate:d(0,Math.max(1,new Date().getDate()-1)),note:'',incomeRecorded:true},
+    {id:uid(),number:'ORD-0003',clientName:'Carlo Dizon',contact:'0998 555 7344',address:'Pickup — SM North meetup',items:[{productId:pVan,name:'Vanilla Glow Candle',qty:3,price:349}],shipFee:0,discount:0,status:'Pending',payStatus:'Unpaid',payMethod:'Cash',orderDate:todayISO(),deliveryDate:d(0,Math.min(28,new Date().getDate()+4)),note:'',incomeRecorded:false}
   ];
   // delivered+paid order's income entry so books match
   state.finance.push({id:uid(),type:'income',amount:988,date:d(0,Math.max(1,new Date().getDate()-1)),category:'Sales',note:'Order ORD-0002 (“Thinking of You” Gift Box×1, Citrus Burst Candle×1)',client:'Joanna Reyes',offer:''});
@@ -2571,6 +2616,7 @@ function loadSampleData(){
   ];
   state.settings.businessName=state.settings.businessName==='My Business'?'Studio Hiraya':state.settings.businessName;
   state.settings.monthlyTarget=state.settings.monthlyTarget||100000;
+  state.settings.onboarded=true;
   commit();
   toast('Sample data loaded — explore every section, then reset when ready.');
 }
@@ -3330,6 +3376,10 @@ function customizationCardHTML(){
       '<form data-form="add-cat" style="display:flex;gap:7px"><input type="hidden" name="type" value="'+type+'"><input class="input" name="name" placeholder="Add custom category…" style="flex:1"><button class="btn btn-ghost btn-sm" type="submit">'+icon('plus')+' Add</button></form></div>';
   }
   html+=catManager('income','Income categories')+catManager('expense','Expense categories');
+  // business presets
+  html+='<div class="field"><label>Business type presets</label><div style="display:flex;gap:6px;flex-wrap:wrap">'+
+    Object.keys(BIZ_PRESETS).map(function(k){return '<button type="button" class="chip" data-action="apply-preset" data-preset="'+k+'">'+esc(BIZ_PRESETS[k].label)+'</button>';}).join('')+
+    '</div><p style="font-size:.72rem;color:var(--text-3);margin-top:5px">Rebuilds product categories & attributes for a different kind of business.</p></div>';
   // weekly checklist
   html+='<form data-form="weekly-list"><div class="field"><label>Weekly review checklist (one item per line)</label>'+
     '<textarea class="input" name="items" rows="5">'+esc(weeklyList().join('\n'))+'</textarea></div>'+
@@ -3564,9 +3614,13 @@ function viewProducts(){
   var lowCount=prods.filter(function(p){return p.stock<=(p.lowStock!=null?p.lowStock:5);}).length;
   var stockValue=sum(prods,function(p){return (p.cost||0)*Math.max(0,p.stock);});
   var retailValue=sum(prods,function(p){return (p.price||0)*Math.max(0,p.stock);});
+  if((ui.productTab||'catalog')==='materials') return viewMaterials();
   var html=topbar('Products & Stock','Your catalog with live inventory — orders pull from here automatically.',
+    '<button class="btn btn-ghost" data-action="print-catalog">'+icon('print')+'<span class="btn-txt">Catalog</span></button>'+
+    '<button class="btn btn-ghost" data-action="copy-catalog">'+icon('notes')+'<span class="btn-txt">Copy list</span></button>'+
     '<button class="btn btn-ghost" data-action="export-csv" data-what="products">'+icon('download')+'<span class="btn-txt">CSV</span></button>'+
     '<button class="btn btn-primary" data-action="product-new">'+icon('plus')+'<span class="btn-txt">Add product</span></button>');
+  html+=productTabsHTML('catalog');
   html+='<div class="grid grid-4">'+
     statCard('Products',String(prods.length),'','','box')+
     statCard('Low / out of stock',String(lowCount),lowCount?'<span class="stat-delta down">restock soon</span>':'<span class="stat-delta up">all stocked</span>','','alert')+
@@ -3597,7 +3651,8 @@ function viewProducts(){
         '<td><div style="display:flex;align-items:center;gap:6px">'+
           '<button class="btn-icon" data-action="stock-adjust" data-id="'+p.id+'" data-delta="-1" title="−1 stock" style="width:22px;height:22px">−</button>'+
           stockBadge(p)+
-          '<button class="btn-icon" data-action="stock-adjust" data-id="'+p.id+'" data-delta="1" title="+1 stock" style="width:22px;height:22px">+</button></div></td>'+
+          '<button class="btn-icon" data-action="stock-adjust" data-id="'+p.id+'" data-delta="1" title="+1 stock" style="width:22px;height:22px">+</button></div>'+
+          ((p.bom||[]).length?'<div style="font-size:.68rem;color:var(--text-3);margin-top:3px">can make '+fmtNum(canMake(p),0)+' more</div>':'')+'</td>'+
         '<td><div class="row-actions">'+
           '<button class="btn-icon" data-action="product-duplicate" data-id="'+p.id+'" title="Duplicate (new scent/color variant)">'+icon('plus')+'</button>'+
           '<button class="btn-icon" data-action="product-restock" data-id="'+p.id+'" title="Restock">'+icon('refresh')+'</button>'+
@@ -3639,6 +3694,11 @@ function productModal(p){
     '<div class="field"><label>Stock on hand</label><input class="input" type="number" step="1" name="stock" value="'+(p.stock!=null?p.stock:0)+'"></div></div>'+
     '<div class="form-row"><div class="field"><label>Low-stock alert at</label><input class="input" type="number" step="1" min="0" name="lowStock" value="'+(p.lowStock!=null?p.lowStock:5)+'"></div>'+
     '<div class="field"><label>Notes</label><input class="input" name="desc" value="'+esc(p.desc||'')+'" placeholder="e.g. 8oz soy wax, 40h burn"></div></div>'+
+    ((state.materials||[]).length?'<div class="field"><label>Recipe — raw materials used per unit (optional)</label><div id="bom-rows">'+
+      ((p.bom&&p.bom.length)?p.bom.map(bomRowHTML).join(''):'')+
+      '</div><button type="button" class="btn btn-ghost btn-sm" data-action="bom-add">'+icon('plus')+' Add material</button>'+
+      '<p style="font-size:.72rem;color:var(--text-3);margin-top:5px">Materials deplete when you restock (make) this product — and BizPilot tells you how many more you can make.</p></div>'
+      :'<p style="font-size:.72rem;color:var(--text-3);margin-bottom:12px">Tip: add raw materials in Products → Materials tab to attach a recipe and track ingredient usage.</p>')+
     '<div class="field"><label>Product photo</label><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'+
       '<img class="img-thumb-lg img-prev" src="'+(p.photo||'')+'" style="'+(p.photo?'':'display:none')+'" alt="">'+
       '<input type="file" accept="image/*,.heic,.heif" class="input img-input" style="flex:1;min-width:150px;padding:7px">'+
@@ -3653,7 +3713,13 @@ function productModal(p){
     var attrs={};
     productAttrs().forEach(function(a){ var v=fv(form,'attr_'+a); if(v) attrs[a]=v; });
     var id=fv(form,'id');
-    var data={name:name,category:fv(form,'category'),sku:fv(form,'sku'),price:price,cost:num(fv(form,'cost')),stock:Math.round(num(fv(form,'stock'))),lowStock:Math.round(num(fv(form,'lowStock'))),attrs:attrs,desc:fv(form,'desc'),photo:form.elements['photo']?form.elements['photo'].value:'',active:true};
+    var bom=[];
+    form.querySelectorAll('#bom-rows .bom-row').forEach(function(row){
+      var mid=row.querySelector('.bom-mat').value;
+      var bq=num(row.querySelector('.bom-qty').value);
+      if(mid&&bq>0) bom.push({materialId:mid,qty:bq});
+    });
+    var data={name:name,category:fv(form,'category'),sku:fv(form,'sku'),price:price,cost:num(fv(form,'cost')),stock:Math.round(num(fv(form,'stock'))),lowStock:Math.round(num(fv(form,'lowStock'))),attrs:attrs,desc:fv(form,'desc'),bom:bom,photo:form.elements['photo']?form.elements['photo'].value:'',active:true};
     if(id){
       var ex=findProduct(id);
       if(ex) Object.assign(ex,data);
@@ -3667,16 +3733,19 @@ function productModal(p){
   }});
 }
 function restockModal(p){
+  var hasBom=(p.bom||[]).length>0;
   var body='<input type="hidden" name="id" value="'+p.id+'">'+
-    '<p style="font-size:.86rem;color:var(--text-2);margin-bottom:12px">"'+esc(p.name)+'" currently has <b>'+p.stock+'</b> in stock.</p>'+
+    '<p style="font-size:.86rem;color:var(--text-2);margin-bottom:12px">"'+esc(p.name)+'" currently has <b>'+p.stock+'</b> in stock.'+(hasBom?' Recipe on file: you can make <b>'+fmtNum(canMake(p),0)+'</b> more with current materials.':'')+'</p>'+
     '<div class="form-row"><div class="field"><label>Quantity to add</label><input class="input" type="number" step="1" min="1" name="qty" value="10" required></div>'+
-    '<div class="field"><label>Total cost (optional — logs an expense)</label><input class="input" type="number" step="any" min="0" name="cost" placeholder="e.g. 1400"></div></div>';
+    '<div class="field"><label>Total cost (optional — logs an expense)</label><input class="input" type="number" step="any" min="0" name="cost" placeholder="e.g. 1400"></div></div>'+
+    (hasBom?'<label class="checkrow" style="margin-bottom:10px"><input type="checkbox" name="consume" checked> Consume raw materials per recipe (you made these)</label>':'');
   openModal('Restock — '+p.name,body,{submitLabel:'Add stock',onSubmit:function(form){
     var qty=Math.round(num(fv(form,'qty')));
     if(qty<=0){ toast('Enter a quantity of at least 1.','error'); return false; }
     var prod=findProduct(fv(form,'id'));
     if(!prod) return false;
     prod.stock+=qty;
+    if(form.elements['consume']&&form.elements['consume'].checked) consumeMaterials(prod,qty);
     var cost=num(fv(form,'cost'));
     if(cost>0){
       state.finance.push({id:uid(),type:'expense',amount:cost,date:todayISO(),category:'Inventory / Supplies',note:'Restock: '+prod.name+' ×'+qty,client:'',offer:''});
@@ -3721,18 +3790,31 @@ function viewOrders(){
   var unpaid=orders.filter(function(o){return o.payStatus!=='Paid'&&o.status!=='Cancelled';});
   var curM=thisMonthKey();
   var monthOrders=orders.filter(function(o){return monthKey(o.orderDate)===curM&&o.status!=='Cancelled';});
-  var html=topbar('Orders','From order to doorstep — stock, payments and income all update automatically.',
+  var html=topbar('Orders','From order to doorstep — stock, payments, profit and income all update automatically.',
     '<button class="btn btn-ghost" data-action="export-csv" data-what="orders">'+icon('download')+'<span class="btn-txt">CSV</span></button>'+
     '<button class="btn btn-primary" data-action="order-new">'+icon('plus')+'<span class="btn-txt">New order</span></button>');
+  var monthProfit=sum(monthOrders,orderProfit);
   html+='<div class="grid grid-4">'+
     statCard('To fulfill',String(open.length),'','','truck')+
     statCard('Awaiting payment',fmtMoney(sum(unpaid,orderTotal)),'<span class="stat-delta flat">'+unpaid.length+' order'+(unpaid.length===1?'':'s')+'</span>','','clock')+
-    statCard('Orders this month',String(monthOrders.length),'','','box')+
-    statCard('Order value this month',fmtMoney(sum(monthOrders,orderTotal)),'','','cash')+
+    statCard('Order value this month',fmtMoney(sum(monthOrders,orderTotal)),'<span class="stat-delta flat">'+monthOrders.length+' orders</span>','','cash')+
+    statCard('Est. profit this month',fmtMoney(monthProfit),'<span class="stat-delta '+(monthProfit>=0?'up':'down')+'">after product costs</span>','','wallet')+
   '</div>';
+  html+=followUpCardHTML();
+  html+=paymentBreakdownHTML(curM);
+  // view toggle
+  var viewMode=ui.orderView||'list';
+  html+='<div style="display:flex;gap:14px;align-items:center;margin-top:18px;flex-wrap:wrap"><div class="seg">'+
+    '<button class="'+(viewMode==='list'?'active':'')+'" data-action="order-view" data-val="list">List</button>'+
+    '<button class="'+(viewMode==='board'?'active':'')+'" data-action="order-view" data-val="board">Board</button></div>';
+  if(viewMode==='board'){
+    html+='</div>'+orderBoardHTML();
+    return html;
+  }
   var sel=ui.orderFilter||'open';
-  html+='<div class="chips mt-lg">'+[['open','To fulfill ('+open.length+')'],['all','All ('+orders.length+')'],['Delivered','Delivered'],['Cancelled','Cancelled']].map(function(x){
-    return '<button class="chip '+(sel===x[0]?'active':'')+'" data-action="order-filter" data-val="'+x[0]+'">'+x[1]+'</button>';}).join('')+'</div>';
+  html+='<div class="chips">'+[['open','To fulfill ('+open.length+')'],['all','All ('+orders.length+')'],['Delivered','Delivered'],['Cancelled','Cancelled']].map(function(x){
+    return '<button class="chip '+(sel===x[0]?'active':'')+'" data-action="order-filter" data-val="'+x[0]+'">'+x[1]+'</button>';}).join('')+'</div></div>';
+  html+=bulkBarHTML();
   var list=orders.filter(function(o){
     if(sel==='open') return o.status!=='Delivered'&&o.status!=='Cancelled';
     if(sel==='all') return true;
@@ -3745,7 +3827,9 @@ function viewOrders(){
     list.forEach(function(o){
       var d=daysUntil(o.deliveryDate);
       var late=o.status!=='Delivered'&&o.status!=='Cancelled'&&d!=null&&d<0;
+      var prof=orderProfit(o);
       html+='<div class="list-row" style="align-items:flex-start;gap:14px;padding:14px 4px">'+
+        '<input type="checkbox" style="margin-top:4px" data-action-change="order-select" data-id="'+o.id+'"'+(ui.selOrders&&ui.selOrders[o.id]?' checked':'')+'>'+
         '<div style="flex:1.4;min-width:160px"><b class="mono" style="font-size:.8rem;color:var(--accent)">'+esc(o.number)+'</b>'+
           '<div style="font-weight:700">'+esc(o.clientName||'Walk-in')+'</div>'+
           (o.address?'<div style="font-size:.76rem;color:var(--text-3);white-space:pre-wrap">'+esc(o.address)+'</div>':'')+
@@ -3755,11 +3839,13 @@ function viewOrders(){
         }).join('')+
         ((o.shipFee||0)>0?'<div style="display:flex;justify-content:space-between;gap:8px;color:var(--text-3)"><span>Shipping</span><span class="num">'+fmtMoney(o.shipFee)+'</span></div>':'')+
         ((o.discount||0)>0?'<div style="display:flex;justify-content:space-between;gap:8px;color:var(--text-3)"><span>Discount</span><span class="num">−'+fmtMoney(o.discount)+'</span></div>':'')+
-        '<div style="display:flex;justify-content:space-between;gap:8px;font-weight:800;border-top:1px dashed var(--border);margin-top:4px;padding-top:4px"><span>Total</span><span class="num">'+fmtMoney(orderTotal(o))+'</span></div></div>'+
+        '<div style="display:flex;justify-content:space-between;gap:8px;font-weight:800;border-top:1px dashed var(--border);margin-top:4px;padding-top:4px"><span>Total</span><span class="num">'+fmtMoney(orderTotal(o))+'</span></div>'+
+        '<div style="display:flex;justify-content:space-between;gap:8px;font-size:.74rem;margin-top:2px"><span style="color:var(--text-3)">Est. profit</span><span class="num" style="font-weight:700;color:'+(prof>=0?'var(--good)':'var(--risk)')+'">'+fmtMoney(prof)+'</span></div></div>'+
         '<div style="flex:1.1;min-width:150px;display:flex;flex-direction:column;gap:6px;align-items:flex-start">'+
           '<select class="input" style="width:auto;padding:4px 28px 4px 9px;font-size:.76rem;font-weight:600" data-action-change="order-status" data-id="'+o.id+'">'+
             ORDER_STATUSES.map(function(s){return '<option'+(o.status===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select>'+
-          (o.payStatus==='Paid'?'<span class="badge good">'+icon('check')+' Paid</span>':'<button class="btn btn-sm btn-good" data-action="order-paid" data-id="'+o.id+'">'+icon('cash')+' Mark paid</button>')+
+          (o.payStatus==='Paid'?'<span class="badge good">'+icon('check')+' Paid · '+esc(o.payMethod||'—')+'</span>':'<button class="btn btn-sm btn-good" data-action="order-paid" data-id="'+o.id+'">'+icon('cash')+' Mark paid</button>'+
+            '<span class="badge neutral">'+esc(o.payMethod||'GCash')+'</span>')+
           (o.deliveryDate?'<span class="badge '+(late?'risk':'neutral')+'">'+icon('truck')+' '+(late?'Late · was due ':'Deliver ')+fmtDate(o.deliveryDate)+'</span>':'')+
         '</div>'+
         '<div class="row-actions" style="flex-direction:column">'+
@@ -3784,7 +3870,7 @@ function orderItemRowHTML(it){
 }
 function orderModal(o){
   var isEdit=!!o;
-  o=o||{number:nextOrderNumber(),orderDate:todayISO(),status:'Pending',payStatus:'Unpaid',items:[]};
+  o=o||{number:nextOrderNumber(),orderDate:todayISO(),status:'Pending',payStatus:'Unpaid',payMethod:'Cash',items:[]};
   var body=
     '<input type="hidden" name="id" value="'+(o.id||'')+'">'+
     '<div class="form-row"><div class="field"><label>Order #</label><input class="input" name="number" value="'+esc(o.number)+'"></div>'+
@@ -3800,7 +3886,9 @@ function orderModal(o){
     '<div class="form-row-3"><div class="field"><label>Shipping fee</label><input class="input" type="number" step="any" min="0" name="shipFee" value="'+(o.shipFee||'')+'"></div>'+
     '<div class="field"><label>Discount</label><input class="input" type="number" step="any" min="0" name="discount" value="'+(o.discount||'')+'"></div>'+
     '<div class="field"><label>Deliver by</label><input class="input" type="date" name="deliveryDate" value="'+esc(o.deliveryDate||'')+'"></div></div>'+
-    '<div class="field"><label>Note (gift message, instructions…)</label><input class="input" name="note" value="'+esc(o.note||'')+'"></div>';
+    '<div class="form-row"><div class="field"><label>Payment method</label><select class="input" name="payMethod">'+
+      ['GCash','Cash','Bank transfer','COD','Card','Other'].map(function(pm){return '<option'+((o.payMethod||'GCash')===pm?' selected':'')+'>'+pm+'</option>';}).join('')+'</select></div>'+
+    '<div class="field"><label>Note (gift message, instructions…)</label><input class="input" name="note" value="'+esc(o.note||'')+'"></div></div>';
   openModal(isEdit?'Edit order':'New order',body,{wide:true,onSubmit:function(form){
     var clientName=fv(form,'clientName');
     if(!clientName){ toast('Enter the customer name.','error'); return false; }
@@ -3817,7 +3905,7 @@ function orderModal(o){
     });
     if(!items.length){ toast('Add at least one item with a product and quantity.','error'); return false; }
     var id=fv(form,'id');
-    var data={number:fv(form,'number')||nextOrderNumber(),clientName:clientName,contact:fv(form,'contact'),address:form.elements['address'].value,items:items,shipFee:num(fv(form,'shipFee')),discount:num(fv(form,'discount')),orderDate:fv(form,'orderDate')||todayISO(),deliveryDate:fv(form,'deliveryDate'),note:fv(form,'note')};
+    var data={number:fv(form,'number')||nextOrderNumber(),clientName:clientName,contact:fv(form,'contact'),address:form.elements['address'].value,items:items,shipFee:num(fv(form,'shipFee')),discount:num(fv(form,'discount')),orderDate:fv(form,'orderDate')||todayISO(),deliveryDate:fv(form,'deliveryDate'),payMethod:fv(form,'payMethod')||'GCash',note:fv(form,'note')};
     if(id){
       var ex=state.orders.find(function(x){return x.id===id;});
       if(ex){
@@ -4099,6 +4187,7 @@ document.addEventListener('click',function(e){
     var o3=state.orders.find(function(x){return x.id===id;});
     if(o3&&confirm('Mark '+o3.number+' ('+fmtMoney(orderTotal(o3))+' from '+o3.clientName+') as PAID? This records the income in Finance.')){
       o3.payStatus='Paid';
+      o3.paidDate=todayISO();
       recordOrderIncome(o3);
       commit(); toast('💰 '+fmtMoney(orderTotal(o3))+' collected — income recorded.');
     }
@@ -4522,6 +4611,487 @@ document.addEventListener('keydown',function(e){
   }
 })();
 
+/* ============================================================
+   v8 additions: materials & recipes, order profit, follow-ups,
+   win-back, kanban board, bulk actions, payment methods,
+   shareable catalog, onboarding wizard, image lightbox
+   ============================================================ */
+
+/* ---------- materials & recipes ---------- */
+function findMaterial(id){ return (state.materials||[]).find(function(m){return m.id===id;}); }
+function canMake(p){
+  if(!(p.bom||[]).length) return Infinity;
+  var n=Infinity;
+  p.bom.forEach(function(b){
+    var m=findMaterial(b.materialId);
+    if(!m||b.qty<=0){ return; }
+    n=Math.min(n,Math.floor(m.stock/b.qty));
+  });
+  return n===Infinity?0:Math.max(0,n);
+}
+function consumeMaterials(p,units){
+  (p.bom||[]).forEach(function(b){
+    var m=findMaterial(b.materialId);
+    if(m) m.stock=Math.round((m.stock-b.qty*units)*100)/100;
+  });
+}
+function bomRowHTML(b){
+  b=b||{};
+  return '<div class="bom-row" style="display:flex;gap:7px;margin-bottom:7px;align-items:center">'+
+    '<select class="input bom-mat" style="flex:2"><option value="">— material —</option>'+
+      (state.materials||[]).map(function(m){return '<option value="'+m.id+'"'+(b.materialId===m.id?' selected':'')+'>'+esc(m.name)+' ('+esc(m.unit||'unit')+')</option>';}).join('')+
+    '</select>'+
+    '<input class="input bom-qty" type="number" min="0" step="any" value="'+(b.qty!=null?b.qty:'')+'" style="width:90px" placeholder="qty/unit" title="Amount used per unit made">'+
+    '<button type="button" class="btn-icon danger" data-action="bom-del">'+icon('x')+'</button></div>';
+}
+function productTabsHTML(active){
+  return '<div class="tabs">'+
+    '<button class="'+(active==='catalog'?'active':'')+'" data-action="product-tab" data-tab="catalog">Catalog</button>'+
+    '<button class="'+(active==='materials'?'active':'')+'" data-action="product-tab" data-tab="materials">Materials ('+(state.materials||[]).length+')</button></div>';
+}
+function viewMaterials(){
+  var mats=state.materials||[];
+  var lowCount=mats.filter(function(m){return m.stock<=(m.lowStock!=null?m.lowStock:0);}).length;
+  var invValue=sum(mats,function(m){return (m.cost||0)*Math.max(0,m.stock);});
+  var html=topbar('Products & Stock','Raw materials and recipes — know exactly how many you can still make.',
+    '<button class="btn btn-primary" data-action="material-new">'+icon('plus')+'<span class="btn-txt">Add material</span></button>');
+  html+=productTabsHTML('materials');
+  html+='<div class="grid grid-3">'+
+    statCard('Materials',String(mats.length),'','','box')+
+    statCard('Low / out',String(lowCount),lowCount?'<span class="stat-delta down">reorder soon</span>':'<span class="stat-delta up">all stocked</span>','','alert')+
+    statCard('Material value',fmtMoney(invValue),'<span class="stat-delta flat">cash sitting in supplies</span>','','cash')+
+  '</div>';
+  html+='<div class="card mt">';
+  if(!mats.length){
+    html+=emptyState('box','No materials yet','Add your wax, wicks, jars, oils and packaging. Then attach a recipe to each product (edit product → Recipe) and BizPilot tracks ingredient usage automatically.','<button class="btn btn-sm btn-primary" data-action="material-new">'+icon('plus')+' Add first material</button>');
+  } else {
+    html+='<div class="table-wrap"><table><thead><tr><th>Material</th><th style="text-align:right">Cost / unit</th><th>Stock</th><th style="text-align:right">Value</th><th>Used in</th><th></th></tr></thead><tbody>';
+    mats.forEach(function(m){
+      var usedIn=(state.products||[]).filter(function(p){return p.active!==false&&(p.bom||[]).some(function(b){return b.materialId===m.id;});});
+      var low=m.stock<=(m.lowStock!=null?m.lowStock:0);
+      html+='<tr><td><b>'+esc(m.name)+'</b><div style="font-size:.7rem;color:var(--text-3)">alert at '+fmtNum(m.lowStock||0)+' '+esc(m.unit||'')+'</div></td>'+
+        '<td class="num" style="text-align:right">'+(m.cost?fmtMoney(m.cost):'—')+'</td>'+
+        '<td><span class="badge '+(m.stock<=0?'risk':(low?'warn':'good'))+'">'+fmtNum(m.stock)+' '+esc(m.unit||'')+(low?' · low':'')+'</span></td>'+
+        '<td class="num" style="text-align:right">'+fmtMoney((m.cost||0)*Math.max(0,m.stock))+'</td>'+
+        '<td style="font-size:.78rem;color:var(--text-2)">'+(usedIn.length?usedIn.map(function(p){return esc(p.name);}).join(', '):'—')+'</td>'+
+        '<td><div class="row-actions">'+
+          '<button class="btn-icon" data-action="material-restock" data-id="'+m.id+'" title="Restock">'+icon('refresh')+'</button>'+
+          '<button class="btn-icon" data-action="material-edit" data-id="'+m.id+'">'+icon('edit')+'</button>'+
+          '<button class="btn-icon danger" data-action="material-delete" data-id="'+m.id+'">'+icon('trash')+'</button></div></td></tr>';
+    });
+    html+='</tbody></table></div>';
+    // can-make summary
+    var makeable=(state.products||[]).filter(function(p){return p.active!==false&&(p.bom||[]).length;});
+    if(makeable.length){
+      html+='<div style="margin-top:16px;padding-top:14px;border-top:1px dashed var(--border)"><b style="font-size:.86rem">Production capacity with current materials</b><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'+
+        makeable.map(function(p){
+          var n=canMake(p);
+          return '<span class="badge '+(n<=0?'risk':(n<=5?'warn':'good'))+'">'+esc(p.name)+': '+fmtNum(n,0)+' more</span>';
+        }).join('')+'</div></div>';
+    }
+  }
+  html+='</div>';
+  return html;
+}
+function materialModal(m){
+  var isEdit=!!m;
+  m=m||{stock:0,lowStock:0};
+  var body=
+    '<input type="hidden" name="id" value="'+(m.id||'')+'">'+
+    '<div class="field"><label>Material name *</label><input class="input" name="name" value="'+esc(m.name||'')+'" required placeholder="e.g. Soy wax"></div>'+
+    '<div class="form-row"><div class="field"><label>Unit</label><input class="input" name="unit" value="'+esc(m.unit||'')+'" placeholder="g, ml, pcs, m…"></div>'+
+    '<div class="field"><label>Cost per unit ('+esc(state.settings.currency)+')</label><input class="input" type="number" step="any" min="0" name="cost" value="'+(m.cost!=null?m.cost:'')+'"></div></div>'+
+    '<div class="form-row"><div class="field"><label>Stock on hand</label><input class="input" type="number" step="any" min="0" name="stock" value="'+(m.stock!=null?m.stock:0)+'"></div>'+
+    '<div class="field"><label>Low-stock alert at</label><input class="input" type="number" step="any" min="0" name="lowStock" value="'+(m.lowStock!=null?m.lowStock:0)+'"></div></div>';
+  openModal(isEdit?'Edit material':'Add raw material',body,{onSubmit:function(form){
+    var name=fv(form,'name');
+    if(!name){ toast('Give the material a name.','error'); return false; }
+    var id=fv(form,'id');
+    var data={name:name,unit:fv(form,'unit'),cost:num(fv(form,'cost')),stock:num(fv(form,'stock')),lowStock:num(fv(form,'lowStock'))};
+    if(id){
+      var ex=findMaterial(id);
+      if(ex) Object.assign(ex,data);
+      toast('Material updated.');
+    } else {
+      data.id=uid();
+      state.materials.push(data);
+      toast('"'+name+'" added — attach it to product recipes to track usage.');
+    }
+    return true;
+  }});
+}
+function materialRestockModal(m){
+  var body='<input type="hidden" name="id" value="'+m.id+'">'+
+    '<p style="font-size:.86rem;color:var(--text-2);margin-bottom:12px">"'+esc(m.name)+'" currently: <b>'+fmtNum(m.stock)+' '+esc(m.unit||'')+'</b></p>'+
+    '<div class="form-row"><div class="field"><label>Quantity to add ('+esc(m.unit||'units')+')</label><input class="input" type="number" step="any" min="0.01" name="qty" required></div>'+
+    '<div class="field"><label>Total cost (optional — logs an expense)</label><input class="input" type="number" step="any" min="0" name="cost"></div></div>';
+  openModal('Restock — '+m.name,body,{submitLabel:'Add stock',onSubmit:function(form){
+    var qty=num(fv(form,'qty'));
+    if(qty<=0){ toast('Enter a quantity greater than zero.','error'); return false; }
+    var mat=findMaterial(fv(form,'id'));
+    if(!mat) return false;
+    mat.stock=Math.round((mat.stock+qty)*100)/100;
+    var cost=num(fv(form,'cost'));
+    if(cost>0){
+      state.finance.push({id:uid(),type:'expense',amount:cost,date:todayISO(),category:'Inventory / Supplies',note:'Materials: '+mat.name+' +'+fmtNum(qty)+' '+(mat.unit||''),client:'',offer:''});
+    }
+    toast('Stock updated'+(cost>0?' and '+fmtMoney(cost)+' expense logged.':'.'));
+    return true;
+  }});
+}
+
+/* ---------- order profit & follow-ups ---------- */
+function orderProfit(o){
+  var cost=0;
+  (o.items||[]).forEach(function(it){
+    var p=findProduct(it.productId);
+    cost+=(p&&p.cost?p.cost:0)*it.qty;
+  });
+  return orderTotal(o)-cost;
+}
+function unpaidFollowUps(){
+  return (state.orders||[]).filter(function(o){
+    if(o.payStatus==='Paid'||o.status==='Cancelled') return false;
+    return -daysUntil(o.orderDate)>=3;
+  }).map(function(o){ return {o:o,days:-daysUntil(o.orderDate)}; })
+    .sort(function(a,b){ return b.days-a.days; });
+}
+function followUpCardHTML(){
+  var list=unpaidFollowUps();
+  if(!list.length) return '';
+  var html='<div class="card mt" style="border-left:4px solid var(--warn)"><div class="card-head" style="margin-bottom:8px"><h3>💬 Needs a follow-up</h3><span class="sub">unpaid 3+ days — one friendly nudge usually collects it</span></div>';
+  list.slice(0,5).forEach(function(x){
+    html+='<div class="list-row"><div style="flex:1;min-width:0"><b style="font-size:.88rem">'+esc(x.o.clientName)+'</b> <span class="badge warn">unpaid '+x.days+'d</span>'+
+      '<div style="font-size:.74rem;color:var(--text-3)">'+esc(x.o.number)+' · '+fmtMoney(orderTotal(x.o))+(x.o.contact?' · '+esc(x.o.contact):'')+'</div></div>'+
+      '<button class="btn btn-sm btn-good" data-action="order-paid" data-id="'+x.o.id+'">'+icon('cash')+' Paid</button></div>';
+  });
+  html+='</div>';
+  return html;
+}
+function paymentBreakdownHTML(monthKeyStr){
+  var paid=(state.orders||[]).filter(function(o){ return o.payStatus==='Paid'&&monthKey(o.paidDate||o.orderDate)===monthKeyStr; });
+  if(!paid.length) return '';
+  var byM={};
+  paid.forEach(function(o){ var k=o.payMethod||'Other'; byM[k]=(byM[k]||0)+orderTotal(o); });
+  return '<div class="card mt"><div class="card-head" style="margin-bottom:6px"><h3>Collected this month by payment method</h3></div><div style="display:flex;gap:8px;flex-wrap:wrap">'+
+    Object.keys(byM).sort(function(a,b){return byM[b]-byM[a];}).map(function(k){
+      return '<span class="badge accent">'+esc(k)+' · '+fmtMoney(byM[k])+'</span>';
+    }).join('')+'</div></div>';
+}
+
+/* ---------- win-back list ---------- */
+function winBackList(){
+  var last={};
+  state.finance.forEach(function(e){
+    if(e.type==='income'&&e.client){
+      var k=e.client.toLowerCase();
+      if(!last[k]||e.date>last[k]) last[k]=e.date;
+    }
+  });
+  (state.orders||[]).forEach(function(o){
+    if(o.status==='Cancelled'||!o.clientName) return;
+    var k=o.clientName.toLowerCase();
+    if(!last[k]||o.orderDate>last[k]) last[k]=o.orderDate;
+  });
+  var out=[];
+  state.clients.forEach(function(c){
+    if(c.status==='Churned') return;
+    var k=(c.name||'').toLowerCase();
+    if(!last[k]) return;
+    var days=-daysUntil(last[k]);
+    if(days>=45) out.push({name:c.name,contact:c.contact,days:days,lastDate:last[k]});
+  });
+  out.sort(function(a,b){ return a.days-b.days; });
+  return out;
+}
+function winBackCardHTML(){
+  var list=winBackList();
+  if(!list.length) return '';
+  var html='<div class="card mt-lg" style="border-left:4px solid var(--info)"><div class="card-head" style="margin-bottom:8px"><h3>🔁 Win-back opportunities</h3><span class="sub">bought before, quiet for 45+ days — a message to them is 5× cheaper than a new customer</span></div>';
+  list.slice(0,6).forEach(function(w){
+    html+='<div class="list-row"><div style="flex:1;min-width:0"><b style="font-size:.88rem">'+esc(w.name)+'</b><div style="font-size:.74rem;color:var(--text-3)">last purchase '+fmtDate(w.lastDate)+(w.contact?' · '+esc(w.contact):'')+'</div></div><span class="badge info">'+w.days+' days quiet</span></div>';
+  });
+  html+='</div>';
+  return html;
+}
+
+/* ---------- kanban board ---------- */
+var KB_COLS=['Pending','Preparing','For Delivery','Delivered'];
+var dragOrderId=null;
+function orderBoardHTML(){
+  var html='<div class="kb-board mt">';
+  KB_COLS.forEach(function(col){
+    var cards=(state.orders||[]).filter(function(o){return o.status===col;});
+    html+='<div class="kb-col" data-drop-status="'+col+'"><h4>'+col+'<span>'+cards.length+'</span></h4>';
+    cards.forEach(function(o){
+      var d=daysUntil(o.deliveryDate);
+      var late=col!=='Delivered'&&d!=null&&d<0;
+      html+='<div class="kb-card" draggable="true" data-order-id="'+o.id+'">'+
+        '<div style="display:flex;justify-content:space-between;gap:6px"><b class="mono" style="font-size:.72rem;color:var(--accent)">'+esc(o.number)+'</b><b class="num" style="font-size:.82rem">'+fmtMoney(orderTotal(o))+'</b></div>'+
+        '<div style="font-weight:700;font-size:.86rem;margin:2px 0">'+esc(o.clientName)+'</div>'+
+        '<div style="font-size:.7rem;color:var(--text-3)">'+(o.items||[]).map(function(it){return it.qty+'× '+it.name;}).join(', ')+'</div>'+
+        '<div style="display:flex;gap:5px;margin-top:7px;flex-wrap:wrap">'+
+          (o.payStatus==='Paid'?'<span class="badge good">Paid</span>':'<span class="badge warn">Unpaid</span>')+
+          (o.deliveryDate?'<span class="badge '+(late?'risk':'neutral')+'">'+(late?'late':fmtDate(o.deliveryDate))+'</span>':'')+
+        '</div>'+
+        '<div style="display:flex;gap:4px;margin-top:7px">'+
+          (o.payStatus!=='Paid'?'<button class="btn btn-sm btn-good" data-action="order-paid" data-id="'+o.id+'" style="padding:3px 9px;font-size:.7rem">Paid</button>':'')+
+          '<button class="btn btn-sm btn-ghost" data-action="order-print" data-id="'+o.id+'" style="padding:3px 9px;font-size:.7rem">Slip</button>'+
+          '<button class="btn btn-sm btn-ghost" data-action="order-edit" data-id="'+o.id+'" style="padding:3px 9px;font-size:.7rem">Edit</button>'+
+        '</div></div>';
+    });
+    html+='</div>';
+  });
+  html+='</div><p style="font-size:.74rem;color:var(--text-3);margin-top:10px">Drag cards between columns to update status. Cancelled orders live in the List view.</p>';
+  return html;
+}
+document.addEventListener('dragstart',function(e){
+  var card=e.target.closest&&e.target.closest('.kb-card');
+  if(!card) return;
+  dragOrderId=card.getAttribute('data-order-id');
+  card.classList.add('dragging');
+  if(e.dataTransfer){ e.dataTransfer.effectAllowed='move'; try{ e.dataTransfer.setData('text/plain',dragOrderId); }catch(_){} }
+});
+document.addEventListener('dragend',function(e){
+  var card=e.target.closest&&e.target.closest('.kb-card');
+  if(card) card.classList.remove('dragging');
+});
+document.addEventListener('dragover',function(e){
+  var col=e.target.closest&&e.target.closest('[data-drop-status]');
+  if(col&&dragOrderId){ e.preventDefault(); col.classList.add('drag-over'); }
+});
+document.addEventListener('dragleave',function(e){
+  var col=e.target.closest&&e.target.closest('[data-drop-status]');
+  if(col) col.classList.remove('drag-over');
+});
+document.addEventListener('drop',function(e){
+  var col=e.target.closest&&e.target.closest('[data-drop-status]');
+  if(!col||!dragOrderId) return;
+  e.preventDefault();
+  var o=state.orders.find(function(x){return x.id===dragOrderId;});
+  dragOrderId=null;
+  if(o){
+    var newStatus=col.getAttribute('data-drop-status');
+    if(o.status!==newStatus){
+      o.status=newStatus;
+      commit();
+      if(newStatus==='Delivered') toast('📦 '+o.number+' delivered!'+(o.payStatus!=='Paid'?' Mark it paid once you collect.':''));
+    }
+  }
+});
+
+/* ---------- bulk actions ---------- */
+function selectedOrders(){
+  var sel=ui.selOrders||{};
+  return (state.orders||[]).filter(function(o){return sel[o.id];});
+}
+function bulkBarHTML(){
+  var sel=selectedOrders();
+  if(!sel.length) return '';
+  return '<div class="bulk-bar"><b style="font-size:.84rem">'+sel.length+' selected</b>'+
+    '<button class="btn btn-sm btn-ghost" data-action="bulk-status" data-val="Preparing">→ Preparing</button>'+
+    '<button class="btn btn-sm btn-ghost" data-action="bulk-status" data-val="For Delivery">→ For Delivery</button>'+
+    '<button class="btn btn-sm btn-ghost" data-action="bulk-status" data-val="Delivered">→ Delivered</button>'+
+    '<button class="btn btn-sm btn-good" data-action="bulk-paid">'+icon('cash')+' Mark paid</button>'+
+    '<button class="btn btn-sm btn-ghost" data-action="bulk-print">'+icon('print')+' Print slips</button>'+
+    '<button class="btn btn-sm btn-ghost" data-action="bulk-clear">Clear</button></div>';
+}
+function orderSlipDocHTML(o){
+  return '<div class="pr-doc">'+
+    '<h1>'+esc(state.settings.businessName)+'</h1>'+
+    '<div class="pr-meta">Order '+esc(o.number)+' · '+fmtDate(o.orderDate)+'</div>'+
+    '<h2>Deliver to</h2><p><b>'+esc(o.clientName)+'</b>'+(o.contact?' · '+esc(o.contact):'')+'<br>'+esc(o.address||'(pickup)').replace(/\n/g,'<br>')+'</p>'+
+    '<h2>Items</h2><table><tbody>'+
+    (o.items||[]).map(function(it){return '<tr><td>'+esc(it.name)+' × '+it.qty+'</td><td class="num">'+fmtMoney(it.qty*it.price)+'</td></tr>';}).join('')+
+    '<tr class="pr-total"><td>Total '+(o.payStatus==='Paid'?'(PAID — '+esc(o.payMethod||'')+')':'(collect — '+esc(o.payMethod||'')+')')+'</td><td class="num">'+fmtMoney(orderTotal(o))+'</td></tr>'+
+    '</tbody></table>'+(o.note?'<p style="margin-top:8px">Note: '+esc(o.note)+'</p>':'')+'</div>';
+}
+
+/* ---------- shareable catalog ---------- */
+function catalogDocHTML(){
+  var prods=(state.products||[]).filter(function(p){return p.active!==false;});
+  return '<div class="pr-doc">'+
+    '<h1>'+esc(state.settings.businessName)+'</h1>'+
+    '<div class="pr-meta">Product catalog · '+fmtDate(todayISO())+(state.settings.bizPhone?' · '+esc(state.settings.bizPhone):'')+'</div>'+
+    '<div class="cat-grid">'+prods.map(function(p){
+      var attrs=Object.keys(p.attrs||{}).map(function(k){return p.attrs[k];}).filter(Boolean).join(' · ');
+      return '<div style="border:1px solid #ccc;border-radius:10px;padding:10px;page-break-inside:avoid">'+
+        (p.photo?'<img src="'+p.photo+'" alt="">':'')+
+        '<div style="font-weight:bold;margin-top:6px">'+esc(p.name)+'</div>'+
+        (attrs?'<div style="font-size:.8rem;color:#555">'+esc(attrs)+'</div>':'')+
+        (p.desc?'<div style="font-size:.75rem;color:#777">'+esc(p.desc)+'</div>':'')+
+        '<div style="font-size:1.05rem;font-weight:bold;margin-top:4px">'+fmtMoney(p.price)+'</div></div>';
+    }).join('')+'</div>'+
+    '<div class="pr-foot">Message us to order! · '+esc(state.settings.businessName)+'</div></div>';
+}
+function copyCatalogText(){
+  var prods=(state.products||[]).filter(function(p){return p.active!==false&&p.stock>0;});
+  var lines=['🛍 '+state.settings.businessName+' — current menu','']; 
+  var byCat={};
+  prods.forEach(function(p){ var c=p.category||'Other'; (byCat[c]=byCat[c]||[]).push(p); });
+  Object.keys(byCat).forEach(function(c){
+    lines.push('— '+c+' —');
+    byCat[c].forEach(function(p){
+      var attrs=Object.keys(p.attrs||{}).map(function(k){return p.attrs[k];}).filter(Boolean).join(', ');
+      lines.push('• '+p.name+(attrs?' ('+attrs+')':'')+' — '+fmtMoney(p.price));
+    });
+    lines.push('');
+  });
+  lines.push('Message us to order! 💌');
+  var text=lines.join('\n');
+  function fallback(){
+    var ta=document.createElement('textarea');
+    ta.value=text; document.body.appendChild(ta); ta.select();
+    try{ document.execCommand('copy'); toast('Catalog copied — paste it into any chat.'); }
+    catch(_){ toast('Could not copy automatically.','error'); }
+    ta.remove();
+  }
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(function(){ toast('Catalog copied — paste it into any chat. 📋'); },fallback);
+  } else fallback();
+}
+
+/* ---------- onboarding wizard ---------- */
+var BIZ_PRESETS={
+  candles:{label:'Candles, crafts & gifts',cats:['Candle','Keychain','Gift Box','Bundle'],attrs:['Scent','Color']},
+  food:{label:'Food & baked goods',cats:['Cake','Pastry','Cookies','Drinks','Box'],attrs:['Flavor','Size']},
+  services:{label:'Services & freelance',cats:['Package','Retainer','Add-on'],attrs:['Tier']},
+  reseller:{label:'Reseller / online shop',cats:['Apparel','Beauty','Gadgets','Home'],attrs:['Brand','Variant']},
+  general:{label:'Something else',cats:['Product','Service'],attrs:['Variant']}
+};
+function maybeOnboard(){
+  if(state.settings.onboarded) return;
+  if(state.finance.length||state.products.length||state.orders.length) { state.settings.onboarded=true; save(); return; }
+  state.settings.onboarded=true; save(); // show once, ever
+  setTimeout(function(){
+    var body=
+      '<p style="font-size:.86rem;color:var(--text-2);margin-bottom:14px">60-second setup — everything can be changed later in Settings.</p>'+
+      '<div class="field"><label>Your business name</label><input class="input" name="bizname" placeholder="e.g. Hiraya Candle Co." value=""></div>'+
+      '<div class="form-row"><div class="field"><label>Currency</label><select class="input" name="currency">'+
+        ['₱','$','€','£','¥','₹'].map(function(c){return '<option'+(c==='₱'?' selected':'')+'>'+c+'</option>';}).join('')+'</select></div>'+
+      '<div class="field"><label>Monthly revenue target (optional)</label><input class="input" type="number" min="0" step="any" name="target" placeholder="e.g. 50000"></div></div>'+
+      '<div class="field"><label>What do you sell?</label><select class="input" name="preset">'+
+        Object.keys(BIZ_PRESETS).map(function(k){return '<option value="'+k+'">'+BIZ_PRESETS[k].label+'</option>';}).join('')+'</select>'+
+      '<p style="font-size:.72rem;color:var(--text-3);margin-top:5px">This pre-builds your product categories and attributes (you can edit them anytime).</p></div>';
+    openModal('Welcome to BizPilot 👋',body,{submitLabel:'Set up my business',onSubmit:function(form){
+      var nm=fv(form,'bizname');
+      if(nm) state.settings.businessName=nm;
+      state.settings.currency=fv(form,'currency')||'₱';
+      state.settings.monthlyTarget=Math.max(0,num(fv(form,'target')));
+      applyBizPreset(fv(form,'preset')||'general',true);
+      toast('You’re set up! Add your first product or income entry — or load sample data from Settings to explore.');
+      return true;
+    }});
+  },600);
+}
+function applyBizPreset(key,silent){
+  var p=BIZ_PRESETS[key];
+  if(!p) return;
+  state.settings.productCats=p.cats.slice();
+  state.settings.productAttrs=p.attrs.slice();
+  if(!silent){ commit(); toast('"'+p.label+'" preset applied — categories and attributes updated.'); }
+}
+
+/* ---------- image lightbox ---------- */
+function openLightbox(src){
+  if(!src) return;
+  byId('lightbox-root').innerHTML='<div class="lightbox" data-action="close-lightbox">'+
+    '<button class="lb-close" data-action="close-lightbox" aria-label="Close">'+icon('x')+'</button>'+
+    '<img src="'+src+'" alt=""></div>';
+}
+function closeLightbox(){ byId('lightbox-root').innerHTML=''; }
+
+/* ---------- v8 wiring ---------- */
+document.addEventListener('click',function(e){
+  // lightbox: any uploaded image thumbnail/preview
+  var img=e.target.closest&&e.target.closest('img.img-thumb,img.img-thumb-lg');
+  if(img&&img.getAttribute('src')){ openLightbox(img.getAttribute('src')); return; }
+  var el=e.target.closest('[data-action]');
+  if(!el) return;
+  var action=el.getAttribute('data-action');
+  var id=el.getAttribute('data-id');
+
+  if(action==='close-lightbox'){ if(e.target===el||el.classList.contains('lb-close')) closeLightbox(); return; }
+  if(action==='product-tab'){ ui.productTab=el.getAttribute('data-tab'); render(); return; }
+
+  /* materials */
+  if(action==='material-new'){ materialModal(); return; }
+  if(action==='material-edit'){ var m=findMaterial(id); if(m) materialModal(m); return; }
+  if(action==='material-restock'){ var m2=findMaterial(id); if(m2) materialRestockModal(m2); return; }
+  if(action==='material-delete'){
+    var m3=findMaterial(id);
+    if(!m3) return;
+    var usedIn=(state.products||[]).filter(function(p){return (p.bom||[]).some(function(b){return b.materialId===id;});});
+    if(confirm('Delete material "'+m3.name+'"?'+(usedIn.length?' It is used in '+usedIn.length+' recipe(s) — it will be removed from them.':''))){
+      state.materials=state.materials.filter(function(x){return x.id!==id;});
+      (state.products||[]).forEach(function(p){ if(p.bom) p.bom=p.bom.filter(function(b){return b.materialId!==id;}); });
+      commit(); toast('Material deleted.','warn');
+    }
+    return;
+  }
+  if(action==='bom-add'){
+    var box=document.getElementById('bom-rows');
+    if(box) box.insertAdjacentHTML('beforeend',bomRowHTML());
+    return;
+  }
+  if(action==='bom-del'){
+    var row=el.closest('.bom-row');
+    if(row) row.remove();
+    return;
+  }
+
+  /* orders: view, bulk */
+  if(action==='order-view'){ ui.orderView=el.getAttribute('data-val'); render(); return; }
+  if(action==='bulk-clear'){ ui.selOrders={}; render(); return; }
+  if(action==='bulk-status'){
+    var val=el.getAttribute('data-val');
+    selectedOrders().forEach(function(o){ if(o.status!=='Cancelled') o.status=val; });
+    ui.selOrders={};
+    commit(); toast('Selected orders moved to "'+val+'".');
+    return;
+  }
+  if(action==='bulk-paid'){
+    var sel=selectedOrders().filter(function(o){return o.payStatus!=='Paid'&&o.status!=='Cancelled';});
+    if(!sel.length){ toast('No unpaid orders selected.','warn'); return; }
+    if(confirm('Mark '+sel.length+' order(s) as PAID ('+fmtMoney(sum(sel,orderTotal))+' total)? Income is recorded for each.')){
+      sel.forEach(function(o){ o.payStatus='Paid'; o.paidDate=todayISO(); recordOrderIncome(o); });
+      ui.selOrders={};
+      commit(); toast('💰 '+fmtMoney(sum(sel,orderTotal))+' collected across '+sel.length+' orders.');
+    }
+    return;
+  }
+  if(action==='bulk-print'){
+    var sel2=selectedOrders();
+    if(!sel2.length){ toast('Select orders first.','warn'); return; }
+    printDoc(sel2.map(function(o){ return orderSlipDocHTML(o)+'<div class="pr-page-break"></div>'; }).join(''));
+    return;
+  }
+
+  /* catalog */
+  if(action==='print-catalog'){ printDoc(catalogDocHTML()); return; }
+  if(action==='copy-catalog'){ copyCatalogText(); return; }
+
+  /* presets in settings */
+  if(action==='apply-preset'){
+    var key=el.getAttribute('data-preset');
+    if(confirm('Apply the "'+(BIZ_PRESETS[key]||{}).label+'" preset? This replaces your product categories and attributes (products keep their data).')) applyBizPreset(key);
+    return;
+  }
+});
+document.addEventListener('change',function(e){
+  var el=e.target;
+  if(el.getAttribute('data-action-change')==='order-select'){
+    ui.selOrders=ui.selOrders||{};
+    if(el.checked) ui.selOrders[el.getAttribute('data-id')]=true;
+    else delete ui.selOrders[el.getAttribute('data-id')];
+    render();
+    return;
+  }
+});
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape') closeLightbox();
+});
+
 /* keyboard: Escape closes modal / sidebar */
 document.addEventListener('keydown',function(e){
   if(e.key==='Escape'){
@@ -4542,6 +5112,7 @@ applyTheme();
 render();
 probeStorage();
 autoBackupCheck();
+maybeOnboard();
 
 /* backup reminder — once per session if data exists and backup is stale */
 (function(){
