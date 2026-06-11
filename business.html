@@ -481,6 +481,27 @@ details.calc .calc-body{margin-top:10px}
   html{font-size:14px}
   .ring-wrap{flex-direction:column;align-items:flex-start}
 }
+/* print system */
+#print-area{display:none}
+.swatches{display:flex;gap:8px;flex-wrap:wrap}
+.swatch{width:30px;height:30px;border-radius:50%;border:3px solid transparent;cursor:pointer;transition:transform .15s}
+.swatch:hover{transform:scale(1.15)}
+.swatch.active{border-color:var(--text);transform:scale(1.1)}
+@media print{
+  body.printing > .app,body.printing > .toast-root,body.printing > #modal-root{display:none !important}
+  body.printing #print-area{display:block !important}
+  #print-area{color:#000;background:#fff;font-family:Georgia,'Times New Roman',serif}
+  #print-area .pr-doc{max-width:720px;margin:0 auto;padding:10px}
+  #print-area h1{font-size:1.6rem;margin-bottom:2px}
+  #print-area h2{font-size:1.05rem;margin:18px 0 8px;border-bottom:2px solid #000;padding-bottom:4px}
+  #print-area .pr-meta{color:#444;font-size:.85rem;margin-bottom:14px}
+  #print-area table{width:100%;border-collapse:collapse;font-size:.88rem}
+  #print-area th{text-align:left;border-bottom:1.5px solid #000;padding:6px 8px;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em}
+  #print-area td{padding:6px 8px;border-bottom:1px solid #ccc}
+  #print-area td.num,#print-area th.num{text-align:right;font-variant-numeric:tabular-nums}
+  #print-area .pr-total{font-weight:bold;border-top:2px solid #000}
+  #print-area .pr-foot{margin-top:26px;font-size:.75rem;color:#666;border-top:1px solid #ccc;padding-top:8px}
+}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important}
 }
@@ -494,6 +515,7 @@ details.calc .calc-body{margin-top:10px}
 </div>
 <div id="modal-root"></div>
 <div class="toast-root" id="toast-root"></div>
+<div id="print-area"></div>
 <input type="file" id="import-file" accept=".json,application/json" style="display:none">
 <script>
 'use strict';
@@ -585,6 +607,11 @@ var ICONS = {
   calc:'<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 11h.01M12 11h.01M16 11h.01M8 15h.01M12 15h.01M16 15h.01M8 19h.01M12 19h.01M16 19h.01"/>',
   shield:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
   cash:'<rect x="1" y="6" width="22" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M5 10h.01M19 14h.01"/>',
+  invoice:'<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M8 12h8M8 16h8M8 8h2"/>',
+  report:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 16v-5M12 16V8M16 16v-3"/>',
+  cloud:'<path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z"/>',
+  print:'<path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>',
+  palette:'<circle cx="12" cy="12" r="10"/><circle cx="8" cy="10" r="1.2" fill="currentColor"/><circle cx="12" cy="7.5" r="1.2" fill="currentColor"/><circle cx="16" cy="10" r="1.2" fill="currentColor"/><path d="M12 22a10 10 0 010-20 10 9 0 0110 9 5 5 0 01-5 5h-2.2a2 2 0 00-1.5 3.3c.3.4.5.8.5 1.2a1.5 1.5 0 01-1.8 1.5z"/>',
   logo:'<path d="M8 22l5-6 4 3 7-9" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
 };
 function icon(name,size){
@@ -594,8 +621,14 @@ function icon(name,size){
 /* ---------- state ---------- */
 var LS_KEY='bizpilot.v1';
 var DEFAULT_STATE={
-  v:1,
-  settings:{ businessName:'My Business', currency:'₱', theme:null, taxRate:8, lastBackup:null, backupNudged:false, monthlyTarget:0 },
+  v:2,
+  settings:{ businessName:'My Business', currency:'₱', theme:null, taxRate:8, lastBackup:null, backupNudged:false, monthlyTarget:0,
+    accent:'', autoBackupDays:0, lastAutoBackup:null, hiddenModules:[],
+    customCats:{ income:[], expense:[] },
+    sync:{ url:'https://love-notes-eae0b-default-rtdb.firebaseio.com', path:'bizpilot', enabled:false, lastSync:null } },
+  invoices:[],  // {id,number,client,desc,amount,issueDate,dueDate,status,paidDate,createdAt}
+  recurring:[], // {id,type,amount,category,note,client,day,active,lastPosted,startMonth}
+  offers:[],    // {id,name,price,desc}
   finance:[],   // {id,type:'income'|'expense',amount,category,date,note,client}
   goals:[],     // {id,title,type:'revenue'|'profit'|'custom',target,current,unit,deadline,priority,steps:[{id,text,done}],done,createdAt}
   phases:[],    // {id,name,desc,order,tasks:[{id,title,deadline,status,priority}]}
@@ -637,6 +670,7 @@ function loadState(){
 function save(){
   try{
     localStorage.setItem(LS_KEY,JSON.stringify(state));
+    scheduleCloudPush();
   }catch(e){
     toast('Could not save — browser storage may be full.','error');
   }
@@ -975,6 +1009,8 @@ var ROUTES=[
   {id:'dashboard',label:'Dashboard',icon:'dashboard',section:'Overview'},
   {id:'insights',label:'Insights',icon:'insights',section:'Overview'},
   {id:'finance',label:'Finance',icon:'finance',section:'Money'},
+  {id:'invoices',label:'Invoices',icon:'invoice',section:'Money'},
+  {id:'report',label:'Monthly Report',icon:'report',section:'Money'},
   {id:'calculators',label:'Calculators',icon:'calc',section:'Money'},
   {id:'metrics',label:'Metrics & KPIs',icon:'metrics',section:'Money'},
   {id:'goals',label:'Goals',icon:'goals',section:'Execution'},
@@ -985,9 +1021,13 @@ var ROUTES=[
   {id:'reviews',label:'Reviews & Strategy',icon:'reviews',section:'Workspace'},
   {id:'settings',label:'Settings & Data',icon:'settings',section:'System'}
 ];
+function visibleRoutes(){
+  var hidden=state.settings.hiddenModules||[];
+  return ROUTES.filter(function(r){ return hidden.indexOf(r.id)<0; });
+}
 function currentRoute(){
   var h=(location.hash||'#/dashboard').replace('#/','');
-  return ROUTES.some(function(r){return r.id===h;})?h:'dashboard';
+  return visibleRoutes().some(function(r){return r.id===h;})?h:'dashboard';
 }
 function nav(route){ location.hash='#/'+route; }
 
@@ -1008,6 +1048,7 @@ function render(){
   var main=byId('main');
   var views={
     dashboard:viewDashboard, insights:viewInsights, finance:viewFinance,
+    invoices:viewInvoices, report:viewReport,
     calculators:viewCalculators, metrics:viewMetrics, goals:viewGoals,
     roadmap:viewRoadmap, tasks:viewTasks, clients:viewClients,
     notes:viewNotes, reviews:viewReviews, settings:viewSettings
@@ -1021,7 +1062,7 @@ function renderSidebar(){
   var openTasks=state.tasks.filter(function(t){ var d=daysUntil(t.deadline); return !t.done&&d!=null&&d<0; }).length;
   var html='<div class="brand"><div class="brand-logo">'+icon('logo')+'</div><div><div class="brand-name">BizPilot</div><div class="brand-sub">Command Center</div></div></div><nav class="nav">';
   var lastSection='';
-  ROUTES.forEach(function(r){
+  visibleRoutes().forEach(function(r){
     if(r.section!==lastSection){ html+='<div class="nav-section">'+esc(r.section)+'</div>'; lastSection=r.section; }
     html+='<button class="nav-item'+(route===r.id?' active':'')+'" data-action="nav" data-route="'+r.id+'">'+icon(r.icon)+'<span>'+esc(r.label)+'</span>'+
       (r.id==='tasks'&&openTasks>0?'<span class="nav-badge">'+openTasks+'</span>':'')+'</button>';
@@ -1154,7 +1195,21 @@ function viewDashboard(){
   var dueSoon=state.tasks.filter(function(x){ var d=daysUntil(x.deadline); return !x.done&&d!=null&&d<=7; })
     .sort(function(a,b){ return (a.deadline||'').localeCompare(b.deadline||''); }).slice(0,5);
   var upcoming=upcomingMilestones().slice(0,3);
-  html+='<div class="grid grid-2 mt">';
+  html+='<div class="grid grid-3 mt">';
+  // receivables
+  var recv=receivablesSummary();
+  html+='<div class="card"><div class="card-head"><h3>Money owed to you</h3><span class="spacer"></span><button class="btn btn-sm btn-ghost" data-action="nav" data-route="invoices">Invoices</button></div>';
+  if(recv.count>0){
+    html+='<div style="display:flex;align-items:baseline;gap:8px"><b style="font-size:1.45rem;font-variant-numeric:tabular-nums">'+fmtMoney(recv.total)+'</b><span style="font-size:.8rem;color:var(--text-3)">across '+recv.count+' invoice'+(recv.count>1?'s':'')+'</span></div>';
+    if(recv.overdueTotal>0) html+='<span class="badge risk" style="margin-top:6px">'+icon('alert')+' '+fmtMoney(recv.overdueTotal)+' overdue ('+recv.overdueCount+')</span>';
+    else html+='<span class="badge good" style="margin-top:6px">Nothing overdue</span>';
+    recv.top.forEach(function(iv){
+      html+='<div class="list-row" style="padding:8px 0"><div style="flex:1;min-width:0"><b style="font-size:.85rem">'+esc(iv.client)+'</b><div style="font-size:.72rem;color:var(--text-3)">'+esc(iv.number)+' · due '+fmtDate(iv.dueDate)+'</div></div><span class="num" style="font-weight:700">'+fmtMoney(iv.amount)+'</span></div>';
+    });
+  } else {
+    html+=emptyState('invoice','No unpaid invoices','Invoices you mark as Sent appear here until they are paid.');
+  }
+  html+='</div>';
   html+='<div class="card"><div class="card-head"><h3>Tasks due soon</h3><span class="spacer"></span><button class="btn btn-sm btn-ghost" data-action="nav" data-route="tasks">Tasks</button></div>';
   html+=dueSoon.length?dueSoon.map(taskRowHTML).join(''):emptyState('tasks','Nothing due this week','Tasks with deadlines in the next 7 days appear here.');
   html+='</div>';
@@ -1234,16 +1289,25 @@ function viewFinance(){
   '</div>';
 
   html+='<div class="tabs mt-lg">'+
-    ['entries','monthly','categories','cashflow'].map(function(tab){
-      var labels={entries:'Entries',monthly:'Monthly breakdown',categories:'Category breakdown',cashflow:'Cash flow'};
+    ['entries','monthly','categories','cashflow','recurring','offers'].map(function(tab){
+      var labels={entries:'Entries',monthly:'Monthly breakdown',categories:'Category breakdown',cashflow:'Cash flow',recurring:'Recurring',offers:'Offers'};
       return '<button class="'+(ui.financeTab===tab?'active':'')+'" data-action="finance-tab" data-tab="'+tab+'">'+labels[tab]+'</button>';
     }).join('')+'</div>';
 
   if(ui.financeTab==='entries') html+=financeEntriesHTML();
   else if(ui.financeTab==='monthly') html+=financeMonthlyHTML();
   else if(ui.financeTab==='categories') html+=financeCategoriesHTML();
+  else if(ui.financeTab==='recurring') html+=financeRecurringHTML();
+  else if(ui.financeTab==='offers') html+=financeOffersHTML();
   else html+=financeCashflowHTML();
   return html;
+}
+function allCats(type){
+  var base=type==='income'?INCOME_CATS:EXPENSE_CATS;
+  var custom=(state.settings.customCats&&state.settings.customCats[type])||[];
+  var seen={},out=[];
+  base.concat(custom).forEach(function(c){ if(!seen[c]){ seen[c]=1; out.push(c); } });
+  return out;
 }
 
 function financeEntriesHTML(){
@@ -1908,12 +1972,12 @@ function viewReviews(){
   // weekly checklist
   var wk=state.reviews.weekly;
   var curWeek=isoWeek();
-  if(wk.week!==curWeek){ /* new week resets visually but only on interaction */ }
+  var WL=weeklyList();
   var items=wk.week===curWeek?(wk.items||{}):{};
-  var doneCount=WEEKLY_CHECKLIST.filter(function(_,i){return items[i];}).length;
-  html+='<div><div class="card"><div class="card-head"><h3>Weekly review checklist</h3><span class="sub">'+curWeek+'</span><span class="spacer"></span><span class="badge '+(doneCount===WEEKLY_CHECKLIST.length?'good':'neutral')+'">'+doneCount+'/'+WEEKLY_CHECKLIST.length+'</span></div>'+
-    '<div class="progress" style="margin-bottom:12px"><div class="bar '+(doneCount===WEEKLY_CHECKLIST.length?'good':'')+'" style="width:'+(doneCount/WEEKLY_CHECKLIST.length*100)+'%"></div></div>'+
-    WEEKLY_CHECKLIST.map(function(item,i){
+  var doneCount=WL.filter(function(_,i){return items[i];}).length;
+  html+='<div><div class="card"><div class="card-head"><h3>Weekly review checklist</h3><span class="sub">'+curWeek+'</span><span class="spacer"></span><span class="badge '+(doneCount===WL.length?'good':'neutral')+'">'+doneCount+'/'+WL.length+'</span></div>'+
+    '<div class="progress" style="margin-bottom:12px"><div class="bar '+(doneCount===WL.length?'good':'')+'" style="width:'+(doneCount/Math.max(1,WL.length)*100)+'%"></div></div>'+
+    WL.map(function(item,i){
       return '<div class="wk-item"><button class="task-check'+(items[i]?' checked':'')+'" data-action="toggle-weekly" data-idx="'+i+'">'+icon('check')+'</button><span style="'+(items[i]?'text-decoration:line-through;color:var(--text-3)':'')+'">'+esc(item)+'</span></div>';
     }).join('')+'</div>';
   // decision log
@@ -1951,7 +2015,11 @@ function viewSettings(){
     '</select></div>'+
     '<div class="field"><label>Default tax rate (%)</label><input class="input" type="number" step="any" min="0" max="60" name="taxRate" value="'+esc(s.taxRate)+'"></div></div>'+
     '<div class="field"><label>Monthly revenue target ('+esc(s.currency)+')</label><input class="input" type="number" step="any" min="0" name="monthlyTarget" value="'+(s.monthlyTarget||'')+'" placeholder="e.g. 100000"><p style="font-size:.74rem;color:var(--text-3);margin-top:4px">Used on the dashboard and in insights to track each month’s pace.</p></div>'+
-    '<button class="btn btn-primary" type="submit">'+icon('check')+' Save settings</button></form></div>';
+    '<div class="field"><label>Auto-backup every</label><select class="input" name="autoBackupDays">'+
+      [[0,'Off — manual exports only'],[3,'3 days'],[7,'7 days'],[14,'14 days'],[30,'30 days']].map(function(o){return '<option value="'+o[0]+'"'+((s.autoBackupDays||0)===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+
+      '</select><p style="font-size:.74rem;color:var(--text-3);margin-top:4px">When due, a JSON backup downloads automatically on app open.</p></div>'+
+    '<button class="btn btn-primary" type="submit">'+icon('check')+' Save settings</button></form></div>'+
+    customizationCardHTML()+cloudSyncCardHTML();
   html+='<div><div class="card"><div class="card-head"><h3>Backup & restore</h3></div>'+
     '<p style="font-size:.84rem;color:var(--text-2);margin-bottom:14px">All data lives only in this browser’s localStorage ('+entryCount+' records). Export a backup regularly — clearing browser data would erase everything.'+
     (s.lastBackup?' Last backup: <b>'+fmtDate(s.lastBackup)+'</b>.':' <b>No backup yet.</b>')+'</p>'+
@@ -1975,10 +2043,9 @@ function entryModal(entry){
   var isEdit=!!entry;
   entry=entry||{type:ui.entryFormType||'income',date:todayISO()};
   var type=entry.type;
-  var cats=type==='income'?INCOME_CATS:EXPENSE_CATS;
   var existing={};
   state.finance.forEach(function(e){ if(e.type===type) existing[e.category]=1; });
-  cats.forEach(function(c){ existing[c]=1; });
+  allCats(type).forEach(function(c){ existing[c]=1; });
   var body=
     '<input type="hidden" name="id" value="'+(entry.id||'')+'">'+
     '<div class="field"><label>Type</label><div class="seg">'+
@@ -1993,6 +2060,8 @@ function entryModal(entry){
     '<div class="field"><label>New category name</label><input class="input" name="newCategory" placeholder="only if “New category” chosen"></div></div>'+
     '<div class="field"><label>Client (optional — links to CRM)</label><input class="input" name="client" value="'+esc(entry.client||'')+'" list="client-list" placeholder="e.g. Acme Co."><datalist id="client-list">'+
       state.clients.map(function(c){return '<option value="'+esc(c.name)+'">';}).join('')+'</datalist></div>'+
+    (type==='income'&&state.offers.length?'<div class="field"><label>Offer (optional — links to offer tracker)</label><select class="input" name="offer"><option value="">— none —</option>'+
+      state.offers.map(function(o){return '<option value="'+o.id+'"'+(entry.offer===o.id?' selected':'')+'>'+esc(o.name)+'</option>';}).join('')+'</select></div>':'')+
     '<div class="field"><label>Note</label><input class="input" name="note" value="'+esc(entry.note||'')+'" placeholder="What was this for?"></div>';
   openModal(isEdit?'Edit entry':'Add income / expense',body,{onSubmit:function(form){
     var amount=num(fv(form,'amount'));
@@ -2002,7 +2071,7 @@ function entryModal(entry){
     var cat=fv(form,'category');
     if(cat==='__new__'){ cat=fv(form,'newCategory')||'Other'; }
     var id=fv(form,'id');
-    var data={type:fv(form,'type'),amount:amount,date:date,category:cat,note:fv(form,'note'),client:fv(form,'client')};
+    var data={type:fv(form,'type'),amount:amount,date:date,category:cat,note:fv(form,'note'),client:fv(form,'client'),offer:form.elements['offer']?fv(form,'offer'):''};
     if(id){
       var e=state.finance.find(function(x){return x.id===id;});
       if(e) Object.assign(e,data);
@@ -2348,6 +2417,32 @@ function loadSampleData(){
   };
   var lastM=mk(-1);
   state.reviews.monthly[lastM]={wins:'Biggest month yet (₱93k). Template pack became a real second income stream.',problems:'Contractor costs creeping up; ads ROAS dipped mid-month.',lessons:'Productized offers sell easier than custom quotes.',focus:'Close 2 retainer deals and launch template pack v2.',savedAt:nowIso};
+  // offers
+  var offRetainer=uid(), offTemplates=uid(), offWeb=uid(), offBrand=uid();
+  state.offers=[
+    {id:offBrand,name:'Brand identity package',price:28000,desc:'Logo, palette, typography, brand guide.'},
+    {id:offWeb,name:'Website build',price:38000,desc:'5-page marketing site, copy polish included.'},
+    {id:offRetainer,name:'Social media retainer',price:9000,desc:'12 posts + stories per month.'},
+    {id:offTemplates,name:'Template pack',price:1299,desc:'Self-serve Canva template bundle.'}
+  ];
+  state.finance.forEach(function(e){
+    if(e.type!=='income') return;
+    if(e.category==='Subscriptions') e.offer=offRetainer;
+    else if(e.category==='Products') e.offer=offTemplates;
+    else if(e.category==='Services'&&e.amount>=35000) e.offer=offWeb;
+    else if(e.category==='Services') e.offer=offBrand;
+  });
+  // recurring rules (lastPosted = this month so nothing double-posts on load)
+  state.recurring=[
+    {id:uid(),type:'income',amount:9000,category:'Subscriptions',note:'Retainer — socials',client:'Lumina Café',offer:offRetainer,day:8,active:true,lastPosted:thisMonthKey(),startMonth:mk(-4)},
+    {id:uid(),type:'expense',amount:4800,category:'Software & Tools',note:'Subscriptions + AI tools',client:'',offer:'',day:3,active:true,lastPosted:thisMonthKey(),startMonth:mk(-5)}
+  ];
+  // invoices
+  state.invoices=[
+    {id:uid(),number:'INV-0012',client:'Northwind Gym',desc:'Rebrand — final 50% milestone',amount:26000,issueDate:d(0,2),dueDate:d(0,Math.min(28,new Date().getDate()+9)),status:'Sent',paidDate:null,createdAt:d(0,2)},
+    {id:uid(),number:'INV-0011',client:'Verde Realty',desc:'Brand refresh — balance',amount:15000,issueDate:d(-1,20),dueDate:d(-1,28),status:'Sent',paidDate:null,createdAt:d(-1,20)},
+    {id:uid(),number:'INV-0010',client:'Harbor Dental',desc:'Website sprint — 50% deposit',amount:30000,issueDate:d(0,1),dueDate:d(0,4),status:'Paid',paidDate:d(0,4),createdAt:d(0,1)}
+  ];
   state.settings.businessName=state.settings.businessName==='My Business'?'Studio Hiraya':state.settings.businessName;
   state.settings.monthlyTarget=state.settings.monthlyTarget||100000;
   commit();
@@ -2361,6 +2456,21 @@ function applyTheme(){
   var t=state.settings.theme;
   if(!t) t=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';
   document.documentElement.setAttribute('data-theme',t);
+  applyAccent();
+}
+var ACCENTS=['#6366f1','#0ea5e9','#10b981','#f59e0b','#ef4444','#ec4899','#8b5cf6','#14b8a6'];
+function applyAccent(){
+  var c=state.settings.accent;
+  var rootStyle=document.documentElement.style;
+  if(!c){
+    rootStyle.removeProperty('--accent');rootStyle.removeProperty('--accent-2');
+    rootStyle.removeProperty('--accent-soft');rootStyle.removeProperty('--accent-grad');
+    return;
+  }
+  rootStyle.setProperty('--accent',c);
+  rootStyle.setProperty('--accent-2',c);
+  rootStyle.setProperty('--accent-soft',c+'1f');
+  rootStyle.setProperty('--accent-grad','linear-gradient(135deg,'+c+','+c+'cc)');
 }
 function toggleTheme(){
   var cur=document.documentElement.getAttribute('data-theme');
@@ -2626,6 +2736,7 @@ document.addEventListener('submit',function(e){
     state.settings.currency=fv(form,'currency')||'₱';
     state.settings.taxRate=clamp(num(fv(form,'taxRate')),0,60);
     state.settings.monthlyTarget=Math.max(0,num(fv(form,'monthlyTarget')));
+    state.settings.autoBackupDays=num(fv(form,'autoBackupDays'));
     commit(); toast('Settings saved.');
     return;
   }
@@ -2677,6 +2788,629 @@ document.addEventListener('change',function(e){
   }
 });
 
+/* ============================================================
+   v2 additions: invoices, recurring, offers, report, printing,
+   customization, cloud sync, auto-backup
+   ============================================================ */
+function weeklyList(){
+  var l=state.reviews.weekly.listCustom;
+  return (l&&l.length)?l:WEEKLY_CHECKLIST.slice();
+}
+function daysInMonthKey(k){ var p=k.split('-'); return new Date(+p[0],+p[1],0).getDate(); }
+
+/* ---------- recurring entries ---------- */
+function processRecurring(){
+  var posted=0, cur=thisMonthKey();
+  (state.recurring||[]).forEach(function(r){
+    if(!r.active) return;
+    var m=r.lastPosted?shiftMonth(r.lastPosted,1):(r.startMonth||cur);
+    var guard=0;
+    while(m<=cur&&guard<36){
+      var day=Math.min(r.day||1,daysInMonthKey(m));
+      state.finance.push({id:uid(),type:r.type,amount:r.amount,date:m+'-'+String(day).padStart(2,'0'),category:r.category||'Other',note:(r.note||'Recurring')+' ↻',client:r.client||'',offer:r.offer||''});
+      r.lastPosted=m; posted++; m=shiftMonth(m,1); guard++;
+    }
+  });
+  if(posted){
+    save();
+    render();
+    setTimeout(function(){ toast(posted+' recurring entr'+(posted>1?'ies':'y')+' posted automatically.'); },600);
+  }
+}
+function financeRecurringHTML(){
+  var html='<div class="card"><div class="card-head"><h3>Recurring entries</h3><span class="sub">retainers, subscriptions, rent — posted automatically each month</span><span class="spacer"></span>'+
+    '<button class="btn btn-sm btn-primary" data-action="recurring-new">'+icon('plus')+' New rule</button></div>';
+  if(!(state.recurring||[]).length){
+    html+=emptyState('refresh','No recurring rules yet','Set up income or expenses that repeat monthly (e.g. a retainer or a software subscription). BizPilot posts them for you on the right day — even for months you missed.','<button class="btn btn-sm btn-primary" data-action="recurring-new">'+icon('plus')+' Create first rule</button>')+'</div>';
+    return html;
+  }
+  var monthlyIn=sum(state.recurring.filter(function(r){return r.active&&r.type==='income';}),function(r){return r.amount;});
+  var monthlyOut=sum(state.recurring.filter(function(r){return r.active&&r.type==='expense';}),function(r){return r.amount;});
+  html+='<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px">'+
+    '<span class="badge good">'+icon('arrowur')+' '+fmtMoney(monthlyIn)+'/mo recurring income</span>'+
+    '<span class="badge risk">'+icon('arrowdr')+' '+fmtMoney(monthlyOut)+'/mo recurring costs</span>'+
+    '<span class="badge '+(monthlyIn-monthlyOut>=0?'good':'warn')+'">net '+fmtMoney(monthlyIn-monthlyOut)+'/mo</span></div>';
+  html+='<div class="table-wrap"><table><thead><tr><th>Type</th><th>Description</th><th>Category</th><th style="text-align:right">Amount</th><th>Day</th><th>Last posted</th><th>Status</th><th></th></tr></thead><tbody>';
+  state.recurring.forEach(function(r){
+    html+='<tr><td><span class="badge '+(r.type==='income'?'good':'risk')+'">'+(r.type==='income'?'Income':'Expense')+'</span></td>'+
+      '<td>'+esc(r.note||'—')+(r.client?' <span style="color:var(--text-3)">· '+esc(r.client)+'</span>':'')+'</td>'+
+      '<td>'+esc(r.category||'Other')+'</td>'+
+      '<td class="num" style="text-align:right">'+fmtMoney(r.amount)+'</td>'+
+      '<td>'+(r.day||1)+'</td>'+
+      '<td>'+(r.lastPosted?monthLabel(r.lastPosted):'—')+'</td>'+
+      '<td><span class="badge '+(r.active?'good':'neutral')+'">'+(r.active?'Active':'Paused')+'</span></td>'+
+      '<td><div class="row-actions">'+
+        '<button class="btn-icon" data-action="recurring-toggle" data-id="'+r.id+'" title="'+(r.active?'Pause':'Resume')+'">'+icon(r.active?'clock':'refresh')+'</button>'+
+        '<button class="btn-icon" data-action="recurring-edit" data-id="'+r.id+'">'+icon('edit')+'</button>'+
+        '<button class="btn-icon danger" data-action="recurring-delete" data-id="'+r.id+'">'+icon('trash')+'</button></div></td></tr>';
+  });
+  html+='</tbody></table></div></div>';
+  return html;
+}
+function recurringModal(r){
+  var isEdit=!!r;
+  r=r||{type:'income',day:1,active:true,startMonth:thisMonthKey()};
+  var body=
+    '<input type="hidden" name="id" value="'+(r.id||'')+'">'+
+    '<div class="form-row"><div class="field"><label>Type</label><select class="input" name="type">'+
+      '<option value="income"'+(r.type==='income'?' selected':'')+'>Income</option><option value="expense"'+(r.type==='expense'?' selected':'')+'>Expense</option></select></div>'+
+    '<div class="field"><label>Amount ('+esc(state.settings.currency)+') *</label><input class="input" type="number" step="any" min="0.01" name="amount" value="'+(r.amount||'')+'" required></div></div>'+
+    '<div class="form-row"><div class="field"><label>Category</label><input class="input" name="category" value="'+esc(r.category||'')+'" list="rec-cats" placeholder="e.g. Subscriptions"><datalist id="rec-cats">'+
+      allCats('income').concat(allCats('expense')).map(function(c){return '<option value="'+esc(c)+'">';}).join('')+'</datalist></div>'+
+    '<div class="field"><label>Day of month (1–28)</label><input class="input" type="number" min="1" max="28" name="day" value="'+(r.day||1)+'"></div></div>'+
+    '<div class="field"><label>Description</label><input class="input" name="note" value="'+esc(r.note||'')+'" placeholder="e.g. Retainer — Acme Co."></div>'+
+    '<div class="form-row"><div class="field"><label>Client (optional)</label><input class="input" name="client" value="'+esc(r.client||'')+'"></div>'+
+    '<div class="field"><label>Start month</label><input class="input" type="month" name="startMonth" value="'+esc(r.startMonth||thisMonthKey())+'"></div></div>'+
+    '<label class="checkrow"><input type="checkbox" name="active"'+(r.active?' checked':'')+'> Active (posts automatically)</label>'+
+    '<p style="font-size:.75rem;color:var(--text-3);margin-top:8px">Months from the start month up to today are posted immediately when you save. Future months post when you open the app in that month.</p>';
+  openModal(isEdit?'Edit recurring rule':'New recurring rule',body,{onSubmit:function(form){
+    var amount=num(fv(form,'amount'));
+    if(amount<=0){ toast('Enter an amount greater than zero.','error'); return false; }
+    var id=fv(form,'id');
+    var data={type:fv(form,'type'),amount:amount,category:fv(form,'category')||'Other',note:fv(form,'note'),client:fv(form,'client'),day:clamp(Math.round(num(fv(form,'day'))||1),1,28),active:form.elements['active'].checked,startMonth:fv(form,'startMonth')||thisMonthKey()};
+    if(id){
+      var ex=state.recurring.find(function(x){return x.id===id;});
+      if(ex) Object.assign(ex,data);
+      toast('Recurring rule updated.');
+    } else {
+      data.id=uid();
+      data.lastPosted=null;
+      state.recurring.push(data);
+      toast('Recurring rule created.');
+    }
+    setTimeout(processRecurring,50);
+    return true;
+  }});
+}
+
+/* ---------- offers ---------- */
+function offerStats(){
+  var map={};
+  state.finance.forEach(function(e){
+    if(e.type!=='income'||!e.offer) return;
+    if(!map[e.offer]) map[e.offer]={count:0,revenue:0};
+    map[e.offer].count++; map[e.offer].revenue+=e.amount;
+  });
+  return map;
+}
+function financeOffersHTML(){
+  var html='<div class="card"><div class="card-head"><h3>Offer tracker</h3><span class="sub">which offers actually make the money</span><span class="spacer"></span>'+
+    '<button class="btn btn-sm btn-primary" data-action="offer-new">'+icon('plus')+' New offer</button></div>';
+  if(!(state.offers||[]).length){
+    html+=emptyState('spark','No offers yet','Define your offers (packages, products, retainers), tag income entries with them, and see revenue per offer here.','<button class="btn btn-sm btn-primary" data-action="offer-new">'+icon('plus')+' Add first offer</button>')+'</div>';
+    return html;
+  }
+  var stats=offerStats();
+  var totalRev=financeTotals().revenue;
+  var ranked=state.offers.slice().sort(function(a,b){
+    return ((stats[b.id]||{}).revenue||0)-((stats[a.id]||{}).revenue||0);
+  });
+  html+='<div class="table-wrap"><table><thead><tr><th>Offer</th><th style="text-align:right">List price</th><th style="text-align:right">Sales</th><th style="text-align:right">Revenue</th><th style="text-align:right">Avg / sale</th><th>Share of revenue</th><th></th></tr></thead><tbody>';
+  ranked.forEach(function(o){
+    var s=stats[o.id]||{count:0,revenue:0};
+    var share=totalRev>0?s.revenue/totalRev*100:0;
+    html+='<tr><td><b>'+esc(o.name)+'</b>'+(o.desc?'<div style="font-size:.74rem;color:var(--text-3)">'+esc(o.desc)+'</div>':'')+'</td>'+
+      '<td class="num" style="text-align:right">'+(o.price?fmtMoney(o.price):'—')+'</td>'+
+      '<td class="num" style="text-align:right">'+s.count+'</td>'+
+      '<td class="num" style="text-align:right;color:var(--income);font-weight:700">'+fmtMoney(s.revenue)+'</td>'+
+      '<td class="num" style="text-align:right">'+(s.count?fmtMoney(s.revenue/s.count):'—')+'</td>'+
+      '<td style="min-width:130px"><div style="display:flex;align-items:center;gap:8px"><div class="progress" style="flex:1;height:6px"><div class="bar" style="width:'+share+'%"></div></div><span style="font-size:.74rem;color:var(--text-2)">'+fmtPct(share,0)+'</span></div></td>'+
+      '<td><div class="row-actions"><button class="btn-icon" data-action="offer-edit" data-id="'+o.id+'">'+icon('edit')+'</button><button class="btn-icon danger" data-action="offer-delete" data-id="'+o.id+'">'+icon('trash')+'</button></div></td></tr>';
+  });
+  html+='</tbody></table></div>'+
+    '<p style="font-size:.76rem;color:var(--text-3);margin-top:10px">Tip: pick the offer when adding an income entry. Untagged income still counts in totals, just not per-offer.</p></div>';
+  return html;
+}
+function offerModal(o){
+  var isEdit=!!o;
+  o=o||{};
+  var body=
+    '<input type="hidden" name="id" value="'+(o.id||'')+'">'+
+    '<div class="field"><label>Offer name *</label><input class="input" name="name" value="'+esc(o.name||'')+'" required placeholder="e.g. Website-in-a-week"></div>'+
+    '<div class="field"><label>List price ('+esc(state.settings.currency)+')</label><input class="input" type="number" step="any" min="0" name="price" value="'+(o.price||'')+'"></div>'+
+    '<div class="field"><label>Description</label><input class="input" name="desc" value="'+esc(o.desc||'')+'" placeholder="What is included?"></div>';
+  openModal(isEdit?'Edit offer':'New offer',body,{onSubmit:function(form){
+    var name=fv(form,'name');
+    if(!name){ toast('Give the offer a name.','error'); return false; }
+    var id=fv(form,'id');
+    if(id){
+      var ex=state.offers.find(function(x){return x.id===id;});
+      if(ex){ ex.name=name; ex.price=num(fv(form,'price')); ex.desc=fv(form,'desc'); }
+      toast('Offer updated.');
+    } else {
+      state.offers.push({id:uid(),name:name,price:num(fv(form,'price')),desc:fv(form,'desc')});
+      toast('Offer added.');
+    }
+    return true;
+  }});
+}
+
+/* ---------- invoices & receivables ---------- */
+function receivablesSummary(){
+  var unpaid=(state.invoices||[]).filter(function(iv){ return iv.status!=='Paid'; });
+  var overdue=unpaid.filter(function(iv){ var d=daysUntil(iv.dueDate); return iv.status==='Sent'&&d!=null&&d<0; });
+  return {
+    count:unpaid.length,
+    total:sum(unpaid,function(iv){return iv.amount;}),
+    overdueCount:overdue.length,
+    overdueTotal:sum(overdue,function(iv){return iv.amount;}),
+    top:unpaid.slice().sort(function(a,b){return b.amount-a.amount;}).slice(0,2)
+  };
+}
+function invoiceBadge(iv){
+  if(iv.status==='Paid') return '<span class="badge good">Paid'+(iv.paidDate?' '+fmtDate(iv.paidDate):'')+'</span>';
+  if(iv.status==='Sent'){
+    var d=daysUntil(iv.dueDate);
+    if(d!=null&&d<0) return '<span class="badge risk">Overdue '+Math.abs(d)+'d</span>';
+    return '<span class="badge info">Sent · due '+(d===0?'today':(d!=null?d+'d':'—'))+'</span>';
+  }
+  return '<span class="badge neutral">Draft</span>';
+}
+function nextInvoiceNumber(){
+  var max=0;
+  (state.invoices||[]).forEach(function(iv){
+    var m=/(\d+)\s*$/.exec(iv.number||'');
+    if(m) max=Math.max(max,parseInt(m[1],10));
+  });
+  return 'INV-'+String(max+1).padStart(4,'0');
+}
+function viewInvoices(){
+  var recv=receivablesSummary();
+  var curM=thisMonthKey();
+  var paidThisMonth=sum((state.invoices||[]).filter(function(iv){return iv.status==='Paid'&&monthKey(iv.paidDate||'')===curM;}),function(iv){return iv.amount;});
+  var html=topbar('Invoices','Bill clients, track receivables, and never lose sight of who owes you.',
+    '<button class="btn btn-primary" data-action="invoice-new">'+icon('plus')+'<span class="btn-txt">New invoice</span></button>');
+  html+='<div class="grid grid-4">'+
+    statCard('Outstanding',fmtMoney(recv.total),'<span class="stat-delta flat">'+recv.count+' unpaid invoice'+(recv.count===1?'':'s')+'</span>','','invoice')+
+    statCard('Overdue',fmtMoney(recv.overdueTotal),recv.overdueCount?'<span class="stat-delta down">'+recv.overdueCount+' need follow-up</span>':'<span class="stat-delta up">nothing overdue</span>','','alert')+
+    statCard('Collected this month',fmtMoney(paidThisMonth),'','','check')+
+    statCard('All-time invoiced',fmtMoney(sum(state.invoices||[],function(iv){return iv.amount;})),'','','cash')+
+  '</div>';
+  html+='<div class="card mt-lg">';
+  if(!(state.invoices||[]).length){
+    html+=emptyState('invoice','No invoices yet','Create an invoice for a client. Marking it Paid automatically records the income in Finance.','<button class="btn btn-sm btn-primary" data-action="invoice-new">'+icon('plus')+' Create first invoice</button>')+'</div>';
+    return html;
+  }
+  var list=state.invoices.slice().sort(function(a,b){
+    var rank=function(iv){ var d=daysUntil(iv.dueDate); if(iv.status==='Sent'&&d!=null&&d<0) return 0; if(iv.status==='Sent') return 1; if(iv.status==='Draft') return 2; return 3; };
+    return rank(a)-rank(b)||(a.dueDate||'9999').localeCompare(b.dueDate||'9999');
+  });
+  html+='<div class="table-wrap"><table><thead><tr><th>#</th><th>Client</th><th>Description</th><th>Issued</th><th>Due</th><th style="text-align:right">Amount</th><th>Status</th><th></th></tr></thead><tbody>';
+  list.forEach(function(iv){
+    html+='<tr><td class="mono" style="font-weight:600;white-space:nowrap">'+esc(iv.number)+'</td>'+
+      '<td style="font-weight:600">'+esc(iv.client)+'</td>'+
+      '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(iv.desc||'')+'">'+esc(iv.desc||'—')+'</td>'+
+      '<td style="white-space:nowrap">'+fmtDate(iv.issueDate)+'</td>'+
+      '<td style="white-space:nowrap">'+fmtDate(iv.dueDate)+'</td>'+
+      '<td class="num" style="text-align:right;font-weight:700">'+fmtMoney(iv.amount)+'</td>'+
+      '<td>'+invoiceBadge(iv)+'</td>'+
+      '<td><div class="row-actions">'+
+        (iv.status==='Draft'?'<button class="btn-icon" data-action="invoice-sent" data-id="'+iv.id+'" title="Mark sent">'+icon('flag')+'</button>':'')+
+        (iv.status!=='Paid'?'<button class="btn-icon" data-action="invoice-paid" data-id="'+iv.id+'" title="Mark paid (records income)">'+icon('check')+'</button>':'')+
+        '<button class="btn-icon" data-action="invoice-print" data-id="'+iv.id+'" title="Print / PDF">'+icon('print')+'</button>'+
+        '<button class="btn-icon" data-action="invoice-edit" data-id="'+iv.id+'">'+icon('edit')+'</button>'+
+        '<button class="btn-icon danger" data-action="invoice-delete" data-id="'+iv.id+'">'+icon('trash')+'</button></div></td></tr>';
+  });
+  html+='</tbody></table></div></div>';
+  return html;
+}
+function invoiceModal(iv){
+  var isEdit=!!iv;
+  var due=new Date(); due.setDate(due.getDate()+14);
+  var dueISO=due.getFullYear()+'-'+String(due.getMonth()+1).padStart(2,'0')+'-'+String(due.getDate()).padStart(2,'0');
+  iv=iv||{number:nextInvoiceNumber(),issueDate:todayISO(),dueDate:dueISO,status:'Draft'};
+  var body=
+    '<input type="hidden" name="id" value="'+(iv.id||'')+'">'+
+    '<div class="form-row"><div class="field"><label>Invoice #</label><input class="input" name="number" value="'+esc(iv.number)+'" required></div>'+
+    '<div class="field"><label>Status</label><select class="input" name="status">'+['Draft','Sent','Paid'].map(function(s){return '<option'+(iv.status===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select></div></div>'+
+    '<div class="field"><label>Client *</label><input class="input" name="client" value="'+esc(iv.client||'')+'" list="inv-clients" required placeholder="Who is being billed?"><datalist id="inv-clients">'+
+      state.clients.map(function(c){return '<option value="'+esc(c.name)+'">';}).join('')+'</datalist></div>'+
+    '<div class="field"><label>Description of work</label><input class="input" name="desc" value="'+esc(iv.desc||'')+'" placeholder="e.g. Website redesign — 50% deposit"></div>'+
+    '<div class="form-row-3"><div class="field"><label>Amount ('+esc(state.settings.currency)+') *</label><input class="input" type="number" step="any" min="0.01" name="amount" value="'+(iv.amount||'')+'" required></div>'+
+    '<div class="field"><label>Issue date</label><input class="input" type="date" name="issueDate" value="'+esc(iv.issueDate)+'"></div>'+
+    '<div class="field"><label>Due date</label><input class="input" type="date" name="dueDate" value="'+esc(iv.dueDate)+'"></div></div>'+
+    (isEdit?'':'<p style="font-size:.75rem;color:var(--text-3)">Marking an invoice Paid later will automatically record the income in Finance.</p>');
+  openModal(isEdit?'Edit invoice':'New invoice',body,{onSubmit:function(form){
+    var amount=num(fv(form,'amount'));
+    var client=fv(form,'client');
+    if(!client){ toast('Enter the client name.','error'); return false; }
+    if(amount<=0){ toast('Enter an amount greater than zero.','error'); return false; }
+    var id=fv(form,'id');
+    var data={number:fv(form,'number')||nextInvoiceNumber(),client:client,desc:fv(form,'desc'),amount:amount,issueDate:fv(form,'issueDate')||todayISO(),dueDate:fv(form,'dueDate'),status:fv(form,'status')};
+    if(id){
+      var ex=state.invoices.find(function(x){return x.id===id;});
+      if(ex){
+        var wasPaid=ex.status==='Paid';
+        Object.assign(ex,data);
+        if(!wasPaid&&ex.status==='Paid'){ ex.paidDate=todayISO(); recordInvoiceIncome(ex); }
+      }
+      toast('Invoice updated.');
+    } else {
+      data.id=uid(); data.createdAt=todayISO();
+      if(data.status==='Paid'){ data.paidDate=todayISO(); }
+      state.invoices.push(data);
+      if(data.status==='Paid') recordInvoiceIncome(data);
+      toast('Invoice '+data.number+' created.');
+    }
+    return true;
+  }});
+}
+function recordInvoiceIncome(iv){
+  state.finance.push({id:uid(),type:'income',amount:iv.amount,date:iv.paidDate||todayISO(),category:'Sales',note:'Invoice '+iv.number+(iv.desc?' — '+iv.desc:''),client:iv.client,offer:''});
+}
+
+/* ---------- print system ---------- */
+function printDoc(html){
+  var area=byId('print-area');
+  area.innerHTML=html;
+  document.body.classList.add('printing');
+  var cleanup=function(){ document.body.classList.remove('printing'); area.innerHTML=''; window.removeEventListener('afterprint',cleanup); };
+  window.addEventListener('afterprint',cleanup);
+  setTimeout(function(){ window.print(); setTimeout(cleanup,1000); },60);
+}
+function printInvoice(iv){
+  var html='<div class="pr-doc">'+
+    '<h1>'+esc(state.settings.businessName)+'</h1>'+
+    '<div class="pr-meta">Invoice '+esc(iv.number)+' · Issued '+fmtDate(iv.issueDate)+' · Due '+fmtDate(iv.dueDate)+'</div>'+
+    '<h2>Billed to</h2><p>'+esc(iv.client)+'</p>'+
+    '<h2>Details</h2>'+
+    '<table><thead><tr><th>Description</th><th class="num">Amount</th></tr></thead><tbody>'+
+    '<tr><td>'+esc(iv.desc||'Professional services')+'</td><td class="num">'+fmtMoney(iv.amount)+'</td></tr>'+
+    '<tr class="pr-total"><td>Total due</td><td class="num">'+fmtMoney(iv.amount)+'</td></tr>'+
+    '</tbody></table>'+
+    '<p style="margin-top:14px">Status: <b>'+esc(iv.status)+(iv.status==='Paid'&&iv.paidDate?' on '+fmtDate(iv.paidDate):'')+'</b></p>'+
+    '<div class="pr-foot">Generated by '+esc(state.settings.businessName)+' · '+fmtDate(todayISO())+'</div>'+
+    '</div>';
+  printDoc(html);
+}
+
+/* ---------- monthly report ---------- */
+function viewReport(){
+  var mm=monthlyMap();
+  var monthsAvail=sortedMonths();
+  if(monthsAvail.indexOf(thisMonthKey())<0) monthsAvail.push(thisMonthKey());
+  monthsAvail.sort();
+  var selected=ui.reportMonth||thisMonthKey();
+  if(monthsAvail.indexOf(selected)<0) selected=monthsAvail[monthsAvail.length-1];
+  var html=topbar('Monthly Report','A clean P&L-style summary for any month — print it or save as PDF.',
+    '<button class="btn btn-primary" data-action="print-report" data-month="'+selected+'">'+icon('print')+'<span class="btn-txt">Print / Save PDF</span></button>');
+  html+='<div class="card"><div class="card-head"><h3>Report month</h3><span class="spacer"></span>'+
+    '<select class="input" style="width:auto" data-action-change="report-month">'+
+    monthsAvail.slice().reverse().map(function(k){return '<option value="'+k+'"'+(selected===k?' selected':'')+'>'+monthLabel(k)+'</option>';}).join('')+'</select></div>';
+  var d=mm[selected]||{revenue:0,expenses:0};
+  var prev=mm[shiftMonth(selected,-1)]||{revenue:0,expenses:0};
+  var profit=d.revenue-d.expenses;
+  var margin=d.revenue>0?profit/d.revenue*100:null;
+  html+='<div class="grid grid-4" style="margin-top:4px">'+
+    statCard('Revenue',fmtMoney(d.revenue),prev.revenue>0?'<span class="stat-delta '+((d.revenue>=prev.revenue)?'up':'down')+'">'+fmtPct((d.revenue-prev.revenue)/prev.revenue*100,0)+' vs prior</span>':'','','arrowur')+
+    statCard('Expenses',fmtMoney(d.expenses),prev.expenses>0?'<span class="stat-delta '+((d.expenses<=prev.expenses)?'up':'down')+'">'+fmtPct((d.expenses-prev.expenses)/prev.expenses*100,0)+' vs prior</span>':'','','arrowdr')+
+    statCard('Net profit',fmtMoney(profit),'<span class="stat-delta '+(profit>=0?'up':'down')+'">'+(profit>=0?'Profitable':'Loss')+'</span>','','wallet')+
+    statCard('Margin',fmtPct(margin),'','','pie')+
+  '</div></div>';
+  function catRows(type,total){
+    var map=categoryMap(type,selected);
+    var keys=Object.keys(map).sort(function(a,b){return map[b]-map[a];});
+    if(!keys.length) return '<p style="font-size:.82rem;color:var(--text-3)">No '+type+' recorded this month.</p>';
+    return '<div class="table-wrap"><table><thead><tr><th>Category</th><th style="text-align:right">Amount</th><th style="text-align:right">Share</th></tr></thead><tbody>'+
+      keys.map(function(k){
+        return '<tr><td>'+esc(k)+'</td><td class="num" style="text-align:right">'+fmtMoney(map[k])+'</td><td class="num" style="text-align:right">'+(total>0?fmtPct(map[k]/total*100,0):'—')+'</td></tr>';
+      }).join('')+'</tbody></table></div>';
+  }
+  html+='<div class="grid grid-2 mt">'+
+    '<div class="card"><div class="card-head"><h3>Income by category</h3></div>'+catRows('income',d.revenue)+'</div>'+
+    '<div class="card"><div class="card-head"><h3>Expenses by category</h3></div>'+catRows('expense',d.expenses)+'</div></div>';
+  // top clients for the month
+  var byClient={};
+  state.finance.forEach(function(e){
+    if(e.type==='income'&&e.client&&monthKey(e.date)===selected) byClient[e.client]=(byClient[e.client]||0)+e.amount;
+  });
+  var clientKeys=Object.keys(byClient).sort(function(a,b){return byClient[b]-byClient[a];}).slice(0,6);
+  html+='<div class="card mt"><div class="card-head"><h3>Top clients — '+monthLabel(selected)+'</h3></div>';
+  if(clientKeys.length){
+    clientKeys.forEach(function(k){
+      var pct=d.revenue>0?byClient[k]/d.revenue*100:0;
+      html+='<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:.84rem"><span>'+esc(k)+'</span><b class="num">'+fmtMoney(byClient[k])+' · '+fmtPct(pct,0)+'</b></div>'+
+        '<div class="progress" style="height:6px;margin-top:4px"><div class="bar good" style="width:'+pct+'%"></div></div></div>';
+    });
+  } else html+='<p style="font-size:.82rem;color:var(--text-3)">No client-tagged income this month.</p>';
+  html+='</div>';
+  return html;
+}
+function buildReportDoc(selected){
+  var mm=monthlyMap();
+  var d=mm[selected]||{revenue:0,expenses:0};
+  var prev=mm[shiftMonth(selected,-1)]||{revenue:0,expenses:0};
+  var profit=d.revenue-d.expenses;
+  function catTable(type,total){
+    var map=categoryMap(type,selected);
+    var keys=Object.keys(map).sort(function(a,b){return map[b]-map[a];});
+    if(!keys.length) return '<p>None recorded.</p>';
+    return '<table><thead><tr><th>Category</th><th class="num">Amount</th><th class="num">Share</th></tr></thead><tbody>'+
+      keys.map(function(k){return '<tr><td>'+esc(k)+'</td><td class="num">'+fmtMoney(map[k])+'</td><td class="num">'+(total>0?fmtPct(map[k]/total*100,0):'—')+'</td></tr>';}).join('')+
+      '<tr class="pr-total"><td>Total</td><td class="num">'+fmtMoney(total)+'</td><td class="num">100%</td></tr></tbody></table>';
+  }
+  var byClient={};
+  state.finance.forEach(function(e){
+    if(e.type==='income'&&e.client&&monthKey(e.date)===selected) byClient[e.client]=(byClient[e.client]||0)+e.amount;
+  });
+  var clientKeys=Object.keys(byClient).sort(function(a,b){return byClient[b]-byClient[a];}).slice(0,8);
+  return '<div class="pr-doc">'+
+    '<h1>'+esc(state.settings.businessName)+'</h1>'+
+    '<div class="pr-meta">Monthly business report — '+monthLabel(selected)+' · generated '+fmtDate(todayISO())+'</div>'+
+    '<h2>Summary</h2>'+
+    '<table><tbody>'+
+    '<tr><td>Revenue</td><td class="num">'+fmtMoney(d.revenue)+'</td><td class="num">'+(prev.revenue>0?(d.revenue>=prev.revenue?'+':'')+fmtPct((d.revenue-prev.revenue)/prev.revenue*100,0)+' vs prior month':'')+'</td></tr>'+
+    '<tr><td>Expenses</td><td class="num">'+fmtMoney(d.expenses)+'</td><td class="num">'+(prev.expenses>0?(d.expenses>=prev.expenses?'+':'')+fmtPct((d.expenses-prev.expenses)/prev.expenses*100,0)+' vs prior month':'')+'</td></tr>'+
+    '<tr class="pr-total"><td>Net profit</td><td class="num">'+fmtMoney(profit)+'</td><td class="num">'+(d.revenue>0?fmtPct(profit/d.revenue*100,0)+' margin':'')+'</td></tr>'+
+    '</tbody></table>'+
+    '<h2>Income by category</h2>'+catTable('income',d.revenue)+
+    '<h2>Expenses by category</h2>'+catTable('expense',d.expenses)+
+    (clientKeys.length?'<h2>Top clients</h2><table><thead><tr><th>Client</th><th class="num">Revenue</th></tr></thead><tbody>'+
+      clientKeys.map(function(k){return '<tr><td>'+esc(k)+'</td><td class="num">'+fmtMoney(byClient[k])+'</td></tr>';}).join('')+'</tbody></table>':'')+
+    '<div class="pr-foot">Generated by BizPilot · data as entered by the business owner</div>'+
+    '</div>';
+}
+
+/* ---------- customization ---------- */
+function customizationCardHTML(){
+  var s=state.settings;
+  var hidden=s.hiddenModules||[];
+  var hideable=ROUTES.filter(function(r){ return r.id!=='dashboard'&&r.id!=='settings'; });
+  var html='<div class="card"><div class="card-head"><h3>'+icon('palette',16)+' Customization</h3></div>';
+  // accent
+  html+='<div class="field"><label>Accent color</label><div class="swatches">'+
+    '<button class="swatch'+(!s.accent?' active':'')+'" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)" data-action="set-accent" data-color="" title="Default"></button>'+
+    ACCENTS.map(function(c){return '<button class="swatch'+(s.accent===c?' active':'')+'" style="background:'+c+'" data-action="set-accent" data-color="'+c+'"></button>';}).join('')+
+    '</div></div>';
+  // modules
+  html+='<div class="field"><label>Visible modules</label><div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">'+
+    hideable.map(function(r){
+      return '<label class="checkrow" style="font-size:.84rem"><input type="checkbox" data-action-change="toggle-module" data-id="'+r.id+'"'+(hidden.indexOf(r.id)<0?' checked':'')+'> '+esc(r.label)+'</label>';
+    }).join('')+'</div><p style="font-size:.72rem;color:var(--text-3);margin-top:5px">Hide modules you don’t use — nothing is deleted, they just leave the sidebar.</p></div>';
+  // categories
+  function catManager(type,label){
+    var custom=(s.customCats&&s.customCats[type])||[];
+    return '<div class="field"><label>'+label+'</label>'+
+      '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:7px">'+
+      (type==='income'?INCOME_CATS:EXPENSE_CATS).map(function(c){return '<span class="tag" title="Built-in category">'+esc(c)+'</span>';}).join('')+
+      custom.map(function(c){return '<span class="tag" style="background:var(--accent-soft);color:var(--accent)">'+esc(c)+' <button class="btn-icon" style="width:14px;height:14px;display:inline-grid;vertical-align:middle" data-action="del-custom-cat" data-type="'+type+'" data-name="'+esc(c)+'">'+icon('x')+'</button></span>';}).join('')+
+      '</div>'+
+      '<form data-form="add-cat" style="display:flex;gap:7px"><input type="hidden" name="type" value="'+type+'"><input class="input" name="name" placeholder="Add custom category…" style="flex:1"><button class="btn btn-ghost btn-sm" type="submit">'+icon('plus')+' Add</button></form></div>';
+  }
+  html+=catManager('income','Income categories')+catManager('expense','Expense categories');
+  // weekly checklist
+  html+='<form data-form="weekly-list"><div class="field"><label>Weekly review checklist (one item per line)</label>'+
+    '<textarea class="input" name="items" rows="5">'+esc(weeklyList().join('\n'))+'</textarea></div>'+
+    '<button class="btn btn-ghost btn-sm" type="submit">'+icon('check')+' Save checklist</button></form>';
+  html+='</div>';
+  return html;
+}
+
+/* ---------- cloud sync (Firebase Realtime Database via REST) ---------- */
+function cloudEndpoint(){
+  var s=state.settings.sync||{};
+  if(!s.url) return null;
+  var path=(s.path||'bizpilot').replace(/^\/+|\/+$/g,'');
+  return s.url.replace(/\/+$/,'')+'/'+path+'.json';
+}
+var cloudTimer=null,cloudBusy=false;
+function scheduleCloudPush(){
+  var s=state.settings&&state.settings.sync;
+  if(!s||!s.enabled||!s.url) return;
+  clearTimeout(cloudTimer);
+  cloudTimer=setTimeout(function(){ cloudPush(true); },4000);
+}
+function cloudPush(silent){
+  var ep=cloudEndpoint();
+  if(!ep){ if(!silent) toast('Enter your database URL first, then save sync settings.','warn'); return; }
+  if(cloudBusy) return;
+  cloudBusy=true;
+  fetch(ep,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(state)})
+    .then(function(r){
+      if(!r.ok) throw new Error('HTTP '+r.status+((r.status===401||r.status===403)?' — your Firebase database rules denied the write. Open Firebase console → Realtime Database → Rules.':''));
+      state.settings.sync.lastSync=new Date().toISOString();
+      try{ localStorage.setItem(LS_KEY,JSON.stringify(state)); }catch(_){}
+      if(!silent){ toast('Pushed to cloud ✓'); render(); }
+    })
+    .catch(function(e){ if(!silent) toast('Cloud push failed: '+e.message,'error'); })
+    .finally(function(){ cloudBusy=false; });
+}
+function cloudPull(){
+  var ep=cloudEndpoint();
+  if(!ep){ toast('Enter your database URL first, then save sync settings.','warn'); return; }
+  fetch(ep)
+    .then(function(r){
+      if(!r.ok) throw new Error('HTTP '+r.status+((r.status===401||r.status===403)?' — your Firebase database rules denied the read.':''));
+      return r.json();
+    })
+    .then(function(data){
+      if(!data||typeof data!=='object'||!data.settings){ toast('No BizPilot data found in the cloud yet — push first.','warn'); return; }
+      if(!confirm('Replace the data on THIS device with the cloud copy? Local changes not yet pushed will be lost.')) return;
+      var sync=JSON.parse(JSON.stringify(state.settings.sync));
+      state=deepMerge(JSON.parse(JSON.stringify(DEFAULT_STATE)),data);
+      state.settings.sync=Object.assign(state.settings.sync||{},sync,{lastSync:new Date().toISOString()});
+      try{ localStorage.setItem(LS_KEY,JSON.stringify(state)); }catch(_){}
+      applyTheme(); render();
+      toast('Pulled from cloud — '+state.finance.length+' finance entries on this device now.');
+    })
+    .catch(function(e){ toast('Cloud pull failed: '+e.message,'error'); });
+}
+function cloudSyncCardHTML(){
+  var s=state.settings.sync||{};
+  var html='<div class="card"><div class="card-head"><h3>'+icon('cloud',16)+' Cloud sync</h3><span class="spacer"></span>'+
+    (s.enabled?'<span class="badge good">Auto-sync on</span>':'<span class="badge neutral">Off</span>')+'</div>'+
+    '<p style="font-size:.8rem;color:var(--text-2);margin-bottom:12px">Sync your data to your own Firebase Realtime Database so it survives browser resets and follows you across devices. '+
+    (s.lastSync?'Last sync: <b>'+fmtDate(s.lastSync.slice(0,10))+'</b>.':'Never synced.')+'</p>'+
+    '<form data-form="sync-settings">'+
+    '<div class="field"><label>Realtime Database URL</label><input class="input" name="url" value="'+esc(s.url||'')+'" placeholder="https://your-project-default-rtdb.firebaseio.com"></div>'+
+    '<label class="checkrow" style="margin-bottom:12px"><input type="checkbox" name="enabled"'+(s.enabled?' checked':'')+'> Auto-push to cloud after every change</label>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+    '<button class="btn btn-primary btn-sm" type="submit">'+icon('check')+' Save sync settings</button>'+
+    '<button class="btn btn-ghost btn-sm" type="button" data-action="cloud-push">'+icon('upload')+' Push now</button>'+
+    '<button class="btn btn-ghost btn-sm" type="button" data-action="cloud-pull">'+icon('download')+' Pull from cloud</button>'+
+    '</div></form>'+
+    '<p style="font-size:.72rem;color:var(--text-3);margin-top:12px">⚠️ Privacy: anyone who can read your database can read your business data. In Firebase console → Realtime Database → Rules, avoid leaving read/write open to the public — lock it down (e.g. to authenticated users) or at least use an unguessable path.</p>'+
+    '</div>';
+  return html;
+}
+
+/* ---------- auto-backup ---------- */
+function autoBackupCheck(){
+  var days=state.settings.autoBackupDays||0;
+  if(!days) return;
+  var last=state.settings.lastAutoBackup||state.settings.lastBackup;
+  var since=last?-daysUntil(last):null;
+  if(last&&since!==null&&since<days) return;
+  setTimeout(function(){
+    exportData();
+    state.settings.lastAutoBackup=todayISO();
+    save();
+    toast('Automatic backup downloaded (every '+days+' days).');
+  },1500);
+}
+
+/* ---------- v2 event wiring ---------- */
+document.addEventListener('click',function(e){
+  var el=e.target.closest('[data-action]');
+  if(!el) return;
+  var action=el.getAttribute('data-action');
+  var id=el.getAttribute('data-id');
+
+  if(action==='invoice-new'){ invoiceModal(); return; }
+  if(action==='invoice-edit'){ var iv=state.invoices.find(function(x){return x.id===id;}); if(iv) invoiceModal(iv); return; }
+  if(action==='invoice-delete'){
+    var iv2=state.invoices.find(function(x){return x.id===id;});
+    if(iv2&&confirm('Delete invoice '+iv2.number+' ('+fmtMoney(iv2.amount)+')? The income entry, if already recorded, stays in Finance.')){
+      state.invoices=state.invoices.filter(function(x){return x.id!==id;});
+      commit(); toast('Invoice deleted.','warn');
+    } return;
+  }
+  if(action==='invoice-sent'){
+    var iv3=state.invoices.find(function(x){return x.id===id;});
+    if(iv3){ iv3.status='Sent'; commit(); toast('Invoice '+iv3.number+' marked as sent.'); } return;
+  }
+  if(action==='invoice-paid'){
+    var iv4=state.invoices.find(function(x){return x.id===id;});
+    if(iv4&&confirm('Mark '+iv4.number+' ('+fmtMoney(iv4.amount)+' from '+iv4.client+') as PAID? This records the income in Finance.')){
+      iv4.status='Paid'; iv4.paidDate=todayISO();
+      recordInvoiceIncome(iv4);
+      commit(); toast('💰 '+fmtMoney(iv4.amount)+' collected from '+iv4.client+'.');
+    } return;
+  }
+  if(action==='invoice-print'){
+    var iv5=state.invoices.find(function(x){return x.id===id;});
+    if(iv5) printInvoice(iv5); return;
+  }
+
+  if(action==='recurring-new'){ recurringModal(); return; }
+  if(action==='recurring-edit'){ var r=state.recurring.find(function(x){return x.id===id;}); if(r) recurringModal(r); return; }
+  if(action==='recurring-toggle'){
+    var r2=state.recurring.find(function(x){return x.id===id;});
+    if(r2){ r2.active=!r2.active; commit(); toast(r2.active?'Rule resumed — it will post automatically.':'Rule paused.'); if(r2.active) processRecurring(); } return;
+  }
+  if(action==='recurring-delete'){
+    var r3=state.recurring.find(function(x){return x.id===id;});
+    if(r3&&confirm('Delete this recurring rule? Entries it already posted stay in Finance.')){
+      state.recurring=state.recurring.filter(function(x){return x.id!==id;});
+      commit(); toast('Recurring rule deleted.','warn');
+    } return;
+  }
+
+  if(action==='offer-new'){ offerModal(); return; }
+  if(action==='offer-edit'){ var o=state.offers.find(function(x){return x.id===id;}); if(o) offerModal(o); return; }
+  if(action==='offer-delete'){
+    var o2=state.offers.find(function(x){return x.id===id;});
+    if(o2&&confirm('Delete offer "'+o2.name+'"? Income entries keep their amounts but lose the offer tag.')){
+      state.offers=state.offers.filter(function(x){return x.id!==id;});
+      state.finance.forEach(function(en){ if(en.offer===id) en.offer=''; });
+      commit(); toast('Offer deleted.','warn');
+    } return;
+  }
+
+  if(action==='set-accent'){
+    state.settings.accent=el.getAttribute('data-color')||'';
+    save(); applyAccent(); render();
+    return;
+  }
+  if(action==='del-custom-cat'){
+    var type=el.getAttribute('data-type'), name=el.getAttribute('data-name');
+    var arr=(state.settings.customCats&&state.settings.customCats[type])||[];
+    state.settings.customCats[type]=arr.filter(function(c){return c!==name;});
+    commit(); toast('Category removed (existing entries keep it).');
+    return;
+  }
+
+  if(action==='cloud-push'){ cloudPush(false); return; }
+  if(action==='cloud-pull'){ cloudPull(); return; }
+  if(action==='print-report'){ printDoc(buildReportDoc(el.getAttribute('data-month')||ui.reportMonth||thisMonthKey())); return; }
+});
+
+document.addEventListener('submit',function(e){
+  var form=e.target;
+  var kind=form.getAttribute('data-form');
+  if(kind==='add-cat'){
+    var type=fv(form,'type'), name=fv(form,'name');
+    if(!name){ toast('Type a category name first.','warn'); return; }
+    state.settings.customCats=state.settings.customCats||{income:[],expense:[]};
+    var arr=state.settings.customCats[type]=state.settings.customCats[type]||[];
+    if(allCats(type).indexOf(name)>=0){ toast('That category already exists.','warn'); return; }
+    arr.push(name);
+    commit(); toast('Category "'+name+'" added.');
+    return;
+  }
+  if(kind==='weekly-list'){
+    var items=form.elements['items'].value.split('\n').map(function(l){return l.trim();}).filter(Boolean);
+    state.reviews.weekly.listCustom=items;
+    state.reviews.weekly.items={};
+    commit(); toast('Weekly checklist updated ('+items.length+' items).');
+    return;
+  }
+  if(kind==='sync-settings'){
+    state.settings.sync=state.settings.sync||{};
+    state.settings.sync.url=fv(form,'url');
+    state.settings.sync.enabled=form.elements['enabled'].checked&&!!fv(form,'url');
+    if(form.elements['enabled'].checked&&!fv(form,'url')) toast('Enter the database URL to enable auto-sync.','warn');
+    state.settings.sync.path=state.settings.sync.path||'bizpilot';
+    commit();
+    toast(state.settings.sync.enabled?'Auto-sync enabled — every change pushes to your Firebase database.':'Sync settings saved.');
+    return;
+  }
+});
+
+document.addEventListener('change',function(e){
+  var el=e.target;
+  var act=el.getAttribute('data-action-change');
+  if(act==='report-month'){ ui.reportMonth=el.value; render(); return; }
+  if(act==='toggle-module'){
+    var id=el.getAttribute('data-id');
+    var hidden=state.settings.hiddenModules=state.settings.hiddenModules||[];
+    if(el.checked) state.settings.hiddenModules=hidden.filter(function(x){return x!==id;});
+    else if(hidden.indexOf(id)<0) hidden.push(id);
+    commit();
+    return;
+  }
+});
+
 /* keyboard: Escape closes modal / sidebar */
 document.addEventListener('keydown',function(e){
   if(e.key==='Escape'){
@@ -2692,8 +3426,10 @@ window.addEventListener('hashchange',render);
    init
    ============================================================ */
 loadState();
+processRecurring();
 applyTheme();
 render();
+autoBackupCheck();
 
 /* backup reminder — once per session if data exists and backup is stale */
 (function(){
