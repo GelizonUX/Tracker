@@ -4472,6 +4472,54 @@ document.addEventListener('click',function(e){
   }
 });
 
+/* ============================================================
+   v6: sandbox-proof saving — never rely on native form submission.
+   Some viewers/in-app browsers block native <form> submit entirely
+   (clicks land but no submit event fires). We intercept the click
+   on any submit button ourselves and dispatch the submit event
+   manually, with a duplicate-fire guard for normal browsers.
+   ============================================================ */
+function dispatchSubmit(form){
+  var ev;
+  try{ ev=new Event('submit',{bubbles:true,cancelable:true}); }
+  catch(_){ ev=document.createEvent('Event'); ev.initEvent('submit',true,true); }
+  form.dispatchEvent(ev);
+}
+/* every click on a submit button saves directly — no native submit needed */
+document.addEventListener('click',function(e){
+  var btn=e.target.closest('button');
+  if(!btn||btn.disabled) return;
+  if((btn.getAttribute('type')||'submit').toLowerCase()!=='submit') return;
+  var form=btn.form||btn.closest('form');
+  if(!form) return;
+  e.preventDefault();
+  dispatchSubmit(form);
+});
+/* Enter key in any form field saves too, same sandbox-proof path */
+document.addEventListener('keydown',function(e){
+  if(e.key!=='Enter'||e.shiftKey||e.ctrlKey||e.altKey||e.metaKey) return;
+  var t=e.target;
+  if(!t||!t.form) return;
+  if(t.tagName==='TEXTAREA'||t.tagName==='BUTTON') return;
+  if(t.id==='palette-input') return;
+  e.preventDefault();
+  dispatchSubmit(t.form);
+});
+/* heads-up when running inside another app's preview frame */
+(function(){
+  try{
+    if(window.top!==window.self){
+      setTimeout(function(){
+        toast('You are viewing this inside another app’s preview. If anything misbehaves, download the file and open it directly in Chrome, Safari, Edge or Firefox.','warn');
+      },2200);
+    }
+  }catch(_){ /* cross-origin frame check can throw — that itself means we are framed */
+    setTimeout(function(){
+      toast('You are viewing this inside another app’s preview. For full reliability open the file directly in your browser.','warn');
+    },2200);
+  }
+})();
+
 /* keyboard: Escape closes modal / sidebar */
 document.addEventListener('keydown',function(e){
   if(e.key==='Escape'){
