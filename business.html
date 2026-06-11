@@ -2797,7 +2797,9 @@ document.addEventListener('submit',function(e){
   var form=e.target;
   e.preventDefault();
 
-  if(form.id==='modal-form'){
+  /* form.getAttribute('id') — NOT form.id — because a control named "id"
+     shadows the form's id property in real browsers (LegacyOverrideBuiltIns) */
+  if(form.getAttribute('id')==='modal-form'){
     if(modalSubmitHandler){
       var ok;
       try{ ok=modalSubmitHandler(form); }
