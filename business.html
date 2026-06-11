@@ -481,6 +481,15 @@ details.calc .calc-body{margin-top:10px}
   html{font-size:14px}
   .ring-wrap{flex-direction:column;align-items:flex-start}
 }
+/* depth & polish */
+body{background-image:radial-gradient(1100px 500px at 18% -8%,var(--accent-soft),transparent 60%)}
+.stat-icon{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);flex-shrink:0}
+.stat-icon svg{width:16px;height:16px}
+.stat-card .stat-value{margin-top:10px}
+.card:hover{transform:translateY(-2px)}
+.acct-card{position:relative;overflow:hidden}
+.acct-card::after{content:'';position:absolute;top:-40px;right:-40px;width:130px;height:130px;border-radius:50%;background:radial-gradient(circle,var(--accent-soft),transparent 70%)}
+.acct-balance{font-size:1.7rem;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
 /* inline modal errors */
 .modal-error{background:var(--risk-soft);color:var(--risk);border:1.5px solid var(--risk);border-radius:10px;padding:10px 14px;font-size:.86rem;font-weight:600;margin-bottom:14px;animation:fadeUp .25s var(--ease)}
 @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
@@ -634,6 +643,7 @@ var ICONS = {
   cloud:'<path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z"/>',
   print:'<path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>',
   box:'<path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12"/>',
+  bank:'<path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"/>',
   truck:'<rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>',
   palette:'<circle cx="12" cy="12" r="10"/><circle cx="8" cy="10" r="1.2" fill="currentColor"/><circle cx="12" cy="7.5" r="1.2" fill="currentColor"/><circle cx="16" cy="10" r="1.2" fill="currentColor"/><path d="M12 22a10 10 0 010-20 10 9 0 0110 9 5 5 0 01-5 5h-2.2a2 2 0 00-1.5 3.3c.3.4.5.8.5 1.2a1.5 1.5 0 01-1.8 1.5z"/>',
   logo:'<path d="M8 22l5-6 4 3 7-9" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
@@ -659,6 +669,8 @@ var DEFAULT_STATE={
   orders:[],    // {id,number,clientName,contact,address,items:[{productId,name,qty,price}],shipFee,discount,status,payStatus,orderDate,deliveryDate,note,incomeRecorded}
   customModules:[], // {id,name,icon,fields:[{key,label,type,options}],records:[]}
   materials:[],     // {id,name,unit,stock,lowStock,cost}  — raw materials; products reference via bom
+  accounts:[],      // {id,name,type,opening,note,adjust:[{id,delta,date,note}]}
+  transfers:[],     // {id,from,to,amount,date,note} — not revenue/expense, just money moving
   finance:[],   // {id,type:'income'|'expense',amount,category,date,note,client}
   goals:[],     // {id,title,type:'revenue'|'profit'|'custom',target,current,unit,deadline,priority,steps:[{id,text,done}],done,createdAt}
   phases:[],    // {id,name,desc,order,tasks:[{id,title,deadline,status,priority}]}
@@ -993,6 +1005,10 @@ function buildInsights(){
   // inventory & orders
   var low=(state.products||[]).filter(function(p){ return p.active!==false&&p.stock<=(p.lowStock!=null?p.lowStock:5); });
   if(low.length) out.push({sev:'warn',title:low.length+' product'+(low.length>1?'s':'')+' low on stock',text:'"'+low[0].name+'" has only '+low[0].stock+' left. Restock before orders stall.'});
+  (state.accounts||[]).forEach(function(a){
+    var bal=accountBalance(a);
+    if(bal<0) out.push({sev:'risk',title:'"'+a.name+'" is negative',text:'This account shows '+fmtMoney(bal)+'. Reconcile it against the real balance, or check for entries assigned to the wrong account.'});
+  });
   var lowMat=(state.materials||[]).filter(function(m){ return m.stock<=(m.lowStock!=null?m.lowStock:0); });
   if(lowMat.length) out.push({sev:'warn',title:'Raw materials running low',text:'"'+lowMat[0].name+'" is at '+fmtNum(lowMat[0].stock)+' '+(lowMat[0].unit||'units')+'. Reorder before production stops.'});
   var oldestUnpaid=null;
@@ -1108,6 +1124,7 @@ function svgRing(pct,size,color,labelTop,labelBottom){
 var ROUTES=[
   {id:'dashboard',label:'Dashboard',icon:'dashboard',section:'Overview'},
   {id:'insights',label:'Insights',icon:'insights',section:'Overview'},
+  {id:'accounts',label:'Accounts & Cash',icon:'bank',section:'Money'},
   {id:'finance',label:'Finance',icon:'finance',section:'Money'},
   {id:'invoices',label:'Invoices',icon:'invoice',section:'Money'},
   {id:'report',label:'Monthly Report',icon:'report',section:'Money'},
@@ -1151,7 +1168,7 @@ function render(){
   var main=byId('main');
   var views={
     dashboard:viewDashboard, insights:viewInsights, finance:viewFinance,
-    invoices:viewInvoices, report:viewReport, products:viewProducts, orders:viewOrders,
+    invoices:viewInvoices, report:viewReport, products:viewProducts, orders:viewOrders, accounts:viewAccounts,
     calculators:viewCalculators, metrics:viewMetrics, goals:viewGoals,
     roadmap:viewRoadmap, tasks:viewTasks, clients:viewClients,
     notes:viewNotes, reviews:viewReviews, settings:viewSettings
@@ -1345,7 +1362,8 @@ function viewDashboard(){
 }
 function statCard(label,value,deltaHTML,sparkHTML,iconName){
   return '<div class="card stat-card"><div class="stat-accent"></div>'+
-    '<div class="stat-label">'+icon(iconName)+' '+esc(label)+'</div>'+
+    '<div style="display:flex;align-items:center;gap:10px"><span class="stat-icon">'+icon(iconName)+'</span>'+
+    '<span class="stat-label">'+esc(label)+'</span></div>'+
     '<div class="stat-value">'+value+'</div>'+(deltaHTML||'')+
     (sparkHTML?'<div class="spark">'+sparkHTML+'</div>':'')+'</div>';
 }
@@ -1462,7 +1480,9 @@ function financeEntriesHTML(){
     html+='<tr><td style="white-space:nowrap">'+fmtDate(e.date)+'</td>'+
       '<td><span class="badge '+(e.type==='income'?'good':'risk')+'">'+(e.type==='income'?'Income':'Expense')+'</span></td>'+
       '<td>'+esc(e.category||'Other')+'</td>'+
-      '<td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(e.note||'')+'">'+esc(e.note||'—')+'</td>'+
+      '<td style="max-width:240px" title="'+esc(e.note||'')+'"><div style="display:flex;align-items:center;gap:7px">'+
+        (e.receipt?'<img class="img-thumb" style="width:26px;height:26px" src="'+e.receipt+'" alt="receipt" title="View receipt">':'')+
+        '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(e.note||'—')+'</span></div></td>'+
       '<td>'+esc(e.client||'—')+'</td>'+
       '<td class="num" style="text-align:right;color:'+(e.type==='income'?'var(--income)':'var(--expense)')+'">'+(e.type==='income'?'+':'−')+fmtMoney(e.amount)+'</td>'+
       '<td><div class="row-actions"><button class="btn-icon" data-action="edit-entry" data-id="'+e.id+'" aria-label="Edit">'+icon('edit')+'</button><button class="btn-icon danger" data-action="delete-entry" data-id="'+e.id+'" aria-label="Delete">'+icon('trash')+'</button></div></td></tr>';
@@ -2183,7 +2203,15 @@ function entryModal(entry){
       state.clients.map(function(c){return '<option value="'+esc(c.name)+'">';}).join('')+'</datalist></div>'+
     (type==='income'&&state.offers.length?'<div class="field"><label>Offer (optional — links to offer tracker)</label><select class="input" name="offer"><option value="">— none —</option>'+
       state.offers.map(function(o){return '<option value="'+o.id+'"'+(entry.offer===o.id?' selected':'')+'>'+esc(o.name)+'</option>';}).join('')+'</select></div>':'')+
-    '<div class="field"><label>Note</label><input class="input" name="note" value="'+esc(entry.note||'')+'" placeholder="What was this for?"></div>';
+    ((state.accounts||[]).length?'<div class="field"><label>Account (where the money '+(type==='income'?'landed':'came from')+')</label><select class="input" name="account"><option value="">— unassigned —</option>'+
+      state.accounts.map(function(a){return '<option value="'+a.id+'"'+(entry.account===a.id?' selected':'')+'>'+esc(a.name)+'</option>';}).join('')+'</select></div>':'')+
+    '<div class="field"><label>Note</label><input class="input" name="note" value="'+esc(entry.note||'')+'" placeholder="What was this for?"></div>'+
+    '<div class="field"><label>Receipt / proof photo (optional)</label><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'+
+      '<img class="img-thumb-lg img-prev" src="'+(entry.receipt||'')+'" style="'+(entry.receipt?'':'display:none')+'" alt="">'+
+      '<input type="file" accept="image/*,.heic,.heif" class="input img-input" style="flex:1;min-width:140px;padding:7px">'+
+      '<input type="hidden" name="receipt" value="'+esc(entry.receipt||'')+'">'+
+      (entry.receipt?'<button type="button" class="btn btn-sm btn-danger" data-action="img-clear">'+icon('x')+' Remove</button>':'')+
+    '</div></div>';
   openModal(isEdit?'Edit entry':'Add income / expense',body,{onSubmit:function(form){
     var amount=num(fv(form,'amount'));
     var date=fv(form,'date');
@@ -2192,7 +2220,7 @@ function entryModal(entry){
     var cat=fv(form,'category');
     if(cat==='__new__'){ cat=fv(form,'newCategory')||'Other'; }
     var id=fv(form,'id');
-    var data={type:fv(form,'type'),amount:amount,date:date,category:cat,note:fv(form,'note'),client:fv(form,'client'),offer:form.elements['offer']?fv(form,'offer'):''};
+    var data={type:fv(form,'type'),amount:amount,date:date,category:cat,note:fv(form,'note'),client:fv(form,'client'),offer:form.elements['offer']?fv(form,'offer'):'',account:form.elements['account']?fv(form,'account'):'',receipt:form.elements['receipt']?form.elements['receipt'].value:''};
     if(id){
       var e=state.finance.find(function(x){return x.id===id;});
       if(e) Object.assign(e,data);
@@ -2572,6 +2600,22 @@ function loadSampleData(){
     {id:pKeyB,name:'Tassel Keychain',sku:'KEY-TAS',category:'Keychain',price:99,cost:35,stock:35,lowStock:10,attrs:{Color:'Blush'},desc:'',active:true},
     {id:pBox,name:'“Thinking of You” Gift Box',sku:'BOX-TOY',category:'Gift Box',price:599,cost:260,stock:9,lowStock:5,attrs:{Scent:'Mixed',Color:'Kraft'},desc:'Candle + keychain + handwritten card',active:true}
   ];
+  // accounts
+  var aBank=uid(),aGcash=uid(),aCash=uid();
+  state.accounts=[
+    {id:aBank,name:'BPI Business Checking',type:'Bank',opening:35000,note:'Main operating account',adjust:[]},
+    {id:aGcash,name:'GCash Business',type:'E-wallet',opening:8000,note:'Customer payments',adjust:[]},
+    {id:aCash,name:'Cash box',type:'Cash',opening:3500,note:'Market days & COD change',adjust:[]}
+  ];
+  state.transfers=[
+    {id:uid(),from:aGcash,to:aBank,amount:6000,date:d(0,Math.max(1,new Date().getDate()-4)),note:'Weekly sweep to bank'}
+  ];
+  // assign this month's entries to accounts (income → GCash, expenses → bank)
+  var curMK=thisMonthKey();
+  state.finance.forEach(function(e){
+    if(monthKey(e.date)!==curMK) return;
+    e.account=e.type==='income'?aGcash:aBank;
+  });
   // raw materials + recipes
   var mWax=uid(),mWick=uid(),mJar=uid(),mOilLav=uid(),mBox=uid(),mRibbon=uid();
   state.materials=[
@@ -3771,9 +3815,18 @@ function applyOrderStock(o,sign){
     if(p) p.stock-=sign*it.qty;
   });
 }
+function accountForMethod(method){
+  if(!method) return '';
+  var m=method.toLowerCase();
+  var hit=(state.accounts||[]).find(function(a){ return (a.name||'').toLowerCase().indexOf(m)>=0; });
+  if(!hit&&m==='cash') hit=(state.accounts||[]).find(function(a){ return a.type==='Cash'; });
+  if(!hit&&(m==='bank transfer'||m==='card')) hit=(state.accounts||[]).find(function(a){ return a.type==='Bank'; });
+  if(!hit&&m==='gcash') hit=(state.accounts||[]).find(function(a){ return a.type==='E-wallet'; });
+  return hit?hit.id:'';
+}
 function recordOrderIncome(o){
   if(o.incomeRecorded) return;
-  state.finance.push({id:uid(),type:'income',amount:orderTotal(o),date:todayISO(),category:'Sales',note:'Order '+o.number+' ('+(o.items||[]).map(function(it){return it.name+'×'+it.qty;}).join(', ')+')',client:o.clientName||'',offer:''});
+  state.finance.push({id:uid(),type:'income',amount:orderTotal(o),date:todayISO(),category:'Sales',note:'Order '+o.number+' ('+(o.items||[]).map(function(it){return it.name+'×'+it.qty;}).join(', ')+')',client:o.clientName||'',offer:'',account:accountForMethod(o.payMethod)});
   o.incomeRecorded=true;
   ensureClient(o);
 }
@@ -5090,6 +5143,197 @@ document.addEventListener('change',function(e){
 });
 document.addEventListener('keydown',function(e){
   if(e.key==='Escape') closeLightbox();
+});
+
+/* ============================================================
+   v9 additions: Accounts & Cash — banks, e-wallets, cash box,
+   transfers, reconciliation, true cash position
+   ============================================================ */
+var ACCOUNT_TYPES=['Bank','E-wallet','Cash','Other'];
+function findAccount(id){ return (state.accounts||[]).find(function(a){return a.id===id;}); }
+function accountBalance(a){
+  var bal=a.opening||0;
+  state.finance.forEach(function(e){
+    if(e.account!==a.id) return;
+    bal+=e.type==='income'?e.amount:-e.amount;
+  });
+  (state.transfers||[]).forEach(function(t){
+    if(t.to===a.id) bal+=t.amount;
+    if(t.from===a.id) bal-=t.amount;
+  });
+  (a.adjust||[]).forEach(function(adj){ bal+=adj.delta; });
+  return Math.round(bal*100)/100;
+}
+function accountMonthFlow(a,mk){
+  var inn=0,out=0;
+  state.finance.forEach(function(e){
+    if(e.account!==a.id||monthKey(e.date)!==mk) return;
+    if(e.type==='income') inn+=e.amount; else out+=e.amount;
+  });
+  return {inn:inn,out:out};
+}
+function receivablesTotal(){
+  var inv=sum((state.invoices||[]).filter(function(iv){return iv.status!=='Paid';}),function(iv){return iv.amount;});
+  var ord=sum((state.orders||[]).filter(function(o){return o.payStatus!=='Paid'&&o.status!=='Cancelled';}),orderTotal);
+  return inv+ord;
+}
+function viewAccounts(){
+  var accts=state.accounts||[];
+  var totalCash=sum(accts,accountBalance);
+  var mk=thisMonthKey();
+  var mm=monthlyMap();
+  var cur=mm[mk]||{revenue:0,expenses:0};
+  var recv=receivablesTotal();
+  var t=financeTotals();
+  var html=topbar('Accounts & Cash','Where your money actually sits — banks, e-wallets and cash, reconciled to reality.',
+    '<button class="btn btn-ghost" data-action="transfer-new">'+icon('refresh')+'<span class="btn-txt">Transfer</span></button>'+
+    '<button class="btn btn-primary" data-action="account-new">'+icon('plus')+'<span class="btn-txt">Add account</span></button>');
+  // business position summary
+  html+='<div class="grid grid-4">'+
+    statCard('Cash on hand (all accounts)',fmtMoney(totalCash),'<span class="stat-delta '+(totalCash>=0?'up':'down')+'">'+accts.length+' account'+(accts.length===1?'':'s')+'</span>','','bank')+
+    statCard('Owed to you',fmtMoney(recv),'<span class="stat-delta flat">unpaid invoices + orders</span>','','invoice')+
+    statCard('True position',fmtMoney(totalCash+recv),'<span class="stat-delta flat">cash + receivables</span>','','shield')+
+    statCard('This month P&L',fmtMoney(cur.revenue-cur.expenses),'<span class="stat-delta '+(cur.revenue-cur.expenses>=0?'up':'down')+'">'+fmtMoney(cur.revenue)+' in · '+fmtMoney(cur.expenses)+' out</span>','','metrics')+
+  '</div>';
+  html+='<div class="grid grid-3 mt" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr))">'+
+    '<div class="card" style="display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:6px;border-style:dashed;cursor:pointer" data-action="account-new">'+
+      '<span class="stat-icon">'+icon('plus')+'</span><b style="font-size:.92rem">Add bank / e-wallet / cash</b>'+
+      '<span style="font-size:.76rem;color:var(--text-3)">Track where every peso sits.</span></div>';
+  accts.forEach(function(a){
+    var bal=accountBalance(a);
+    var flow=accountMonthFlow(a,mk);
+    var typeCls={'Bank':'info','E-wallet':'accent','Cash':'good','Other':'neutral'}[a.type]||'neutral';
+    html+='<div class="card acct-card">'+
+      '<div style="display:flex;align-items:flex-start;gap:9px"><span class="stat-icon">'+icon(a.type==='Cash'?'cash':'bank')+'</span>'+
+      '<div style="flex:1;min-width:0"><b style="font-size:.95rem;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(a.name)+'</b><span class="badge '+typeCls+'">'+esc(a.type)+'</span></div></div>'+
+      '<div class="acct-balance" style="margin-top:12px;color:'+(bal>=0?'var(--text)':'var(--risk)')+'">'+fmtMoney(bal)+'</div>'+
+      '<div style="font-size:.74rem;color:var(--text-3);margin-top:2px">this month: <span style="color:var(--good)">+'+fmtMoney(flow.inn)+'</span> · <span style="color:var(--risk)">−'+fmtMoney(flow.out)+'</span></div>'+
+      (a.note?'<div style="font-size:.74rem;color:var(--text-3);margin-top:5px">'+esc(a.note)+'</div>':'')+
+      '<div style="display:flex;gap:5px;margin-top:12px;flex-wrap:wrap">'+
+        '<button class="btn btn-sm btn-ghost" data-action="account-reconcile" data-id="'+a.id+'">'+icon('check')+' Reconcile</button>'+
+        '<button class="btn-icon" data-action="account-edit" data-id="'+a.id+'">'+icon('edit')+'</button>'+
+        '<button class="btn-icon danger" data-action="account-delete" data-id="'+a.id+'">'+icon('trash')+'</button></div></div>';
+  });
+  html+='</div>';
+  if(!accts.length){
+    html+='<div class="card mt">'+emptyState('bank','No accounts yet','Add your bank account, GCash/Maya wallet and cash box with their current balances. New income and expenses can then be assigned to an account, so each balance stays accurate.','<button class="btn btn-sm btn-primary" data-action="account-new">'+icon('plus')+' Add first account</button>')+'</div>';
+    return html;
+  }
+  // unassigned entries notice
+  var unassigned=state.finance.filter(function(e){ return !e.account; }).length;
+  if(unassigned>0){
+    html+='<div class="card mt" style="border-left:4px solid var(--info)"><p style="font-size:.84rem;color:var(--text-2)">ℹ️ <b>'+unassigned+'</b> finance entr'+(unassigned===1?'y has':'ies have')+' no account assigned — they count toward revenue and profit, but not toward any account balance. Edit an entry in Finance to assign it. New order payments are auto-assigned by payment method.</p></div>';
+  }
+  // transfers history
+  var tr=(state.transfers||[]).slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+  html+='<div class="card mt"><div class="card-head"><h3>Transfers between accounts</h3><span class="sub">moving money around is not income or expense — tracked separately so your P&L stays honest</span><span class="spacer"></span><button class="btn btn-sm btn-ghost" data-action="transfer-new">'+icon('plus')+' Transfer</button></div>';
+  if(!tr.length){
+    html+='<p style="font-size:.82rem;color:var(--text-3)">No transfers yet — e.g. sweeping GCash collections into the bank.</p>';
+  } else {
+    html+='<div class="table-wrap"><table><thead><tr><th>Date</th><th>From</th><th>To</th><th style="text-align:right">Amount</th><th>Note</th><th></th></tr></thead><tbody>';
+    tr.slice(0,10).forEach(function(x){
+      var fa=findAccount(x.from),ta=findAccount(x.to);
+      html+='<tr><td style="white-space:nowrap">'+fmtDate(x.date)+'</td>'+
+        '<td>'+esc(fa?fa.name:'(deleted)')+'</td><td>'+esc(ta?ta.name:'(deleted)')+'</td>'+
+        '<td class="num" style="text-align:right;font-weight:700">'+fmtMoney(x.amount)+'</td>'+
+        '<td style="font-size:.82rem;color:var(--text-2)">'+esc(x.note||'—')+'</td>'+
+        '<td><div class="row-actions"><button class="btn-icon danger" data-action="transfer-delete" data-id="'+x.id+'">'+icon('trash')+'</button></div></td></tr>';
+    });
+    html+='</tbody></table></div>';
+  }
+  html+='</div>';
+  return html;
+}
+function accountModal(a){
+  var isEdit=!!a;
+  a=a||{type:'Bank',opening:0};
+  var body=
+    '<input type="hidden" name="id" value="'+(a.id||'')+'">'+
+    '<div class="field"><label>Account name *</label><input class="input" name="name" value="'+esc(a.name||'')+'" required placeholder="e.g. BPI Checking, GCash, Cash box"></div>'+
+    '<div class="form-row"><div class="field"><label>Type</label><select class="input" name="type">'+
+      ACCOUNT_TYPES.map(function(tp){return '<option'+(a.type===tp?' selected':'')+'>'+tp+'</option>';}).join('')+'</select></div>'+
+    '<div class="field"><label>'+(isEdit?'Opening balance':'Current balance')+' ('+esc(state.settings.currency)+')</label><input class="input" type="number" step="any" name="opening" value="'+(a.opening!=null?a.opening:'')+'"></div></div>'+
+    '<div class="field"><label>Note</label><input class="input" name="note" value="'+esc(a.note||'')+'" placeholder="What is this account for?"></div>'+
+    (isEdit?'':'<p style="font-size:.74rem;color:var(--text-3)">Enter the balance as it is right now — from here on, assigned income, expenses and transfers keep it up to date. Use Reconcile anytime to match reality.</p>');
+  openModal(isEdit?'Edit account':'Add account',body,{onSubmit:function(form){
+    var name=fv(form,'name');
+    if(!name){ toast('Give the account a name.','error'); return false; }
+    var id=fv(form,'id');
+    if(id){
+      var ex=findAccount(id);
+      if(ex){ ex.name=name; ex.type=fv(form,'type'); ex.opening=num(fv(form,'opening')); ex.note=fv(form,'note'); }
+      toast('Account updated.');
+    } else {
+      state.accounts.push({id:uid(),name:name,type:fv(form,'type'),opening:num(fv(form,'opening')),note:fv(form,'note'),adjust:[]});
+      toast('"'+name+'" added — assign entries to it to keep the balance live.');
+    }
+    return true;
+  }});
+}
+function transferModal(){
+  if((state.accounts||[]).length<2){ toast('You need at least two accounts to transfer between.','warn'); return; }
+  var opts=state.accounts.map(function(a){return '<option value="'+a.id+'">'+esc(a.name)+' ('+fmtMoney(accountBalance(a))+')</option>';}).join('');
+  var body=
+    '<div class="form-row"><div class="field"><label>From</label><select class="input" name="from">'+opts+'</select></div>'+
+    '<div class="field"><label>To</label><select class="input" name="to">'+opts+'</select></div></div>'+
+    '<div class="form-row"><div class="field"><label>Amount ('+esc(state.settings.currency)+') *</label><input class="input" type="number" step="any" min="0.01" name="amount" required></div>'+
+    '<div class="field"><label>Date</label><input class="input" type="date" name="date" value="'+todayISO()+'"></div></div>'+
+    '<div class="field"><label>Note</label><input class="input" name="note" placeholder="e.g. weekly GCash sweep"></div>';
+  openModal('Transfer between accounts',body,{submitLabel:'Transfer',onSubmit:function(form){
+    var from=fv(form,'from'),to=fv(form,'to'),amount=num(fv(form,'amount'));
+    if(from===to){ toast('Pick two different accounts.','error'); return false; }
+    if(amount<=0){ toast('Enter an amount greater than zero.','error'); return false; }
+    state.transfers.push({id:uid(),from:from,to:to,amount:amount,date:fv(form,'date')||todayISO(),note:fv(form,'note')});
+    var ta=findAccount(to);
+    toast(fmtMoney(amount)+' moved to '+(ta?ta.name:'account')+'.');
+    return true;
+  }});
+}
+function reconcileModal(a){
+  var bal=accountBalance(a);
+  var body='<input type="hidden" name="id" value="'+a.id+'">'+
+    '<p style="font-size:.86rem;color:var(--text-2);margin-bottom:12px">BizPilot thinks <b>'+esc(a.name)+'</b> holds <b>'+fmtMoney(bal)+'</b>. Check the real balance in your bank app / wallet and enter it below — the difference is recorded as an adjustment so the numbers match reality.</p>'+
+    '<div class="field"><label>Actual balance right now ('+esc(state.settings.currency)+')</label><input class="input" type="number" step="any" name="actual" value="'+bal+'" required></div>';
+  openModal('Reconcile — '+a.name,body,{submitLabel:'Reconcile',onSubmit:function(form){
+    var acct=findAccount(fv(form,'id'));
+    if(!acct) return true;
+    var actual=num(fv(form,'actual'));
+    var delta=Math.round((actual-accountBalance(acct))*100)/100;
+    if(delta===0){ toast('Already matching — nothing to adjust. 🎯'); return true; }
+    acct.adjust=acct.adjust||[];
+    acct.adjust.push({id:uid(),delta:delta,date:todayISO(),note:'Reconciliation'});
+    toast('Adjusted by '+(delta>0?'+':'')+fmtMoney(delta)+' — '+acct.name+' now matches reality.');
+    return true;
+  }});
+}
+
+/* v9 wiring */
+document.addEventListener('click',function(e){
+  var el=e.target.closest('[data-action]');
+  if(!el) return;
+  var action=el.getAttribute('data-action');
+  var id=el.getAttribute('data-id');
+  if(action==='account-new'){ accountModal(); return; }
+  if(action==='account-edit'){ var a=findAccount(id); if(a) accountModal(a); return; }
+  if(action==='account-reconcile'){ var a2=findAccount(id); if(a2) reconcileModal(a2); return; }
+  if(action==='account-delete'){
+    var a3=findAccount(id);
+    if(a3&&confirm('Delete account "'+a3.name+'" ('+fmtMoney(accountBalance(a3))+')? Entries assigned to it become unassigned; its transfers are removed.')){
+      state.accounts=state.accounts.filter(function(x){return x.id!==id;});
+      state.finance.forEach(function(en){ if(en.account===id) en.account=''; });
+      state.transfers=(state.transfers||[]).filter(function(t){return t.from!==id&&t.to!==id;});
+      commit(); toast('Account deleted.','warn');
+    }
+    return;
+  }
+  if(action==='transfer-new'){ transferModal(); return; }
+  if(action==='transfer-delete'){
+    if(confirm('Delete this transfer? Both account balances will update.')){
+      state.transfers=state.transfers.filter(function(t){return t.id!==id;});
+      commit(); toast('Transfer removed.','warn');
+    }
+    return;
+  }
 });
 
 /* keyboard: Escape closes modal / sidebar */
