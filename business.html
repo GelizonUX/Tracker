@@ -666,7 +666,7 @@ var DEFAULT_STATE={
     customCats:{ income:[], expense:[] },
     sync:{ url:'https://love-notes-eae0b-default-rtdb.firebaseio.com', path:'bizpilot', enabled:false, lastSync:null },
     productCats:['Candle','Keychain','Gift Box'], productAttrs:['Scent','Color'],
-    moduleLabels:{}, bizAddress:'', bizPhone:'', onboarded:false },
+    moduleLabels:{}, bizAddress:'', bizPhone:'', onboarded:false, lang:'en' },
   invoices:[],  // {id,number,client,desc,amount,issueDate,dueDate,status,paidDate,createdAt}
   recurring:[], // {id,type,amount,category,note,client,day,active,lastPosted,startMonth}
   offers:[],    // {id,name,price,desc}
@@ -823,8 +823,8 @@ function openModal(title,bodyHTML,opts){
           '<button class="btn-icon" data-action="close-modal" aria-label="Close">'+icon('x')+'</button></div>'+
         '<div class="modal-body"><form id="modal-form" novalidate>'+bodyHTML+
           '<div class="modal-foot">'+
-            '<button type="button" class="btn btn-ghost" data-action="close-modal">Cancel</button>'+
-            '<button type="submit" class="btn btn-primary">'+esc(opts.submitLabel||'Save')+'</button>'+
+            '<button type="button" class="btn btn-ghost" data-action="close-modal">'+esc(tr('Cancel'))+'</button>'+
+            '<button type="submit" class="btn btn-primary">'+esc(tr(opts.submitLabel||'Save'))+'</button>'+
           '</div></form></div></div></div>';
   var first=root.querySelector('input,select,textarea');
   if(first) setTimeout(function(){ first.focus(); },60);
@@ -1212,16 +1212,16 @@ function renderSidebar(){
   var lastSection='';
   var labels=state.settings.moduleLabels||{};
   visibleRoutes().forEach(function(r){
-    if(r.section!==lastSection){ html+='<div class="nav-section">'+esc(r.section)+'</div>'; lastSection=r.section; }
-    html+='<button class="nav-item'+(route===r.id?' active':'')+'" data-action="nav" data-route="'+r.id+'">'+icon(r.icon)+'<span>'+esc(labels[r.id]||r.label)+'</span>'+
+    if(r.section!==lastSection){ html+='<div class="nav-section">'+esc(tr(r.section))+'</div>'; lastSection=r.section; }
+    html+='<button class="nav-item'+(route===r.id?' active':'')+'" data-action="nav" data-route="'+r.id+'">'+icon(r.icon)+'<span>'+esc(labels[r.id]||tr(r.label))+'</span>'+
       (r.id==='tasks'&&openTasks>0?'<span class="nav-badge">'+openTasks+'</span>':'')+'</button>';
   });
   if((state.customModules||[]).length||true){
-    html+='<div class="nav-section">My Modules</div>';
+    html+='<div class="nav-section">'+esc(tr('My Modules'))+'</div>';
     (state.customModules||[]).forEach(function(m){
       html+='<button class="nav-item'+(route==='custom-'+m.id?' active':'')+'" data-action="nav" data-route="custom-'+m.id+'">'+icon(m.icon||'notes')+'<span>'+esc(m.name)+'</span></button>';
     });
-    html+='<button class="nav-item" data-action="custom-module-new" style="opacity:.75">'+icon('plus')+'<span>New module…</span></button>';
+    html+='<button class="nav-item" data-action="custom-module-new" style="opacity:.75">'+icon('plus')+'<span>'+esc(tr('New module…'))+'</span></button>';
   }
   html+='</nav><div class="sidebar-foot"><div class="biz-chip"><div class="avatar">'+esc((state.settings.businessName||'B').charAt(0).toUpperCase())+'</div><div><b>'+esc(state.settings.businessName||'My Business')+'</b><span>Local data · private</span></div></div></div>';
   var sb=byId('sidebar');
@@ -1235,7 +1235,7 @@ function renderSidebar(){
 function topbar(title,subtitle,actionsHTML){
   return '<div class="topbar">'+
     '<button class="hamburger" data-action="open-sidebar" aria-label="Menu">'+icon('menu')+'</button>'+
-    '<div class="page-title"><h1>'+esc(title)+'</h1><p>'+esc(subtitle||'')+'</p></div>'+
+    '<div class="page-title"><h1>'+esc(tr(title))+'</h1><p>'+esc(tr(subtitle||''))+'</p></div>'+
     '<div class="topbar-actions">'+(actionsHTML||'')+
       '<button class="theme-toggle" data-action="open-palette" aria-label="Search everything (Ctrl+K)" title="Search everything (Ctrl+K)">'+icon('search')+'</button>'+
       '<button class="theme-toggle" data-action="toggle-theme" aria-label="Toggle theme">'+icon(document.documentElement.getAttribute('data-theme')==='dark'?'sun':'moon')+'</button>'+
@@ -1391,7 +1391,7 @@ function viewDashboard(){
 function statCard(label,value,deltaHTML,sparkHTML,iconName){
   return '<div class="card stat-card"><div class="stat-accent"></div>'+
     '<div style="display:flex;align-items:center;gap:10px"><span class="stat-icon">'+icon(iconName)+'</span>'+
-    '<span class="stat-label">'+esc(label)+'</span></div>'+
+    '<span class="stat-label">'+esc(tr(label))+'</span></div>'+
     '<div class="stat-value">'+value+'</div>'+(deltaHTML||'')+
     (sparkHTML?'<div class="spark">'+sparkHTML+'</div>':'')+'</div>';
 }
@@ -1455,7 +1455,7 @@ function viewFinance(){
   html+='<div class="tabs mt-lg">'+
     ['entries','monthly','categories','cashflow','recurring','offers'].map(function(tab){
       var labels={entries:'Entries',monthly:'Monthly breakdown',categories:'Category breakdown',cashflow:'Cash flow',recurring:'Recurring',offers:'Offers'};
-      return '<button class="'+(ui.financeTab===tab?'active':'')+'" data-action="finance-tab" data-tab="'+tab+'">'+labels[tab]+'</button>';
+      return '<button class="'+(ui.financeTab===tab?'active':'')+'" data-action="finance-tab" data-tab="'+tab+'">'+esc(tr(labels[tab]))+'</button>';
     }).join('')+'</div>';
 
   if(ui.financeTab==='entries') html+=financeEntriesHTML();
@@ -2181,7 +2181,7 @@ function viewSettings(){
   var tab=ui.settingsTab||'business';
   var html=topbar('Settings & Data','Your business profile, plus full control of your data.');
   html+='<div class="tabs">'+[['business','Business'],['custom','Customization'],['data','Data & Sync']].map(function(x){
-    return '<button class="'+(tab===x[0]?'active':'')+'" data-action="settings-tab" data-tab="'+x[0]+'">'+x[1]+'</button>';}).join('')+'</div>';
+    return '<button class="'+(tab===x[0]?'active':'')+'" data-action="settings-tab" data-tab="'+x[0]+'">'+esc(tr(x[1]))+'</button>';}).join('')+'</div>';
   if(tab==='custom'){ return html+'<div class="grid grid-2">'+customizationCardHTML()+'</div>'; }
   if(tab==='data'){ return html+settingsDataHTML(); }
   html+='<div class="grid grid-2">';
@@ -2193,6 +2193,10 @@ function viewSettings(){
     '</select></div>'+
     '<div class="field"><label>Default tax rate (%)</label><input class="input" type="number" step="any" min="0" max="60" name="taxRate" value="'+esc(s.taxRate)+'"></div></div>'+
     '<div class="field"><label>Monthly revenue target ('+esc(s.currency)+')</label><input class="input" type="number" step="any" min="0" name="monthlyTarget" value="'+(s.monthlyTarget||'')+'" placeholder="e.g. 100000"><p style="font-size:.74rem;color:var(--text-3);margin-top:4px">Used on the dashboard and in insights to track each month’s pace.</p></div>'+
+    '<div class="field"><label>Language / Wika</label><select class="input" name="lang">'+
+      '<option value="en"'+((s.lang||'en')==='en'?' selected':'')+'>English</option>'+
+      '<option value="tl"'+(s.lang==='tl'?' selected':'')+'>Taglish</option>'+
+      '</select><p style="font-size:.74rem;color:var(--text-3);margin-top:4px">Taglish covers navigation, titles, cards and buttons — detailed content stays in English, parang totoong Taglish lang. 😊</p></div>'+
     '<div class="field"><label>Auto-backup every</label><select class="input" name="autoBackupDays">'+
       [[0,'Off — manual exports only'],[3,'3 days'],[7,'7 days'],[14,'14 days'],[30,'30 days']].map(function(o){return '<option value="'+o[0]+'"'+((s.autoBackupDays||0)===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+
       '</select><p style="font-size:.74rem;color:var(--text-3);margin-top:4px">When due, a JSON backup downloads automatically on app open.</p></div>'+
@@ -2257,7 +2261,9 @@ function entryModal(entry){
       '<input type="file" accept="image/*,.heic,.heif" class="input img-input" style="flex:1;min-width:140px;padding:7px">'+
       '<input type="hidden" name="receipt" value="'+esc(entry.receipt||'')+'">'+
       (entry.receipt?'<button type="button" class="btn btn-sm btn-danger" data-action="img-clear">'+icon('x')+' Remove</button>':'')+
-    '</div></div>';
+    '</div>'+
+    '<button type="button" class="btn btn-sm btn-ghost" data-action="ocr-scan" style="margin-top:8px">'+icon('search')+' '+esc(tr('Scan & prefill from photo (beta)'))+'</button>'+
+    '<p style="font-size:.7rem;color:var(--text-3);margin-top:4px">Attach a clear receipt photo first. OCR runs in your browser (downloads ~2MB the first time, needs internet once). Always double-check the values it fills in.</p></div>';
   openModal(isEdit?'Edit entry':'Add income / expense',body,{onSubmit:function(form){
     var amount=num(fv(form,'amount'));
     var date=fv(form,'date');
@@ -3009,7 +3015,8 @@ document.addEventListener('submit',function(e){
     state.settings.taxRate=clamp(num(fv(form,'taxRate')),0,60);
     state.settings.monthlyTarget=Math.max(0,num(fv(form,'monthlyTarget')));
     state.settings.autoBackupDays=num(fv(form,'autoBackupDays'));
-    commit(); toast('Settings saved.');
+    state.settings.lang=fv(form,'lang')||'en';
+    commit(); toast(state.settings.lang==='tl'?'Na-save na! Taglish mode activated. 🇵🇭':'Settings saved.');
     return;
   }
 });
@@ -4789,8 +4796,8 @@ function bomRowHTML(b){
 }
 function productTabsHTML(active){
   return '<div class="tabs">'+
-    '<button class="'+(active==='catalog'?'active':'')+'" data-action="product-tab" data-tab="catalog">Catalog</button>'+
-    '<button class="'+(active==='materials'?'active':'')+'" data-action="product-tab" data-tab="materials">Materials ('+(state.materials||[]).length+')</button></div>';
+    '<button class="'+(active==='catalog'?'active':'')+'" data-action="product-tab" data-tab="catalog">'+esc(tr('Catalog'))+'</button>'+
+    '<button class="'+(active==='materials'?'active':'')+'" data-action="product-tab" data-tab="materials">'+esc(tr('Materials'))+' ('+(state.materials||[]).length+')</button></div>';
 }
 function viewMaterials(){
   var mats=state.materials||[];
@@ -5503,7 +5510,7 @@ function todayPanelHTML(){
     items.push({cls:'good',icon:'bank',text:'Cash on hand: <b>'+fmtMoney(cash)+'</b> · true position <b>'+fmtMoney(cash+receivablesTotal())+'</b>',route:'accounts'});
   }
   if(!items.length) return '';
-  return '<div class="card" style="margin-bottom:13px;padding:13px 16px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:9px"><b style="font-size:.92rem">☀️ Today</b><span style="font-size:.72rem;color:var(--text-3)">'+new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})+'</span></div>'+
+  return '<div class="card" style="margin-bottom:13px;padding:13px 16px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:9px"><b style="font-size:.92rem">☀️ '+esc(tr('Today'))+'</b><span style="font-size:.72rem;color:var(--text-3)">'+new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})+'</span></div>'+
     '<div style="display:flex;flex-direction:column;gap:5px">'+items.map(function(it){
       return '<button style="display:flex;align-items:center;gap:9px;text-align:left;padding:6px 9px;border-radius:9px;width:100%;font-size:.85rem;background:var(--bg-sunken)" data-action="nav" data-route="'+it.route+'">'+
         '<span style="color:var(--'+(it.cls==='good'?'good':(it.cls==='risk'?'risk':(it.cls==='warn'?'warn':'info')))+')">'+icon(it.icon,14)+'</span>'+
@@ -5689,6 +5696,159 @@ document.addEventListener('click',function(e){
 });
 document.addEventListener('change',function(e){
   if(e.target.getAttribute&&e.target.getAttribute('data-action-change')==='report-year'){ ui.reportYear=e.target.value; render(); }
+});
+
+/* ============================================================
+   v12 additions: Taglish language layer + receipt OCR (beta)
+   ============================================================ */
+
+/* ---------- Taglish dictionary: key surfaces only ---------- */
+var TL={
+  /* sections */
+  'Overview':'Overview','Money':'Pera','Execution':'Mga Gawain','Workspace':'Workspace','Shop':'Tindahan','System':'System',
+  'My Modules':'Aking Mga Module','New module…':'Bagong module…',
+  /* routes */
+  'Dashboard':'Dashboard','Insights':'Mga Insight','Accounts & Cash':'Mga Account at Cash','Finance':'Pera (Finance)',
+  'Invoices':'Mga Invoice','Monthly Report':'Buwanang Report','Calculators':'Mga Calculator','Metrics & KPIs':'Metrics at KPIs',
+  'Products & Stock':'Mga Produkto at Stock','Orders':'Mga Order','Goals':'Mga Goal','Roadmap':'Roadmap','Tasks':'Mga Gawain',
+  'Clients':'Mga Kliyente','Notes':'Mga Tala','Reviews & Strategy':'Review at Estratehiya','Settings & Data':'Settings at Data',
+  /* page titles that differ from routes */
+  'Tasks & Actions':'Mga Gawain','Smart Insights':'Mga Smart Insight','Business Calculators':'Mga Business Calculator','Reports':'Mga Report',
+  /* common buttons / labels */
+  'Save':'I-save','Cancel':'Kanselahin','Save settings':'I-save ang settings','Set up my business':'I-setup ang negosyo ko',
+  'Add entry':'Magdagdag ng entry','New order':'Bagong order','Add product':'Magdagdag ng produkto','New goal':'Bagong goal',
+  'New task':'Bagong gawain','New note':'Bagong tala','Add client':'Magdagdag ng kliyente','New invoice':'Bagong invoice',
+  'Add account':'Magdagdag ng account','Add material':'Magdagdag ng materyales','Transfer':'Mag-transfer','Update':'I-update',
+  'Erase everything':'Burahin lahat','Add stock':'Magdagdag ng stock','Reconcile':'I-reconcile','Create module':'Gumawa ng module','Add field':'Magdagdag ng field',
+  /* tabs */
+  'Entries':'Mga Entry','Monthly breakdown':'Buwanang breakdown','Category breakdown':'Per kategorya','Cash flow':'Cash flow',
+  'Recurring':'Paulit-ulit','Offers':'Mga Offer','Catalog':'Katalogo','Materials':'Mga Materyales',
+  'Business':'Negosyo','Customization':'Customization','Data & Sync':'Data at Sync',
+  /* stat labels (dashboard + key pages) */
+  'Total revenue':'Kabuuang kita','Total expenses':'Kabuuang gastos','Net profit':'Netong tubo','Profit margin':'Profit margin',
+  'Revenue':'Kita','Expenses':'Gastos','Expense ratio':'Expense ratio','Margin':'Margin',
+  'Cash on hand (all accounts)':'Cash on hand (lahat ng account)','Owed to you':'Utang sa iyo','True position':'Totoong posisyon',
+  'This month P&L':'P&L ngayong buwan','To fulfill':'Ihahatid pa','Awaiting payment':'Hinihintay ang bayad',
+  'Order value this month':'Halaga ng orders ngayong buwan','Est. profit this month':'Tantyang tubo ngayong buwan',
+  'Products':'Mga Produkto','Low / out of stock':'Paubos / ubos na','Stock value (cost)':'Halaga ng stock (puhunan)',
+  'Stock value (retail)':'Halaga ng stock (benta)','Active goals':'Aktibong goals','Completed':'Tapos na','Overdue':'Lampas na',
+  'Avg progress':'Average na progreso','Open tasks':'Bukas na gawain','Completion rate':'Tapos na (%)',
+  'Active clients':'Aktibong kliyente','Leads in pipeline':'Mga lead','Revenue / active client':'Kita kada kliyente','Churned':'Umalis',
+  'Outstanding':'Hindi pa bayad','Collected this month':'Nakolekta ngayong buwan','All-time invoiced':'Kabuuang na-invoice',
+  'Materials':'Mga Materyales','Low / out':'Paubos / ubos','Material value':'Halaga ng materyales',
+  'Orders this month':'Orders ngayong buwan','Best month':'Pinakamagandang buwan',
+  /* misc visible */
+  'Today':'Ngayon','Scan & prefill from photo (beta)':'I-scan at i-prefill mula sa litrato (beta)'
+};
+function tr(s){
+  if(state&&state.settings&&state.settings.lang==='tl'&&TL[s]) return TL[s];
+  return s;
+}
+
+/* ---------- receipt OCR (Tesseract.js, lazy-loaded from CDN) ---------- */
+var tessPromise=null;
+function loadTesseract(){
+  if(window.Tesseract) return Promise.resolve(window.Tesseract);
+  if(tessPromise) return tessPromise;
+  tessPromise=new Promise(function(resolve,reject){
+    var s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+    s.onload=function(){ window.Tesseract?resolve(window.Tesseract):reject(new Error('OCR library loaded but unavailable.')); };
+    s.onerror=function(){ tessPromise=null; reject(new Error('Could not download the OCR engine — check your internet connection.')); };
+    document.head.appendChild(s);
+  });
+  return tessPromise;
+}
+function parseReceiptText(text){
+  var lines=(text||'').split('\n').map(function(s){return s.trim();}).filter(Boolean);
+  var out={amount:null,date:null,merchant:'',category:''};
+  // amount: prefer lines mentioning total/amount due; take the largest number on them
+  var totRe=/(grand\s*total|total\s*amount|amount\s*due|^total\b|\btotal\b)/i;
+  var numRe=/\d{1,3}(?:[.,]\d{3})*[.,]\d{2}|\d+[.,]\d{2}/g;
+  function parseNum(sv){ 
+    sv=sv.replace(/[^0-9.,]/g,'');
+    if(/,\d{2}$/.test(sv)&&sv.indexOf('.')<0) sv=sv.replace(',','.'); // euro-style decimals
+    return parseFloat(sv.replace(/,/g,''));
+  }
+  var totalCands=[],allCands=[];
+  lines.forEach(function(line){
+    var nums=line.match(numRe);
+    if(!nums) return;
+    nums.forEach(function(nstr){
+      var v=parseNum(nstr);
+      if(!isFinite(v)||v<=0||v>10000000) return;
+      allCands.push(v);
+      if(totRe.test(line)&&!/sub\s*total|vat|tax|change|tender/i.test(line)) totalCands.push(v);
+    });
+  });
+  if(totalCands.length) out.amount=Math.max.apply(null,totalCands);
+  else if(allCands.length) out.amount=Math.max.apply(null,allCands);
+  // date: mm/dd/yyyy, dd-mm-yyyy, "Jan 5, 2026" etc.
+  var joined=lines.join(' ');
+  var m=joined.match(/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/);
+  if(m){
+    var a=+m[1],b=+m[2],y=+m[3]; if(y<100) y+=2000;
+    var mo=a,da=b;
+    if(a>12&&b<=12){ mo=b; da=a; }
+    if(mo>=1&&mo<=12&&da>=1&&da<=31&&y>2000&&y<2100)
+      out.date=y+'-'+String(mo).padStart(2,'0')+'-'+String(da).padStart(2,'0');
+  }
+  if(!out.date){
+    var mn=joined.match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2}),?\s+(\d{4})/i);
+    if(mn){
+      var months=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+      out.date=mn[3]+'-'+String(months.indexOf(mn[1].toLowerCase().slice(0,3))+1).padStart(2,'0')+'-'+String(+mn[2]).padStart(2,'0');
+    }
+  }
+  // merchant: first line that looks like a name (letters, not receipt boilerplate)
+  for(var i=0;i<Math.min(lines.length,6);i++){
+    var L=lines[i];
+    if(/receipt|invoice|official|tel|vat|tin|date|cashier|address/i.test(L)) continue;
+    if((L.match(/[A-Za-z]/g)||[]).length>=3&&L.length<=48){ out.merchant=L.replace(/[^\w\s&.'-]/g,'').trim(); break; }
+  }
+  // category guess
+  var lower=joined.toLowerCase();
+  if(/grab|taxi|fare|gas|petron|shell|caltex|parking|toll/.test(lower)) out.category='Transport';
+  else if(/grocery|supermarket|mart|hardware|supplies|wax|craft/.test(lower)) out.category='Inventory / Supplies';
+  else if(/meralco|electric|water|internet|pldt|globe|converge|rent/.test(lower)) out.category='Rent & Utilities';
+  else if(/facebook|meta|google|ads|boost/.test(lower)) out.category='Marketing & Ads';
+  return out;
+}
+function scanReceipt(btn){
+  var form=btn.closest('form');
+  if(!form) return;
+  var img=form.elements['receipt']?form.elements['receipt'].value:'';
+  if(!img){ toast('Attach a receipt photo first, then scan.','warn'); return; }
+  var origLabel=btn.innerHTML;
+  btn.disabled=true;
+  btn.textContent='Loading OCR engine…';
+  loadTesseract().then(function(T){
+    btn.textContent='Scanning… 0%';
+    return T.recognize(img,'eng',{logger:function(m){
+      if(m.status==='recognizing text') btn.textContent='Scanning… '+Math.round((m.progress||0)*100)+'%';
+    }});
+  }).then(function(res){
+    var parsed=parseReceiptText(res&&res.data?res.data.text:'');
+    var filled=[];
+    if(parsed.amount&&form.elements['amount']&&!num(form.elements['amount'].value)){ form.elements['amount'].value=parsed.amount; filled.push('amount '+fmtMoney(parsed.amount)); }
+    if(parsed.date&&form.elements['date']){ form.elements['date'].value=parsed.date; filled.push('date'); }
+    if(parsed.merchant&&form.elements['note']&&!form.elements['note'].value.trim()){ form.elements['note'].value=parsed.merchant; filled.push('merchant "'+parsed.merchant+'"'); }
+    if(parsed.category&&form.elements['category']){
+      var sel=form.elements['category'];
+      for(var i=0;i<sel.options.length;i++){ if(sel.options[i].value===parsed.category){ sel.value=parsed.category; filled.push('category'); break; } }
+    }
+    if(filled.length) toast('Scanned ✓ Prefilled: '+filled.join(', ')+'. Double-check before saving!');
+    else toast('Scanned the photo but could not confidently read values — enter them manually.','warn');
+  }).catch(function(err){
+    toast('OCR failed: '+err.message,'error');
+  }).then(function(){
+    btn.disabled=false;
+    btn.innerHTML=origLabel;
+  });
+}
+document.addEventListener('click',function(e){
+  var el=e.target.closest('[data-action="ocr-scan"]');
+  if(el) scanReceipt(el);
 });
 
 /* keyboard: Escape closes modal / sidebar */
