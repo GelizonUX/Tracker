@@ -649,6 +649,7 @@ var ICONS = {
   print:'<path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>',
   box:'<path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12"/>',
   bank:'<path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"/>',
+  ledger:'<path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><path d="M9 7h7M9 11h5"/>',
   truck:'<rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>',
   palette:'<circle cx="12" cy="12" r="10"/><circle cx="8" cy="10" r="1.2" fill="currentColor"/><circle cx="12" cy="7.5" r="1.2" fill="currentColor"/><circle cx="16" cy="10" r="1.2" fill="currentColor"/><path d="M12 22a10 10 0 010-20 10 9 0 0110 9 5 5 0 01-5 5h-2.2a2 2 0 00-1.5 3.3c.3.4.5.8.5 1.2a1.5 1.5 0 01-1.8 1.5z"/>',
   logo:'<path d="M8 22l5-6 4 3 7-9" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
@@ -666,7 +667,7 @@ var DEFAULT_STATE={
     customCats:{ income:[], expense:[] },
     sync:{ url:'https://love-notes-eae0b-default-rtdb.firebaseio.com', path:'bizpilot', enabled:false, lastSync:null },
     productCats:['Candle','Keychain','Gift Box'], productAttrs:['Scent','Color'],
-    moduleLabels:{}, bizAddress:'', bizPhone:'', onboarded:false, lang:'en' },
+    moduleLabels:{}, bizAddress:'', bizPhone:'', onboarded:false, lang:'en', payQR:'', payQRLabel:'' },
   invoices:[],  // {id,number,client,desc,amount,issueDate,dueDate,status,paidDate,createdAt}
   recurring:[], // {id,type,amount,category,note,client,day,active,lastPosted,startMonth}
   offers:[],    // {id,name,price,desc}
@@ -674,6 +675,7 @@ var DEFAULT_STATE={
   orders:[],    // {id,number,clientName,contact,address,items:[{productId,name,qty,price}],shipFee,discount,status,payStatus,orderDate,deliveryDate,note,incomeRecorded}
   customModules:[], // {id,name,icon,fields:[{key,label,type,options}],records:[]}
   materials:[],     // {id,name,unit,stock,lowStock,cost}  — raw materials; products reference via bom
+  utang:[],         // {id,clientName,amount,date,note,payments:[{id,amount,date,note}],settled}
   accounts:[],      // {id,name,type,opening,note,adjust:[{id,delta,date,note}]}
   transfers:[],     // {id,from,to,amount,date,note} — not revenue/expense, just money moving
   finance:[],   // {id,type:'income'|'expense',amount,category,date,note,client}
@@ -1045,6 +1047,20 @@ function buildInsights(){
     if(d>=3&&(!oldestUnpaid||d>oldestUnpaid.d)) oldestUnpaid={o:o,d:d};
   });
   if(oldestUnpaid) out.push({sev:'warn',title:'Follow up on '+oldestUnpaid.o.number,text:oldestUnpaid.o.clientName+' has not paid for '+oldestUnpaid.d+' days ('+fmtMoney(orderTotal(oldestUnpaid.o))+'). A friendly nudge today usually does it.'});
+  var ut=utangTotals();
+  if(ut.total>0){
+    var avgRev=avgMonthlyRevenue(3);
+    if(avgRev>0&&ut.total>avgRev*0.3) out.push({sev:'warn',title:'Utang is piling up',text:fmtMoney(ut.total)+' is sitting in your lista — that is '+fmtPct(ut.total/avgRev*100,0)+' of a typical month\'s revenue. Collect gently but consistently.'});
+    else out.push({sev:'info',title:'Lista balance: '+fmtMoney(ut.total),text:ut.customers+' customer'+(ut.customers>1?'s':'')+' with open utang. Payments are recorded as income only when cash actually arrives.'});
+  }
+  var evs=phSeasonalEvents();
+  if(evs.length){
+    var e0=evs[0];
+    var d0=Math.ceil((e0.date-new Date())/86400000);
+    var lastYearMK=shiftMonth(thisMonthKey(),-12);
+    var lyRevenue=(monthlyMap()[lastYearMK]||{}).revenue;
+    out.push({sev:'info',title:'📅 '+e0.name+' in '+d0+' days',text:e0.tip+(lyRevenue?' Last year this month you made '+fmtMoney(lyRevenue)+'.':'')});
+  }
   var wb=winBackList();
   if(wb.length) out.push({sev:'info',title:wb.length+' customer'+(wb.length>1?'s':'')+' ready for a win-back message',text:wb[0].name+' last bought '+wb[0].days+' days ago. A candle burns out in ~6 weeks — perfect timing to say hi.'});
   var openOrders=(state.orders||[]).filter(function(o){ return o.status!=='Delivered'&&o.status!=='Cancelled'; });
@@ -1159,6 +1175,7 @@ var ROUTES=[
   {id:'metrics',label:'Metrics & KPIs',icon:'metrics',section:'Money'},
   {id:'products',label:'Products & Stock',icon:'box',section:'Shop'},
   {id:'orders',label:'Orders',icon:'truck',section:'Shop'},
+  {id:'utang',label:'Utang / Lista',icon:'ledger',section:'Shop'},
   {id:'goals',label:'Goals',icon:'goals',section:'Execution'},
   {id:'roadmap',label:'Roadmap',icon:'roadmap',section:'Execution'},
   {id:'tasks',label:'Tasks',icon:'tasks',section:'Execution'},
@@ -1195,7 +1212,7 @@ function render(){
   var main=byId('main');
   var views={
     dashboard:viewDashboard, insights:viewInsights, finance:viewFinance,
-    invoices:viewInvoices, report:viewReport, products:viewProducts, orders:viewOrders, accounts:viewAccounts,
+    invoices:viewInvoices, report:viewReport, products:viewProducts, orders:viewOrders, accounts:viewAccounts, utang:viewUtang,
     calculators:viewCalculators, metrics:viewMetrics, goals:viewGoals,
     roadmap:viewRoadmap, tasks:viewTasks, clients:viewClients,
     notes:viewNotes, reviews:viewReviews, settings:viewSettings
@@ -2193,6 +2210,12 @@ function viewSettings(){
     '</select></div>'+
     '<div class="field"><label>Default tax rate (%)</label><input class="input" type="number" step="any" min="0" max="60" name="taxRate" value="'+esc(s.taxRate)+'"></div></div>'+
     '<div class="field"><label>Monthly revenue target ('+esc(s.currency)+')</label><input class="input" type="number" step="any" min="0" name="monthlyTarget" value="'+(s.monthlyTarget||'')+'" placeholder="e.g. 100000"><p style="font-size:.74rem;color:var(--text-3);margin-top:4px">Used on the dashboard and in insights to track each month’s pace.</p></div>'+
+    '<div class="field"><label>Payment QR (GCash / Maya — shows on invoices, delivery slips & catalog)</label><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'+
+      '<img class="img-thumb-lg img-prev" src="'+(s.payQR||'')+'" style="'+(s.payQR?'':'display:none')+'" alt="">'+
+      '<input type="file" accept="image/*" class="input img-input" style="flex:1;min-width:140px;padding:6px">'+
+      '<input type="hidden" name="payQR" value="'+esc(s.payQR||'')+'">'+
+      (s.payQR?'<button type="button" class="btn btn-sm btn-danger" data-action="img-clear">'+icon('x')+' Remove</button>':'')+
+    '</div><input class="input" name="payQRLabel" value="'+esc(s.payQRLabel||'')+'" placeholder="e.g. GCash · 0917 123 4567 · Juana D." style="margin-top:7px"></div>'+
     '<div class="field"><label>Language / Wika</label><select class="input" name="lang">'+
       '<option value="en"'+((s.lang||'en')==='en'?' selected':'')+'>English</option>'+
       '<option value="tl"'+(s.lang==='tl'?' selected':'')+'>Taglish</option>'+
@@ -2691,6 +2714,12 @@ function loadSampleData(){
   ];
   // delivered+paid order's income entry so books match
   state.finance.push({id:uid(),type:'income',amount:988,date:d(0,Math.max(1,new Date().getDate()-1)),category:'Sales',note:'Order ORD-0002 (“Thinking of You” Gift Box×1, Citrus Burst Candle×1)',client:'Joanna Reyes',offer:''});
+  // utang / lista
+  state.utang=[
+    {id:uid(),clientName:'Mika Santos',amount:698,date:d(-1,18),note:'2 Lavender candles — bayad sa sweldo',settled:false,
+      payments:[{id:uid(),amount:300,date:d(0,Math.max(1,new Date().getDate()-5)),note:'partial — GCash'}]},
+    {id:uid(),clientName:'Carlo Dizon',amount:1047,date:d(-2,10),note:'Gift box + candle, birthday ng nanay',settled:false,payments:[]}
+  ];
   // a sample custom module to show the builder
   var supF1='f'+uid(),supF2='f'+uid(),supF3='f'+uid(),supF4='f'+uid();
   state.customModules=[
@@ -3016,6 +3045,8 @@ document.addEventListener('submit',function(e){
     state.settings.monthlyTarget=Math.max(0,num(fv(form,'monthlyTarget')));
     state.settings.autoBackupDays=num(fv(form,'autoBackupDays'));
     state.settings.lang=fv(form,'lang')||'en';
+    state.settings.payQR=form.elements['payQR']?form.elements['payQR'].value:'';
+    state.settings.payQRLabel=fv(form,'payQRLabel');
     commit(); toast(state.settings.lang==='tl'?'Na-save na! Taglish mode activated. 🇵🇭':'Settings saved.');
     return;
   }
@@ -3358,6 +3389,7 @@ function printInvoice(iv){
     '<tr class="pr-total"><td>Total due</td><td class="num">'+fmtMoney(iv.amount)+'</td></tr>'+
     '</tbody></table>'+
     '<p style="margin-top:14px">Status: <b>'+esc(iv.status)+(iv.status==='Paid'&&iv.paidDate?' on '+fmtDate(iv.paidDate):'')+'</b></p>'+
+    payQRDocHTML()+
     '<div class="pr-foot">Generated by '+esc(state.settings.businessName)+' · '+fmtDate(todayISO())+'</div>'+
     '</div>';
   printDoc(html);
@@ -4084,6 +4116,7 @@ function printOrderSlip(o){
     '<tr class="pr-total"><td colspan="3">Total '+(o.payStatus==='Paid'?'(PAID)':'(to collect)')+'</td><td class="num">'+fmtMoney(orderTotal(o))+'</td></tr>'+
     '</tbody></table>'+
     (o.note?'<h2>Note</h2><p>'+esc(o.note)+'</p>':'')+
+    (o.payStatus!=='Paid'?payQRDocHTML():'')+
     '<div class="pr-foot">Thank you for your order! · '+esc(state.settings.businessName)+'</div></div>';
   printDoc(html);
 }
@@ -5073,6 +5106,7 @@ function catalogDocHTML(){
         (p.desc?'<div style="font-size:.75rem;color:#777">'+esc(p.desc)+'</div>':'')+
         '<div style="font-size:1.05rem;font-weight:bold;margin-top:4px">'+fmtMoney(p.price)+'</div></div>';
     }).join('')+'</div>'+
+    payQRDocHTML()+
     '<div class="pr-foot">Message us to order! · '+esc(state.settings.businessName)+'</div></div>';
 }
 function copyCatalogText(){
@@ -5504,6 +5538,15 @@ function todayPanelHTML(){
   if(low.length) items.push({cls:'warn',icon:'box',text:'<b>'+esc(low[0].name)+'</b>'+(low.length>1?' +'+(low.length-1)+' more':'')+' low on stock',route:'products'});
   var lowMat=(state.materials||[]).filter(function(m){ return m.stock<=(m.lowStock!=null?m.lowStock:0); });
   if(lowMat.length) items.push({cls:'warn',icon:'box',text:'<b>'+esc(lowMat[0].name)+'</b> running out — restock materials',route:'products'});
+  // utang overdue
+  var od=utangOverdue();
+  if(od.count) items.push({cls:'warn',icon:'ledger',text:'<b>'+od.count+'</b> lista entr'+(od.count>1?'ies':'y')+' 30+ days old ('+fmtMoney(od.total)+') — singilin na nang mahinahon',route:'utang'});
+  // seasonal radar
+  var ev=phSeasonalEvents()[0];
+  if(ev){
+    var days=Math.ceil((ev.date-new Date())/86400000);
+    items.push({cls:'info',icon:'spark',text:'<b>'+esc(ev.name)+'</b> in '+days+' day'+(days===1?'':'s')+' — '+esc(ev.tip),route:'products'});
+  }
   // cash position (always shown when accounts exist)
   if((state.accounts||[]).length){
     var cash=sum(state.accounts,accountBalance);
@@ -5537,7 +5580,8 @@ function storageCardHTML(){
   return '<div class="card"><div class="card-head"><h3>Storage health</h3><span class="spacer"></span><span class="badge '+cls+'">'+fmtNum(pct,0)+'% used</span></div>'+
     '<div class="progress thick"><div class="bar '+cls+'" style="width:'+pct+'%"></div></div>'+
     '<p style="font-size:.8rem;color:var(--text-2);margin-top:10px">'+fmtNum(u.bytes/1024,0)+' KB of ~5,120 KB browser storage. Photos: <b>'+u.photoCount+'</b> using '+fmtNum(u.photoBytes/1024,0)+' KB.'+
-    (pct>=65?' <b style="color:var(--'+(pct>=85?'risk':'warn')+')">Getting full</b> — export a backup, then remove old receipt photos (the entries stay; only the images go).':' Plenty of room.')+'</p></div>';
+    (pct>=65?' <b style="color:var(--'+(pct>=85?'risk':'warn')+')">Getting full</b> — export a backup, then remove old receipt photos (the entries stay; only the images go).':' Plenty of room.')+'</p>'+
+    '<button class="btn btn-sm btn-ghost" data-action="trim-receipts" style="margin-top:10px">'+icon('trash')+' Trim receipt photos older than 6 months</button></div>';
 }
 function storageWarnOnBoot(){
   var u=storageUsage();
@@ -5738,7 +5782,8 @@ var TL={
   'Materials':'Mga Materyales','Low / out':'Paubos / ubos','Material value':'Halaga ng materyales',
   'Orders this month':'Orders ngayong buwan','Best month':'Pinakamagandang buwan',
   /* misc visible */
-  'Today':'Ngayon','Scan & prefill from photo (beta)':'I-scan at i-prefill mula sa litrato (beta)'
+  'Today':'Ngayon','Scan & prefill from photo (beta)':'I-scan at i-prefill mula sa litrato (beta)',
+  'Utang / Lista':'Utang / Lista','Total utang':'Kabuuang utang','30+ days old':'30+ araw na','Settled all-time':'Nabayaran na (lahat)'
 };
 function tr(s){
   if(state&&state.settings&&state.settings.lang==='tl'&&TL[s]) return TL[s];
@@ -5849,6 +5894,224 @@ function scanReceipt(btn){
 document.addEventListener('click',function(e){
   var el=e.target.closest('[data-action="ocr-scan"]');
   if(el) scanReceipt(el);
+});
+
+/* ============================================================
+   v13 additions: Utang/Lista ledger, payment QR on documents,
+   PH seasonal radar, receipt photo cleanup tool
+   ============================================================ */
+
+/* ---------- utang / lista ---------- */
+function utangBalance(u){
+  return Math.max(0,Math.round((u.amount-sum(u.payments||[],function(p){return p.amount;}))*100)/100);
+}
+function utangTotals(){
+  var open=(state.utang||[]).filter(function(u){return !u.settled&&utangBalance(u)>0;});
+  var names={};
+  open.forEach(function(u){ names[(u.clientName||'').toLowerCase()]=1; });
+  return {total:sum(open,utangBalance),customers:Object.keys(names).length,open:open};
+}
+function utangOverdue(){
+  var od=(state.utang||[]).filter(function(u){
+    if(u.settled||utangBalance(u)<=0) return false;
+    return -daysUntil(u.date)>=30;
+  });
+  return {count:od.length,total:sum(od,utangBalance)};
+}
+function viewUtang(){
+  var ut=utangTotals();
+  var od=utangOverdue();
+  var mk=thisMonthKey();
+  var collected=0;
+  (state.utang||[]).forEach(function(u){ (u.payments||[]).forEach(function(p){ if(monthKey(p.date)===mk) collected+=p.amount; }); });
+  var html=topbar('Utang / Lista','Ang digital na listahan — credit ng mga suki, hulog-hulog na bayad, walang nakakalimutan.',
+    '<button class="btn btn-primary" data-action="utang-new">'+icon('plus')+'<span class="btn-txt">Ilista</span></button>');
+  html+='<div class="grid grid-4">'+
+    statCard('Total utang',fmtMoney(ut.total),'<span class="stat-delta flat">'+ut.customers+' customer'+(ut.customers===1?'':'s')+'</span>','','ledger')+
+    statCard('30+ days old',fmtMoney(od.total),od.count?'<span class="stat-delta down">'+od.count+' to follow up</span>':'<span class="stat-delta up">walang matagal na</span>','','clock')+
+    statCard('Collected this month',fmtMoney(collected),'<span class="stat-delta up">recorded as income on payment</span>','','cash')+
+    statCard('Settled all-time',String((state.utang||[]).filter(function(u){return u.settled||utangBalance(u)<=0;}).length),'','','check')+
+  '</div>';
+  var list=(state.utang||[]).slice().sort(function(a,b){
+    var ba=utangBalance(a)>0&&!a.settled, bb=utangBalance(b)>0&&!b.settled;
+    if(ba!==bb) return ba?-1:1;
+    return (a.date||'').localeCompare(b.date||'');
+  });
+  html+='<div class="card mt-lg">';
+  if(!list.length){
+    html+=emptyState('ledger','Walang utang sa lista','Kapag may suki na "bayad sa sweldo," ilista dito. Track partial payments (hulog), and the income is only counted when cash actually arrives — honest cash-basis bookkeeping.','<button class="btn btn-sm btn-primary" data-action="utang-new">'+icon('plus')+' Ilista ang una</button>');
+  } else {
+    // group by customer
+    var groups={};
+    list.forEach(function(u){
+      var k=(u.clientName||'?');
+      (groups[k]=groups[k]||[]).push(u);
+    });
+    Object.keys(groups).sort(function(a,b){
+      return sum(groups[b],utangBalance)-sum(groups[a],utangBalance);
+    }).forEach(function(name){
+      var entries=groups[name];
+      var bal=sum(entries.filter(function(u){return !u.settled;}),utangBalance);
+      html+='<div style="border-bottom:1px solid var(--border);padding:12px 2px">'+
+        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><b style="font-size:.95rem;flex:1">'+esc(name)+'</b>'+
+        (bal>0?'<span class="badge '+(entries.some(function(u){return !u.settled&&-daysUntil(u.date)>=30;})?'warn':'accent')+'" style="font-size:.8rem">balance: '+fmtMoney(bal)+'</span>':'<span class="badge good">'+icon('check')+' bayad na lahat</span>')+'</div>';
+      entries.forEach(function(u){
+        var b=utangBalance(u);
+        var done=u.settled||b<=0;
+        var age=-daysUntil(u.date);
+        html+='<div style="margin-top:8px;padding:9px 12px;background:var(--bg-sunken);border-radius:10px">'+
+          '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
+          '<span style="flex:1;font-size:.86rem;'+(done?'text-decoration:line-through;color:var(--text-3)':'')+'">'+esc(u.note||'Utang')+'</span>'+
+          '<span style="font-size:.72rem;color:var(--text-3)">'+fmtDate(u.date)+(!done&&age>=30?' · <b style="color:var(--warn)">'+age+'d</b>':'')+'</span>'+
+          '<b class="num" style="font-size:.9rem;'+(done?'color:var(--text-3)':'')+'">'+fmtMoney(u.amount)+'</b></div>';
+        if((u.payments||[]).length){
+          html+='<div style="margin-top:5px;font-size:.74rem;color:var(--text-2)">'+u.payments.map(function(p){
+            return '↳ hulog '+fmtMoney(p.amount)+' · '+fmtDate(p.date)+(p.note?' ('+esc(p.note)+')':'');
+          }).join('<br>')+'</div>';
+        }
+        if(!done){
+          html+='<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">'+
+            '<span class="badge risk">balanse: '+fmtMoney(b)+'</span>'+
+            '<button class="btn btn-sm btn-good" data-action="utang-pay" data-id="'+u.id+'">'+icon('cash')+' Hulog / Bayad</button>'+
+            '<button class="btn-icon" data-action="utang-edit" data-id="'+u.id+'">'+icon('edit')+'</button>'+
+            '<button class="btn-icon danger" data-action="utang-delete" data-id="'+u.id+'">'+icon('trash')+'</button></div>';
+        } else {
+          html+='<div style="display:flex;gap:6px;margin-top:6px"><button class="btn-icon danger" data-action="utang-delete" data-id="'+u.id+'">'+icon('trash')+'</button></div>';
+        }
+        html+='</div>';
+      });
+      html+='</div>';
+    });
+  }
+  html+='</div>';
+  html+='<p style="font-size:.74rem;color:var(--text-3);margin-top:10px">💡 Cash-basis ito: ang utang ay hindi pa kita. Income is recorded only when a hulog/bayad is received — kaya tugma lagi ang P&L sa totoong pera.</p>';
+  return html;
+}
+function utangModal(u){
+  var isEdit=!!u;
+  u=u||{date:todayISO()};
+  var body=
+    '<input type="hidden" name="id" value="'+(u.id||'')+'">'+
+    '<div class="field"><label>Customer *</label><input class="input" name="clientName" value="'+esc(u.clientName||'')+'" list="ut-clients" required placeholder="Sino ang umutang?"><datalist id="ut-clients">'+
+      state.clients.map(function(c){return '<option value="'+esc(c.name)+'">';}).join('')+'</datalist></div>'+
+    '<div class="form-row"><div class="field"><label>Halaga ('+esc(state.settings.currency)+') *</label><input class="input" type="number" step="any" min="0.01" name="amount" value="'+(u.amount||'')+'" required></div>'+
+    '<div class="field"><label>Petsa</label><input class="input" type="date" name="date" value="'+esc(u.date||todayISO())+'"></div></div>'+
+    '<div class="field"><label>Para saan</label><input class="input" name="note" value="'+esc(u.note||'')+'" placeholder="e.g. 2 candles — bayad sa sweldo"></div>'+
+    (isEdit?'':'<p style="font-size:.72rem;color:var(--text-3)">Hindi pa ito kita — mare-record ang income kapag nagbayad na (kahit hulog-hulog).</p>');
+  openModal(isEdit?'Edit lista':'Ilista ang utang',body,{submitLabel:isEdit?'Save':'Ilista',onSubmit:function(form){
+    var nm=fv(form,'clientName');
+    var amount=num(fv(form,'amount'));
+    if(!nm){ toast('Sino ang umutang? Enter the customer name.','error'); return false; }
+    if(amount<=0){ toast('Enter an amount greater than zero.','error'); return false; }
+    var id=fv(form,'id');
+    if(id){
+      var ex=state.utang.find(function(x){return x.id===id;});
+      if(ex){ ex.clientName=nm; ex.amount=amount; ex.date=fv(form,'date'); ex.note=fv(form,'note'); }
+      toast('Lista updated.');
+    } else {
+      state.utang.push({id:uid(),clientName:nm,amount:amount,date:fv(form,'date')||todayISO(),note:fv(form,'note'),payments:[],settled:false});
+      ensureClient({clientName:nm,contact:'',number:'lista'});
+      toast('Nailista na — '+fmtMoney(amount)+' kay '+nm+'.');
+    }
+    return true;
+  }});
+}
+function utangPayModal(u){
+  var bal=utangBalance(u);
+  var body=
+    '<input type="hidden" name="id" value="'+u.id+'">'+
+    '<p style="font-size:.86rem;color:var(--text-2);margin-bottom:12px"><b>'+esc(u.clientName)+'</b> — balanse: <b>'+fmtMoney(bal)+'</b>'+(u.note?' ('+esc(u.note)+')':'')+'</p>'+
+    '<div class="form-row"><div class="field"><label>Halaga ng bayad ('+esc(state.settings.currency)+') *</label><input class="input" type="number" step="any" min="0.01" max="'+bal+'" name="amount" value="'+bal+'" required></div>'+
+    '<div class="field"><label>Petsa</label><input class="input" type="date" name="date" value="'+todayISO()+'"></div></div>'+
+    '<div class="field"><label>Note</label><input class="input" name="note" placeholder="e.g. GCash, cash sa pickup…"></div>'+
+    '<label class="checkrow"><input type="checkbox" name="asIncome" checked> Record as income in Finance (cash received)</label>'+
+    ((state.accounts||[]).length?'<div class="field" style="margin-top:10px"><label>Deposit to account</label><select class="input" name="account"><option value="">— unassigned —</option>'+
+      state.accounts.map(function(a){return '<option value="'+a.id+'">'+esc(a.name)+'</option>';}).join('')+'</select></div>':'');
+  openModal('Hulog / Bayad — '+u.clientName,body,{submitLabel:'I-record ang bayad',onSubmit:function(form){
+    var ux=state.utang.find(function(x){return x.id===fv(form,'id');});
+    if(!ux) return true;
+    var amount=num(fv(form,'amount'));
+    var b=utangBalance(ux);
+    if(amount<=0){ toast('Enter an amount greater than zero.','error'); return false; }
+    if(amount>b+0.001){ toast('Sobra sa balanse ('+fmtMoney(b)+').','error'); return false; }
+    var date=fv(form,'date')||todayISO();
+    ux.payments=ux.payments||[];
+    ux.payments.push({id:uid(),amount:amount,date:date,note:fv(form,'note')});
+    if(utangBalance(ux)<=0) ux.settled=true;
+    if(form.elements['asIncome'].checked){
+      state.finance.push({id:uid(),type:'income',amount:amount,date:date,category:'Sales',note:'Hulog sa utang'+(ux.note?' — '+ux.note:'')+(fv(form,'note')?' ('+fv(form,'note')+')':''),client:ux.clientName,offer:'',account:form.elements['account']?fv(form,'account'):''});
+    }
+    toast(ux.settled?'🎉 Bayad na nang buo si '+ux.clientName+'!':'Hulog na-record — natitira: '+fmtMoney(utangBalance(ux)));
+    return true;
+  }});
+}
+
+/* ---------- payment QR on printed documents ---------- */
+function payQRDocHTML(){
+  var s=state.settings;
+  if(!s.payQR) return '';
+  return '<h2>Scan to pay</h2><div style="display:flex;gap:14px;align-items:center">'+
+    '<img src="'+s.payQR+'" style="width:150px;height:150px;object-fit:contain;border:1px solid #ccc;border-radius:8px">'+
+    (s.payQRLabel?'<div style="font-size:.95rem"><b>'+esc(s.payQRLabel)+'</b><br><span style="font-size:.8rem;color:#555">Send a screenshot after paying. Salamat po! 💛</span></div>':'')+
+    '</div>';
+}
+
+/* ---------- PH seasonal radar ---------- */
+function phSeasonalEvents(){
+  var now=new Date();
+  function nthSunday(year,month,n){
+    var d=new Date(year,month,1);
+    var first=1+((7-d.getDay())%7);
+    return new Date(year,month,first+7*(n-1));
+  }
+  var evs=[];
+  [now.getFullYear(),now.getFullYear()+1].forEach(function(y){
+    evs.push({name:"Valentine's Day",date:new Date(y,1,14),tip:'Gifting peak — romantic scents, couple bundles, pre-orders one week ahead.'});
+    evs.push({name:'Graduation season',date:new Date(y,2,20),tip:'March–April grads — congrats bundles and personalized keychains.'});
+    evs.push({name:"Mother's Day",date:nthSunday(y,4,2),tip:'One of the biggest gifting days of the year — gift boxes and floral scents.'});
+    evs.push({name:"Father's Day",date:nthSunday(y,5,3),tip:'Gifting bump — woody/masculine scents and keychains.'});
+    evs.push({name:"'Ber months kickoff",date:new Date(y,8,1),tip:'Christmas season starts NOW in PH — begin holiday production and teasers.'});
+    evs.push({name:'Christmas peak',date:new Date(y,11,15),tip:'Peak gifting week — last call for orders; ship/produce early.'});
+  });
+  evs=evs.filter(function(e){
+    var diff=(e.date-now)/86400000;
+    return diff>=0&&diff<=75;
+  }).sort(function(a,b){ return a.date-b.date; });
+  return evs;
+}
+
+/* ---------- receipt photo cleanup (storage longevity) ---------- */
+function trimOldReceipts(){
+  var cutoff=shiftMonth(thisMonthKey(),-6)+'-01';
+  var targets=state.finance.filter(function(e){ return e.receipt&&e.date<cutoff; });
+  if(!targets.length){ toast('No receipt photos older than 6 months — storage is clean. ✨','good'); return; }
+  var bytes=sum(targets,function(e){return e.receipt.length;})*2;
+  if(!confirm('Remove '+targets.length+' receipt photo'+(targets.length>1?'s':'')+' older than 6 months (frees ~'+fmtNum(bytes/1024,0)+' KB)? The entries and amounts stay — only the images are removed. Export a backup first if you need them for taxes.')) return;
+  snapshotForUndo();
+  targets.forEach(function(e){ e.receipt=''; });
+  commit();
+  toast(targets.length+' old receipt photos removed — ~'+fmtNum(bytes/1024,0)+' KB freed.','good',{undo:true});
+}
+
+/* ---------- v13 wiring ---------- */
+document.addEventListener('click',function(e){
+  var el=e.target.closest('[data-action]');
+  if(!el) return;
+  var action=el.getAttribute('data-action');
+  var id=el.getAttribute('data-id');
+  if(action==='utang-new'){ utangModal(); return; }
+  if(action==='utang-edit'){ var u=state.utang.find(function(x){return x.id===id;}); if(u) utangModal(u); return; }
+  if(action==='utang-pay'){ var u2=state.utang.find(function(x){return x.id===id;}); if(u2) utangPayModal(u2); return; }
+  if(action==='utang-delete'){
+    var u3=state.utang.find(function(x){return x.id===id;});
+    if(u3&&confirm('Delete this lista entry for '+u3.clientName+'? Payments already recorded as income stay in Finance.')){
+      snapshotForUndo();
+      state.utang=state.utang.filter(function(x){return x.id!==id;});
+      commit(); toast('Lista entry deleted.','warn',{undo:true});
+    }
+    return;
+  }
+  if(action==='trim-receipts'){ trimOldReceipts(); return; }
 });
 
 /* keyboard: Escape closes modal / sidebar */
