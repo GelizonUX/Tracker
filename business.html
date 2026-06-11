@@ -682,7 +682,7 @@ function save(){
     toast('Could not save — browser storage may be full.','error');
   }
 }
-function commit(){ save(); render(); }
+function commit(){ save(); render(); flashSaved(); }
 
 /* ---------- toast ---------- */
 function toast(msg,type){
@@ -693,6 +693,43 @@ function toast(msg,type){
   el.innerHTML='<span class="t-icon">'+icon(ic)+'</span><div>'+esc(msg)+'</div>';
   root.appendChild(el);
   setTimeout(function(){ el.classList.add('out'); setTimeout(function(){ el.remove(); },320); },3400);
+}
+
+/* ---------- visible failure: nothing breaks silently ---------- */
+window.addEventListener('error',function(e){
+  try{ toast('Something went wrong: '+(e.message||'unknown error'),'error'); }catch(_){ }
+});
+window.addEventListener('unhandledrejection',function(e){
+  try{ toast('Background task failed: '+((e.reason&&e.reason.message)||'unknown error'),'error'); }catch(_){ }
+});
+var storageOk=true;
+function probeStorage(){
+  try{
+    var k='__bizpilot_probe__';
+    localStorage.setItem(k,'1'); localStorage.removeItem(k);
+    storageOk=true;
+  }catch(e){ storageOk=false; }
+  if(!storageOk){
+    var bar=document.createElement('div');
+    bar.style.cssText='position:fixed;top:0;left:0;right:0;z-index:300;background:#b91c1c;color:#fff;font-size:.82rem;font-weight:600;text-align:center;padding:8px 14px;font-family:inherit';
+    bar.textContent='⚠ This browser is blocking storage — your data will NOT survive closing this tab. Open this file in Chrome, Edge, Firefox or Safari directly (not inside a chat app’s built-in viewer) and avoid private/incognito mode.';
+    document.body.appendChild(bar);
+  }
+}
+var savedFlashTimer=null;
+function flashSaved(){
+  var chip=byId('saved-chip');
+  if(!chip){
+    chip=document.createElement('div');
+    chip.id='saved-chip';
+    chip.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:250;background:var(--good);color:#fff;font-size:.78rem;font-weight:700;padding:5px 14px;border-radius:99px;box-shadow:var(--shadow);opacity:0;transition:opacity .25s;pointer-events:none;font-family:inherit';
+    chip.textContent='✓ Saved';
+    document.body.appendChild(chip);
+  }
+  chip.textContent=storageOk?'✓ Saved':'✓ Saved (this session only — storage blocked)';
+  chip.style.opacity='1';
+  clearTimeout(savedFlashTimer);
+  savedFlashTimer=setTimeout(function(){ chip.style.opacity='0'; },1400);
 }
 
 /* ---------- modal ---------- */
@@ -1101,6 +1138,7 @@ function topbar(title,subtitle,actionsHTML){
     '<button class="hamburger" data-action="open-sidebar" aria-label="Menu">'+icon('menu')+'</button>'+
     '<div class="page-title"><h1>'+esc(title)+'</h1><p>'+esc(subtitle||'')+'</p></div>'+
     '<div class="topbar-actions">'+(actionsHTML||'')+
+      '<button class="theme-toggle" data-action="open-palette" aria-label="Search everything (Ctrl+K)" title="Search everything (Ctrl+K)">'+icon('search')+'</button>'+
       '<button class="theme-toggle" data-action="toggle-theme" aria-label="Toggle theme">'+icon(document.documentElement.getAttribute('data-theme')==='dark'?'sun':'moon')+'</button>'+
     '</div></div>';
 }
@@ -1353,6 +1391,7 @@ function financeEntriesHTML(){
 
   var html='<div class="card"><div class="card-head">'+
     '<div class="searchbar">'+icon('search')+'<input class="input" placeholder="Search note, category, client…" value="'+esc(f.q)+'" data-action-input="finance-search"></div>'+
+    '<button class="btn btn-ghost btn-sm" data-action="export-csv" data-what="finance" title="Export all entries to CSV">'+icon('download')+' CSV</button>'+
     '<select class="input" style="width:auto" data-action-change="finance-filter-type"><option value="all"'+(f.type==='all'?' selected':'')+'>All types</option><option value="income"'+(f.type==='income'?' selected':'')+'>Income</option><option value="expense"'+(f.type==='expense'?' selected':'')+'>Expenses</option></select>'+
     '<select class="input" style="width:auto" data-action-change="finance-filter-month"><option value="all">All months</option>'+months.map(function(m){return '<option value="'+m+'"'+(f.month===m?' selected':'')+'>'+monthLabel(m)+'</option>';}).join('')+'</select>'+
     '<select class="input" style="width:auto" data-action-change="finance-filter-cat"><option value="all">All categories</option>'+Object.keys(cats).sort().map(function(c){return '<option value="'+esc(c)+'"'+(f.category===c?' selected':'')+'>'+esc(c)+'</option>';}).join('')+'</select>'+
@@ -1802,6 +1841,7 @@ function viewNotes(){
 var CLIENT_STATUSES=['Lead','Active','Inactive','Churned'];
 function viewClients(){
   var html=topbar('Clients','A lightweight CRM — know who pays you and where your pipeline stands.',
+    '<button class="btn btn-ghost" data-action="export-csv" data-what="clients">'+icon('download')+'<span class="btn-txt">CSV</span></button>'+
     '<button class="btn btn-primary" data-action="open-client-modal">'+icon('plus')+'<span class="btn-txt">Add client</span></button>');
   var byStatus={}; CLIENT_STATUSES.forEach(function(s){byStatus[s]=0;});
   state.clients.forEach(function(c){ byStatus[c.status]=(byStatus[c.status]||0)+1; });
@@ -2732,8 +2772,10 @@ document.addEventListener('submit',function(e){
 
   if(form.id==='modal-form'){
     if(modalSubmitHandler){
-      var ok=modalSubmitHandler(form);
-      if(ok!==false){ closeModal(); commit(); }
+      var ok;
+      try{ ok=modalSubmitHandler(form); }
+      catch(err){ console.error(err); toast('Save failed: '+(err&&err.message?err.message:'unexpected error')+'. Please report this.','error'); return; }
+      if(ok!==false){ closeModal(); commit(); flashSaved(); }
     } else closeModal();
     return;
   }
@@ -3494,6 +3536,7 @@ function viewProducts(){
   var stockValue=sum(prods,function(p){return (p.cost||0)*Math.max(0,p.stock);});
   var retailValue=sum(prods,function(p){return (p.price||0)*Math.max(0,p.stock);});
   var html=topbar('Products & Stock','Your catalog with live inventory — orders pull from here automatically.',
+    '<button class="btn btn-ghost" data-action="export-csv" data-what="products">'+icon('download')+'<span class="btn-txt">CSV</span></button>'+
     '<button class="btn btn-primary" data-action="product-new">'+icon('plus')+'<span class="btn-txt">Add product</span></button>');
   html+='<div class="grid grid-4">'+
     statCard('Products',String(prods.length),'','','box')+
@@ -3641,6 +3684,7 @@ function viewOrders(){
   var curM=thisMonthKey();
   var monthOrders=orders.filter(function(o){return monthKey(o.orderDate)===curM&&o.status!=='Cancelled';});
   var html=topbar('Orders','From order to doorstep — stock, payments and income all update automatically.',
+    '<button class="btn btn-ghost" data-action="export-csv" data-what="orders">'+icon('download')+'<span class="btn-txt">CSV</span></button>'+
     '<button class="btn btn-primary" data-action="order-new">'+icon('plus')+'<span class="btn-txt">New order</span></button>');
   html+='<div class="grid grid-4">'+
     statCard('To fulfill',String(open.length),'','','truck')+
@@ -3833,6 +3877,7 @@ function cmFooterHTML(m){
   return '<div class="card mt"><div class="card-head"><h3>Module settings</h3></div><div style="display:flex;gap:8px;flex-wrap:wrap">'+
     '<button class="btn btn-ghost btn-sm" data-action="custom-module-edit" data-id="'+m.id+'">'+icon('edit')+' Rename / icon</button>'+
     '<button class="btn btn-ghost btn-sm" data-action="custom-module-fields" data-id="'+m.id+'">'+icon('settings')+' Manage fields</button>'+
+    '<button class="btn btn-ghost btn-sm" data-action="export-csv" data-what="module" data-id="'+m.id+'">'+icon('download')+' Export CSV</button>'+
     '<button class="btn btn-danger btn-sm" data-action="custom-module-delete" data-id="'+m.id+'">'+icon('trash')+' Delete module</button></div></div>';
 }
 function customModuleModal(m){
@@ -4125,6 +4170,154 @@ document.addEventListener('input',function(e){
   if(again){ again.focus(); try{ again.setSelectionRange(pos,pos); }catch(_){} }
 });
 
+/* ============================================================
+   v4 additions: command palette (Ctrl+K), CSV exports
+   ============================================================ */
+
+/* ---------- CSV export ---------- */
+function downloadCSV(filename,rows){
+  try{
+    var csv=rows.map(function(r){
+      return r.map(function(c){
+        c=c==null?'':String(c);
+        return /[",\n]/.test(c)?'"'+c.replace(/"/g,'""')+'"':c;
+      }).join(',');
+    }).join('\r\n');
+    var blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); },2000);
+    toast('CSV exported — opens in Excel / Google Sheets.');
+  }catch(e){ toast('CSV export failed: '+e.message,'error'); }
+}
+function exportCSV(what,id){
+  var today=todayISO();
+  if(what==='finance'){
+    var rows=[['Date','Type','Category','Amount','Note','Client']];
+    state.finance.slice().sort(function(a,b){return (a.date||'').localeCompare(b.date||'');}).forEach(function(e){
+      rows.push([e.date,e.type,e.category||'',e.amount,e.note||'',e.client||'']);
+    });
+    downloadCSV('finance-'+today+'.csv',rows);
+  } else if(what==='products'){
+    var attrs=productAttrs();
+    var rows2=[['Name','SKU','Category'].concat(attrs).concat(['Price','Cost','Stock','Low-stock at','Notes'])];
+    (state.products||[]).forEach(function(p){
+      rows2.push([p.name,p.sku||'',p.category||''].concat(attrs.map(function(a){return (p.attrs||{})[a]||'';})).concat([p.price,p.cost||0,p.stock,p.lowStock!=null?p.lowStock:'',p.desc||'']));
+    });
+    downloadCSV('products-'+today+'.csv',rows2);
+  } else if(what==='orders'){
+    var rows3=[['Order #','Date','Customer','Contact','Address','Items','Total','Status','Payment','Deliver by','Note']];
+    (state.orders||[]).forEach(function(o){
+      rows3.push([o.number,o.orderDate,o.clientName,o.contact||'',o.address||'',(o.items||[]).map(function(it){return it.name+' x'+it.qty;}).join('; '),orderTotal(o),o.status,o.payStatus,o.deliveryDate||'',o.note||'']);
+    });
+    downloadCSV('orders-'+today+'.csv',rows3);
+  } else if(what==='clients'){
+    var rows4=[['Name','Status','Contact','Est. value/mo','Notes']];
+    state.clients.forEach(function(c){ rows4.push([c.name,c.status,c.contact||'',c.value||0,c.note||'']); });
+    downloadCSV('clients-'+today+'.csv',rows4);
+  } else if(what==='module'){
+    var m=findModule(id);
+    if(!m) return;
+    var rows5=[m.fields.map(function(f){return f.label;})];
+    (m.records||[]).forEach(function(r){
+      rows5.push(m.fields.map(function(f){
+        var v=r[f.key];
+        if(f.type==='check') return v?'Yes':'No';
+        return v==null?'':v;
+      }));
+    });
+    downloadCSV(m.name.toLowerCase().replace(/[^a-z0-9]+/g,'-')+'-'+today+'.csv',rows5);
+  }
+}
+
+/* ---------- command palette (Ctrl+K) ---------- */
+function paletteIndex(){
+  var items=[];
+  var labels=state.settings.moduleLabels||{};
+  visibleRoutes().forEach(function(r){
+    items.push({label:labels[r.id]||r.label,sub:'Go to section',icon:r.icon,route:r.id});
+  });
+  (state.customModules||[]).forEach(function(m){
+    items.push({label:m.name,sub:'Your custom module',icon:m.icon||'notes',route:'custom-'+m.id});
+  });
+  (state.products||[]).forEach(function(p){
+    if(p.active===false) return;
+    items.push({label:p.name,sub:'Product · '+fmtMoney(p.price)+' · '+p.stock+' in stock',icon:'box',route:'products'});
+  });
+  state.clients.forEach(function(c){ items.push({label:c.name,sub:'Client · '+c.status,icon:'clients',route:'clients'}); });
+  (state.orders||[]).forEach(function(o){ items.push({label:o.number+' — '+(o.clientName||''),sub:'Order · '+o.status+' · '+fmtMoney(orderTotal(o)),icon:'truck',route:'orders'}); });
+  (state.invoices||[]).forEach(function(iv){ items.push({label:iv.number+' — '+iv.client,sub:'Invoice · '+iv.status+' · '+fmtMoney(iv.amount),icon:'invoice',route:'invoices'}); });
+  state.notes.forEach(function(n){ items.push({label:n.title||'Untitled',sub:'Note · '+(n.category||'General'),icon:'notes',route:'notes',noteId:n.id}); });
+  state.goals.forEach(function(g){ items.push({label:g.title,sub:'Goal · '+fmtPct(goalProgress(g).pct,0)+' done',icon:'goals',route:'goals'}); });
+  state.tasks.forEach(function(t){ if(!t.done) items.push({label:t.title,sub:'Task · '+(t.priority||'Medium'),icon:'tasks',route:'tasks'}); });
+  return items;
+}
+function openPalette(){
+  var root=byId('modal-root');
+  modalSubmitHandler=null;
+  root.innerHTML='<div class="modal-overlay" data-action="close-modal-overlay" style="padding-top:12vh">'+
+    '<div class="modal" role="dialog" aria-modal="true" style="max-width:560px">'+
+    '<div class="modal-body" style="padding:14px">'+
+    '<div class="searchbar" style="max-width:none">'+icon('search')+'<input class="input" id="palette-input" placeholder="Search products, orders, clients, notes, sections…" autocomplete="off"></div>'+
+    '<div id="palette-results" style="margin-top:10px;max-height:46vh;overflow-y:auto"></div>'+
+    '<p style="font-size:.7rem;color:var(--text-3);margin-top:8px">Tip: press <b>Ctrl+K</b> (or ⌘K) anywhere to open this. Enter opens the first result.</p>'+
+    '</div></div></div>';
+  renderPaletteResults('');
+  var inp=byId('palette-input');
+  if(inp) setTimeout(function(){ inp.focus(); },60);
+}
+function renderPaletteResults(q){
+  var box=byId('palette-results');
+  if(!box) return;
+  var items=paletteIndex();
+  q=(q||'').toLowerCase().trim();
+  var matches=q?items.filter(function(it){ return (it.label+' '+it.sub).toLowerCase().indexOf(q)>=0; })
+               :items.slice(0,12);
+  matches=matches.slice(0,14);
+  if(!matches.length){ box.innerHTML='<p style="font-size:.85rem;color:var(--text-3);padding:14px;text-align:center">Nothing found for “'+esc(q)+'”.</p>'; return; }
+  box.innerHTML=matches.map(function(it,i){
+    return '<button class="nav-item palette-item" style="color:var(--text);width:100%" data-action="palette-go" data-route="'+esc(it.route)+'"'+(it.noteId?' data-note="'+it.noteId+'"':'')+'>'+
+      icon(it.icon)+'<span style="flex:1;text-align:left;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(it.label)+'</span>'+
+      '<span style="font-size:.7rem;color:var(--text-3);white-space:nowrap">'+esc(it.sub)+'</span></button>';
+  }).join('');
+}
+
+/* ---------- v4 wiring ---------- */
+document.addEventListener('click',function(e){
+  var el=e.target.closest('[data-action]');
+  if(!el) return;
+  var action=el.getAttribute('data-action');
+  if(action==='open-palette'){ openPalette(); return; }
+  if(action==='palette-go'){
+    var route=el.getAttribute('data-route');
+    var noteId=el.getAttribute('data-note');
+    closeModal();
+    nav(route);
+    if(noteId) setTimeout(function(){
+      var n=state.notes.find(function(x){return x.id===noteId;});
+      if(n) noteModal(n);
+    },80);
+    return;
+  }
+  if(action==='export-csv'){ exportCSV(el.getAttribute('data-what'),el.getAttribute('data-id')); return; }
+});
+document.addEventListener('input',function(e){
+  if(e.target&&e.target.id==='palette-input') renderPaletteResults(e.target.value);
+});
+document.addEventListener('keydown',function(e){
+  if((e.ctrlKey||e.metaKey)&&(e.key==='k'||e.key==='K')){
+    e.preventDefault();
+    if(byId('palette-input')) closeModal(); else openPalette();
+  }
+  if(e.key==='Enter'&&e.target&&e.target.id==='palette-input'){
+    e.preventDefault();
+    var first=document.querySelector('#palette-results .palette-item');
+    if(first) first.click();
+  }
+});
+
 /* keyboard: Escape closes modal / sidebar */
 document.addEventListener('keydown',function(e){
   if(e.key==='Escape'){
@@ -4143,6 +4336,7 @@ loadState();
 processRecurring();
 applyTheme();
 render();
+probeStorage();
 autoBackupCheck();
 
 /* backup reminder — once per session if data exists and backup is stale */
