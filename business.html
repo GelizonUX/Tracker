@@ -611,6 +611,8 @@ var ICONS = {
   report:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 16v-5M12 16V8M16 16v-3"/>',
   cloud:'<path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z"/>',
   print:'<path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>',
+  box:'<path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12"/>',
+  truck:'<rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>',
   palette:'<circle cx="12" cy="12" r="10"/><circle cx="8" cy="10" r="1.2" fill="currentColor"/><circle cx="12" cy="7.5" r="1.2" fill="currentColor"/><circle cx="16" cy="10" r="1.2" fill="currentColor"/><path d="M12 22a10 10 0 010-20 10 9 0 0110 9 5 5 0 01-5 5h-2.2a2 2 0 00-1.5 3.3c.3.4.5.8.5 1.2a1.5 1.5 0 01-1.8 1.5z"/>',
   logo:'<path d="M8 22l5-6 4 3 7-9" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
 };
@@ -625,10 +627,15 @@ var DEFAULT_STATE={
   settings:{ businessName:'My Business', currency:'₱', theme:null, taxRate:8, lastBackup:null, backupNudged:false, monthlyTarget:0,
     accent:'', autoBackupDays:0, lastAutoBackup:null, hiddenModules:[],
     customCats:{ income:[], expense:[] },
-    sync:{ url:'https://love-notes-eae0b-default-rtdb.firebaseio.com', path:'bizpilot', enabled:false, lastSync:null } },
+    sync:{ url:'https://love-notes-eae0b-default-rtdb.firebaseio.com', path:'bizpilot', enabled:false, lastSync:null },
+    productCats:['Candle','Keychain','Gift Box'], productAttrs:['Scent','Color'],
+    moduleLabels:{}, bizAddress:'', bizPhone:'' },
   invoices:[],  // {id,number,client,desc,amount,issueDate,dueDate,status,paidDate,createdAt}
   recurring:[], // {id,type,amount,category,note,client,day,active,lastPosted,startMonth}
   offers:[],    // {id,name,price,desc}
+  products:[],  // {id,name,sku,category,price,cost,stock,lowStock,attrs:{},active,desc}
+  orders:[],    // {id,number,clientName,contact,address,items:[{productId,name,qty,price}],shipFee,discount,status,payStatus,orderDate,deliveryDate,note,incomeRecorded}
+  customModules:[], // {id,name,icon,fields:[{key,label,type,options}],records:[]}
   finance:[],   // {id,type:'income'|'expense',amount,category,date,note,client}
   goals:[],     // {id,title,type:'revenue'|'profit'|'custom',target,current,unit,deadline,priority,steps:[{id,text,done}],done,createdAt}
   phases:[],    // {id,name,desc,order,tasks:[{id,title,deadline,status,priority}]}
@@ -907,6 +914,12 @@ function buildInsights(){
   if(churn!=null&&churn>8) out.push({sev:'warn',title:'Churn is high',text:fmtPct(churn)+' monthly churn means you replace your whole customer base every '+Math.round(100/churn)+' months. Focus on retention.'});
   var conv=mv('conv');
   if(conv!=null&&conv<1&&conv>0) out.push({sev:'warn',title:'Conversion rate is low',text:'At '+fmtPct(conv)+', your current numbers suggest you need more qualified leads or a better offer/landing experience.'});
+  // inventory & orders
+  var low=(state.products||[]).filter(function(p){ return p.active!==false&&p.stock<=(p.lowStock!=null?p.lowStock:5); });
+  if(low.length) out.push({sev:'warn',title:low.length+' product'+(low.length>1?'s':'')+' low on stock',text:'"'+low[0].name+'" has only '+low[0].stock+' left. Restock before orders stall.'});
+  var openOrders=(state.orders||[]).filter(function(o){ return o.status!=='Delivered'&&o.status!=='Cancelled'; });
+  var unpaidOrders=(state.orders||[]).filter(function(o){ return o.payStatus!=='Paid'&&o.status!=='Cancelled'; });
+  if(openOrders.length) out.push({sev:'info',title:openOrders.length+' order'+(openOrders.length>1?'s':'')+' to fulfill',text:(unpaidOrders.length?unpaidOrders.length+' still unpaid ('+fmtMoney(sum(unpaidOrders,orderTotal))+'). ':'')+'Keep deliveries moving — happy gifting customers reorder.'});
   // overdue tasks
   var overdue=state.tasks.filter(function(x){ var d=daysUntil(x.deadline); return !x.done&&d!=null&&d<0; });
   if(overdue.length>0) out.push({sev:'warn',title:overdue.length+' overdue task'+(overdue.length>1?'s':''),text:'Oldest: "'+overdue[0].title+'". Clear or reschedule overdue work to keep momentum honest.'});
@@ -1013,6 +1026,8 @@ var ROUTES=[
   {id:'report',label:'Monthly Report',icon:'report',section:'Money'},
   {id:'calculators',label:'Calculators',icon:'calc',section:'Money'},
   {id:'metrics',label:'Metrics & KPIs',icon:'metrics',section:'Money'},
+  {id:'products',label:'Products & Stock',icon:'box',section:'Shop'},
+  {id:'orders',label:'Orders',icon:'truck',section:'Shop'},
   {id:'goals',label:'Goals',icon:'goals',section:'Execution'},
   {id:'roadmap',label:'Roadmap',icon:'roadmap',section:'Execution'},
   {id:'tasks',label:'Tasks',icon:'tasks',section:'Execution'},
@@ -1027,6 +1042,7 @@ function visibleRoutes(){
 }
 function currentRoute(){
   var h=(location.hash||'#/dashboard').replace('#/','');
+  if(h.indexOf('custom-')===0&&(state.customModules||[]).some(function(m){return 'custom-'+m.id===h;})) return h;
   return visibleRoutes().some(function(r){return r.id===h;})?h:'dashboard';
 }
 function nav(route){ location.hash='#/'+route; }
@@ -1048,12 +1064,13 @@ function render(){
   var main=byId('main');
   var views={
     dashboard:viewDashboard, insights:viewInsights, finance:viewFinance,
-    invoices:viewInvoices, report:viewReport,
+    invoices:viewInvoices, report:viewReport, products:viewProducts, orders:viewOrders,
     calculators:viewCalculators, metrics:viewMetrics, goals:viewGoals,
     roadmap:viewRoadmap, tasks:viewTasks, clients:viewClients,
     notes:viewNotes, reviews:viewReviews, settings:viewSettings
   };
-  main.innerHTML=(views[route]||viewDashboard)();
+  if(route.indexOf('custom-')===0) main.innerHTML=viewCustomModule(route.slice(7));
+  else main.innerHTML=(views[route]||viewDashboard)();
   main.scrollTop=0;
 }
 
@@ -1062,11 +1079,19 @@ function renderSidebar(){
   var openTasks=state.tasks.filter(function(t){ var d=daysUntil(t.deadline); return !t.done&&d!=null&&d<0; }).length;
   var html='<div class="brand"><div class="brand-logo">'+icon('logo')+'</div><div><div class="brand-name">BizPilot</div><div class="brand-sub">Command Center</div></div></div><nav class="nav">';
   var lastSection='';
+  var labels=state.settings.moduleLabels||{};
   visibleRoutes().forEach(function(r){
     if(r.section!==lastSection){ html+='<div class="nav-section">'+esc(r.section)+'</div>'; lastSection=r.section; }
-    html+='<button class="nav-item'+(route===r.id?' active':'')+'" data-action="nav" data-route="'+r.id+'">'+icon(r.icon)+'<span>'+esc(r.label)+'</span>'+
+    html+='<button class="nav-item'+(route===r.id?' active':'')+'" data-action="nav" data-route="'+r.id+'">'+icon(r.icon)+'<span>'+esc(labels[r.id]||r.label)+'</span>'+
       (r.id==='tasks'&&openTasks>0?'<span class="nav-badge">'+openTasks+'</span>':'')+'</button>';
   });
+  if((state.customModules||[]).length||true){
+    html+='<div class="nav-section">My Modules</div>';
+    (state.customModules||[]).forEach(function(m){
+      html+='<button class="nav-item'+(route==='custom-'+m.id?' active':'')+'" data-action="nav" data-route="custom-'+m.id+'">'+icon(m.icon||'notes')+'<span>'+esc(m.name)+'</span></button>';
+    });
+    html+='<button class="nav-item" data-action="custom-module-new" style="opacity:.75">'+icon('plus')+'<span>New module…</span></button>';
+  }
   html+='</nav><div class="sidebar-foot"><div class="biz-chip"><div class="avatar">'+esc((state.settings.businessName||'B').charAt(0).toUpperCase())+'</div><div><b>'+esc(state.settings.businessName||'My Business')+'</b><span>Local data · private</span></div></div></div>';
   byId('sidebar').innerHTML=html;
 }
@@ -2437,6 +2462,40 @@ function loadSampleData(){
     {id:uid(),type:'income',amount:9000,category:'Subscriptions',note:'Retainer — socials',client:'Lumina Café',offer:offRetainer,day:8,active:true,lastPosted:thisMonthKey(),startMonth:mk(-4)},
     {id:uid(),type:'expense',amount:4800,category:'Software & Tools',note:'Subscriptions + AI tools',client:'',offer:'',day:3,active:true,lastPosted:thisMonthKey(),startMonth:mk(-5)}
   ];
+  // products (their real niche: scented candles & gifting)
+  var pLav=uid(),pVan=uid(),pCit=uid(),pRose=uid(),pKeyA=uid(),pKeyB=uid(),pBox=uid();
+  state.settings.productCats=['Candle','Keychain','Gift Box'];
+  state.settings.productAttrs=['Scent','Color'];
+  state.products=[
+    {id:pLav,name:'Lavender Dream Candle',sku:'CNDL-LAV',category:'Candle',price:349,cost:140,stock:24,lowStock:8,attrs:{Scent:'Lavender',Color:'Purple'},desc:'8oz soy wax, ~40h burn',active:true},
+    {id:pVan,name:'Vanilla Glow Candle',sku:'CNDL-VAN',category:'Candle',price:349,cost:140,stock:18,lowStock:8,attrs:{Scent:'Vanilla',Color:'Cream'},desc:'',active:true},
+    {id:pCit,name:'Citrus Burst Candle',sku:'CNDL-CIT',category:'Candle',price:379,cost:150,stock:5,lowStock:8,attrs:{Scent:'Citrus',Color:'Orange'},desc:'Bestseller',active:true},
+    {id:pRose,name:'Rose Quartz Candle',sku:'CNDL-ROS',category:'Candle',price:399,cost:160,stock:15,lowStock:6,attrs:{Scent:'Rose',Color:'Pink'},desc:'',active:true},
+    {id:pKeyA,name:'Initial Letter Keychain',sku:'KEY-INI',category:'Keychain',price:129,cost:45,stock:40,lowStock:10,attrs:{Color:'Gold'},desc:'',active:true},
+    {id:pKeyB,name:'Tassel Keychain',sku:'KEY-TAS',category:'Keychain',price:99,cost:35,stock:35,lowStock:10,attrs:{Color:'Blush'},desc:'',active:true},
+    {id:pBox,name:'“Thinking of You” Gift Box',sku:'BOX-TOY',category:'Gift Box',price:599,cost:260,stock:9,lowStock:5,attrs:{Scent:'Mixed',Color:'Kraft'},desc:'Candle + keychain + handwritten card',active:true}
+  ];
+  // orders
+  state.orders=[
+    {id:uid(),number:'ORD-0001',clientName:'Mika Santos',contact:'0917 555 2210',address:'21 Sampaguita St, Brgy. Malanday\nMarikina City',items:[{productId:pLav,name:'Lavender Dream Candle',qty:2,price:349},{productId:pKeyA,name:'Initial Letter Keychain',qty:1,price:129}],shipFee:80,discount:0,status:'Preparing',payStatus:'Unpaid',orderDate:todayISO(),deliveryDate:d(0,Math.min(28,new Date().getDate()+2)),note:'Gift wrap, card says “Happy Birthday Lola!”',incomeRecorded:false},
+    {id:uid(),number:'ORD-0002',clientName:'Joanna Reyes',contact:'fb: joanna.reyes',address:'Unit 4B, Greenview Residences\nQuezon City',items:[{productId:pBox,name:'“Thinking of You” Gift Box',qty:1,price:599},{productId:pCit,name:'Citrus Burst Candle',qty:1,price:379}],shipFee:60,discount:50,status:'Delivered',payStatus:'Paid',orderDate:d(0,Math.max(1,new Date().getDate()-3)),deliveryDate:d(0,Math.max(1,new Date().getDate()-1)),note:'',incomeRecorded:true},
+    {id:uid(),number:'ORD-0003',clientName:'Carlo Dizon',contact:'0998 555 7344',address:'Pickup — SM North meetup',items:[{productId:pVan,name:'Vanilla Glow Candle',qty:3,price:349}],shipFee:0,discount:0,status:'Pending',payStatus:'Unpaid',orderDate:todayISO(),deliveryDate:d(0,Math.min(28,new Date().getDate()+4)),note:'',incomeRecorded:false}
+  ];
+  // delivered+paid order's income entry so books match
+  state.finance.push({id:uid(),type:'income',amount:988,date:d(0,Math.max(1,new Date().getDate()-1)),category:'Sales',note:'Order ORD-0002 (“Thinking of You” Gift Box×1, Citrus Burst Candle×1)',client:'Joanna Reyes',offer:''});
+  // a sample custom module to show the builder
+  var supF1='f'+uid(),supF2='f'+uid(),supF3='f'+uid(),supF4='f'+uid();
+  state.customModules=[
+    {id:uid(),name:'Suppliers',icon:'box',fields:[
+      {key:supF1,label:'Supplier',type:'text'},
+      {key:supF2,label:'Materials',type:'text'},
+      {key:supF3,label:'Last order cost',type:'money'},
+      {key:supF4,label:'Reliable',type:'check'}],
+     records:[
+      {id:uid(),createdAt:todayISO(),[supF1]:'WaxWorks PH',[supF2]:'Soy wax, wicks',[supF3]:5600,[supF4]:true},
+      {id:uid(),createdAt:todayISO(),[supF1]:'ScentCo Manila',[supF2]:'Fragrance oils',[supF3]:3200,[supF4]:true},
+      {id:uid(),createdAt:todayISO(),[supF1]:'CraftBox Trading',[supF2]:'Kraft boxes, ribbons',[supF3]:1800,[supF4]:false}]}
+  ];
   // invoices
   state.invoices=[
     {id:uid(),number:'INV-0012',client:'Northwind Gym',desc:'Rebrand — final 50% milestone',amount:26000,issueDate:d(0,2),dueDate:d(0,Math.min(28,new Date().getDate()+9)),status:'Sent',paidDate:null,createdAt:d(0,2)},
@@ -3185,7 +3244,9 @@ function customizationCardHTML(){
   // modules
   html+='<div class="field"><label>Visible modules</label><div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">'+
     hideable.map(function(r){
-      return '<label class="checkrow" style="font-size:.84rem"><input type="checkbox" data-action-change="toggle-module" data-id="'+r.id+'"'+(hidden.indexOf(r.id)<0?' checked':'')+'> '+esc(r.label)+'</label>';
+      var lbl=(s.moduleLabels||{})[r.id]||r.label;
+      return '<label class="checkrow" style="font-size:.84rem"><input type="checkbox" data-action-change="toggle-module" data-id="'+r.id+'"'+(hidden.indexOf(r.id)<0?' checked':'')+'> '+esc(lbl)+
+        ' <button type="button" class="btn-icon" style="width:20px;height:20px" data-action="rename-module" data-id="'+r.id+'" title="Rename">'+icon('edit')+'</button></label>';
     }).join('')+'</div><p style="font-size:.72rem;color:var(--text-3);margin-top:5px">Hide modules you don’t use — nothing is deleted, they just leave the sidebar.</p></div>';
   // categories
   function catManager(type,label){
@@ -3409,6 +3470,659 @@ document.addEventListener('change',function(e){
     commit();
     return;
   }
+});
+
+/* ============================================================
+   v3 additions: products & inventory, orders & delivery,
+   custom module builder, module renaming
+   ============================================================ */
+
+/* ---------- products & inventory ---------- */
+function productCats(){ return (state.settings.productCats&&state.settings.productCats.length)?state.settings.productCats:['General']; }
+function productAttrs(){ return state.settings.productAttrs||[]; }
+function findProduct(id){ return (state.products||[]).find(function(p){return p.id===id;}); }
+function stockBadge(p){
+  var lo=p.lowStock!=null?p.lowStock:5;
+  if(p.stock<=0) return '<span class="badge risk">Out of stock</span>';
+  if(p.stock<=lo) return '<span class="badge warn">Low · '+p.stock+' left</span>';
+  return '<span class="badge good">'+p.stock+' in stock</span>';
+}
+function viewProducts(){
+  var prods=(state.products||[]).filter(function(p){return p.active!==false;});
+  var archived=(state.products||[]).filter(function(p){return p.active===false;});
+  var lowCount=prods.filter(function(p){return p.stock<=(p.lowStock!=null?p.lowStock:5);}).length;
+  var stockValue=sum(prods,function(p){return (p.cost||0)*Math.max(0,p.stock);});
+  var retailValue=sum(prods,function(p){return (p.price||0)*Math.max(0,p.stock);});
+  var html=topbar('Products & Stock','Your catalog with live inventory — orders pull from here automatically.',
+    '<button class="btn btn-primary" data-action="product-new">'+icon('plus')+'<span class="btn-txt">Add product</span></button>');
+  html+='<div class="grid grid-4">'+
+    statCard('Products',String(prods.length),'','','box')+
+    statCard('Low / out of stock',String(lowCount),lowCount?'<span class="stat-delta down">restock soon</span>':'<span class="stat-delta up">all stocked</span>','','alert')+
+    statCard('Stock value (cost)',fmtMoney(stockValue),'<span class="stat-delta flat">money sitting in inventory</span>','','cash')+
+    statCard('Stock value (retail)',fmtMoney(retailValue),'<span class="stat-delta flat">if everything sells</span>','','arrowur')+
+  '</div>';
+  // category filter
+  var cats=productCats();
+  var sel=ui.productCat||'all';
+  html+='<div class="chips mt-lg"><button class="chip '+(sel==='all'?'active':'')+'" data-action="product-cat-filter" data-val="all">All</button>'+
+    cats.map(function(c){return '<button class="chip '+(sel===c?'active':'')+'" data-action="product-cat-filter" data-val="'+esc(c)+'">'+esc(c)+'</button>';}).join('')+'</div>';
+  var list=prods.filter(function(p){ return sel==='all'||p.category===sel; });
+  html+='<div class="card mt">';
+  if(!list.length){
+    html+=emptyState('box',prods.length?'No products in this category':'No products yet','Add your products with price, cost and stock. Custom attributes like Scent and Color are set below in “Customize catalog”.','<button class="btn btn-sm btn-primary" data-action="product-new">'+icon('plus')+' Add first product</button>');
+  } else {
+    html+='<div class="table-wrap"><table><thead><tr><th>Product</th><th>Category</th>'+productAttrs().map(function(a){return '<th>'+esc(a)+'</th>';}).join('')+'<th style="text-align:right">Price</th><th style="text-align:right">Cost</th><th style="text-align:right">Margin</th><th>Stock</th><th></th></tr></thead><tbody>';
+    list.forEach(function(p){
+      var margin=p.price>0?(p.price-(p.cost||0))/p.price*100:null;
+      html+='<tr><td><b>'+esc(p.name)+'</b>'+(p.sku?'<div style="font-size:.7rem;color:var(--text-3)" class="mono">'+esc(p.sku)+'</div>':'')+'</td>'+
+        '<td><span class="badge accent">'+esc(p.category||'General')+'</span></td>'+
+        productAttrs().map(function(a){return '<td>'+esc((p.attrs||{})[a]||'—')+'</td>';}).join('')+
+        '<td class="num" style="text-align:right;font-weight:700">'+fmtMoney(p.price)+'</td>'+
+        '<td class="num" style="text-align:right">'+(p.cost?fmtMoney(p.cost):'—')+'</td>'+
+        '<td class="num" style="text-align:right">'+(margin!=null?'<span class="badge '+(margin>=50?'good':(margin>=25?'warn':'risk'))+'">'+fmtPct(margin,0)+'</span>':'—')+'</td>'+
+        '<td><div style="display:flex;align-items:center;gap:6px">'+
+          '<button class="btn-icon" data-action="stock-adjust" data-id="'+p.id+'" data-delta="-1" title="−1 stock" style="width:22px;height:22px">−</button>'+
+          stockBadge(p)+
+          '<button class="btn-icon" data-action="stock-adjust" data-id="'+p.id+'" data-delta="1" title="+1 stock" style="width:22px;height:22px">+</button></div></td>'+
+        '<td><div class="row-actions">'+
+          '<button class="btn-icon" data-action="product-restock" data-id="'+p.id+'" title="Restock">'+icon('refresh')+'</button>'+
+          '<button class="btn-icon" data-action="product-edit" data-id="'+p.id+'">'+icon('edit')+'</button>'+
+          '<button class="btn-icon danger" data-action="product-delete" data-id="'+p.id+'">'+icon('trash')+'</button></div></td></tr>';
+    });
+    html+='</tbody></table></div>';
+  }
+  html+='</div>';
+  // catalog customization
+  html+='<div class="card mt"><div class="card-head"><h3>Customize catalog</h3><span class="sub">your categories and product attributes — fully yours</span></div>'+
+    '<div class="grid grid-2"><div><div class="field"><label>Product categories</label><div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:7px">'+
+    cats.map(function(c){return '<span class="tag" style="background:var(--accent-soft);color:var(--accent)">'+esc(c)+' <button class="btn-icon" style="width:14px;height:14px;display:inline-grid;vertical-align:middle" data-action="product-cat-del" data-name="'+esc(c)+'">'+icon('x')+'</button></span>';}).join('')+
+    '</div><form data-form="product-cat-add" style="display:flex;gap:7px"><input class="input" name="name" placeholder="e.g. Soap, Diffuser, Bundle…" style="flex:1"><button class="btn btn-ghost btn-sm" type="submit">'+icon('plus')+' Add</button></form></div></div>'+
+    '<div><div class="field"><label>Product attributes (columns like Scent, Color, Size)</label><div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:7px">'+
+    productAttrs().map(function(a){return '<span class="tag" style="background:var(--accent-soft);color:var(--accent)">'+esc(a)+' <button class="btn-icon" style="width:14px;height:14px;display:inline-grid;vertical-align:middle" data-action="product-attr-del" data-name="'+esc(a)+'">'+icon('x')+'</button></span>';}).join('')+
+    '</div><form data-form="product-attr-add" style="display:flex;gap:7px"><input class="input" name="name" placeholder="e.g. Size, Wax type, Wick…" style="flex:1"><button class="btn btn-ghost btn-sm" type="submit">'+icon('plus')+' Add</button></form></div></div></div></div>';
+  if(archived.length){
+    html+='<div class="card mt"><div class="card-head"><h3>Archived products</h3></div>'+archived.map(function(p){
+      return '<div class="list-row"><span style="flex:1;color:var(--text-3)">'+esc(p.name)+'</span><button class="btn btn-sm btn-ghost" data-action="product-unarchive" data-id="'+p.id+'">'+icon('refresh')+' Restore</button></div>';
+    }).join('')+'</div>';
+  }
+  return html;
+}
+function productModal(p){
+  var isEdit=!!p;
+  p=p||{stock:0,lowStock:5,attrs:{}};
+  var body=
+    '<input type="hidden" name="id" value="'+(p.id||'')+'">'+
+    '<div class="field"><label>Product name *</label><input class="input" name="name" value="'+esc(p.name||'')+'" required placeholder="e.g. Lavender Dream Candle"></div>'+
+    '<div class="form-row"><div class="field"><label>Category</label><select class="input" name="category">'+
+      productCats().map(function(c){return '<option'+(p.category===c?' selected':'')+'>'+esc(c)+'</option>';}).join('')+'</select></div>'+
+    '<div class="field"><label>SKU / code (optional)</label><input class="input" name="sku" value="'+esc(p.sku||'')+'" placeholder="e.g. CNDL-LAV-01"></div></div>'+
+    (productAttrs().length?'<div class="form-row">'+productAttrs().map(function(a){
+      return '<div class="field"><label>'+esc(a)+'</label><input class="input" name="attr_'+esc(a)+'" value="'+esc((p.attrs||{})[a]||'')+'" placeholder="e.g. '+(a.toLowerCase()==='color'?'Purple':'Lavender')+'"></div>';
+    }).join('')+'</div>':'')+
+    '<div class="form-row-3"><div class="field"><label>Selling price ('+esc(state.settings.currency)+') *</label><input class="input" type="number" step="any" min="0" name="price" value="'+(p.price!=null?p.price:'')+'" required></div>'+
+    '<div class="field"><label>Cost to make</label><input class="input" type="number" step="any" min="0" name="cost" value="'+(p.cost!=null?p.cost:'')+'"></div>'+
+    '<div class="field"><label>Stock on hand</label><input class="input" type="number" step="1" name="stock" value="'+(p.stock!=null?p.stock:0)+'"></div></div>'+
+    '<div class="form-row"><div class="field"><label>Low-stock alert at</label><input class="input" type="number" step="1" min="0" name="lowStock" value="'+(p.lowStock!=null?p.lowStock:5)+'"></div>'+
+    '<div class="field"><label>Notes</label><input class="input" name="desc" value="'+esc(p.desc||'')+'" placeholder="e.g. 8oz soy wax, 40h burn"></div></div>';
+  openModal(isEdit?'Edit product':'Add product',body,{onSubmit:function(form){
+    var name=fv(form,'name');
+    if(!name){ toast('Give the product a name.','error'); return false; }
+    var price=num(fv(form,'price'));
+    if(price<0){ toast('Price cannot be negative.','error'); return false; }
+    var attrs={};
+    productAttrs().forEach(function(a){ var v=fv(form,'attr_'+a); if(v) attrs[a]=v; });
+    var id=fv(form,'id');
+    var data={name:name,category:fv(form,'category'),sku:fv(form,'sku'),price:price,cost:num(fv(form,'cost')),stock:Math.round(num(fv(form,'stock'))),lowStock:Math.round(num(fv(form,'lowStock'))),attrs:attrs,desc:fv(form,'desc'),active:true};
+    if(id){
+      var ex=findProduct(id);
+      if(ex) Object.assign(ex,data);
+      toast('Product updated — price and stock changes apply everywhere instantly.');
+    } else {
+      data.id=uid();
+      state.products.push(data);
+      toast('"'+name+'" added to your catalog.');
+    }
+    return true;
+  }});
+}
+function restockModal(p){
+  var body='<input type="hidden" name="id" value="'+p.id+'">'+
+    '<p style="font-size:.86rem;color:var(--text-2);margin-bottom:12px">"'+esc(p.name)+'" currently has <b>'+p.stock+'</b> in stock.</p>'+
+    '<div class="form-row"><div class="field"><label>Quantity to add</label><input class="input" type="number" step="1" min="1" name="qty" value="10" required></div>'+
+    '<div class="field"><label>Total cost (optional — logs an expense)</label><input class="input" type="number" step="any" min="0" name="cost" placeholder="e.g. 1400"></div></div>';
+  openModal('Restock — '+p.name,body,{submitLabel:'Add stock',onSubmit:function(form){
+    var qty=Math.round(num(fv(form,'qty')));
+    if(qty<=0){ toast('Enter a quantity of at least 1.','error'); return false; }
+    var prod=findProduct(fv(form,'id'));
+    if(!prod) return false;
+    prod.stock+=qty;
+    var cost=num(fv(form,'cost'));
+    if(cost>0){
+      state.finance.push({id:uid(),type:'expense',amount:cost,date:todayISO(),category:'Inventory / Supplies',note:'Restock: '+prod.name+' ×'+qty,client:'',offer:''});
+      toast(qty+' added to "'+prod.name+'" and '+fmtMoney(cost)+' expense logged.');
+    } else toast(qty+' added to "'+prod.name+'" — now '+prod.stock+' in stock.');
+    return true;
+  }});
+}
+
+/* ---------- orders & delivery ---------- */
+var ORDER_STATUSES=['Pending','Preparing','For Delivery','Delivered','Cancelled'];
+function orderTotal(o){
+  return sum(o.items||[],function(it){return it.qty*it.price;})+(o.shipFee||0)-(o.discount||0);
+}
+function nextOrderNumber(){
+  var max=0;
+  (state.orders||[]).forEach(function(o){ var m=/(\d+)\s*$/.exec(o.number||''); if(m) max=Math.max(max,parseInt(m[1],10)); });
+  return 'ORD-'+String(max+1).padStart(4,'0');
+}
+function applyOrderStock(o,sign){
+  (o.items||[]).forEach(function(it){
+    var p=findProduct(it.productId);
+    if(p) p.stock-=sign*it.qty;
+  });
+}
+function recordOrderIncome(o){
+  if(o.incomeRecorded) return;
+  state.finance.push({id:uid(),type:'income',amount:orderTotal(o),date:todayISO(),category:'Sales',note:'Order '+o.number+' ('+(o.items||[]).map(function(it){return it.name+'×'+it.qty;}).join(', ')+')',client:o.clientName||'',offer:''});
+  o.incomeRecorded=true;
+  ensureClient(o);
+}
+function ensureClient(o){
+  if(!o.clientName) return;
+  var exists=state.clients.some(function(c){return (c.name||'').toLowerCase()===o.clientName.toLowerCase();});
+  if(!exists){
+    state.clients.push({id:uid(),name:o.clientName,status:'Active',contact:o.contact||'',value:0,note:'Added automatically from order '+o.number,createdAt:todayISO()});
+  }
+}
+function viewOrders(){
+  var orders=state.orders||[];
+  var open=orders.filter(function(o){return o.status!=='Delivered'&&o.status!=='Cancelled';});
+  var unpaid=orders.filter(function(o){return o.payStatus!=='Paid'&&o.status!=='Cancelled';});
+  var curM=thisMonthKey();
+  var monthOrders=orders.filter(function(o){return monthKey(o.orderDate)===curM&&o.status!=='Cancelled';});
+  var html=topbar('Orders','From order to doorstep — stock, payments and income all update automatically.',
+    '<button class="btn btn-primary" data-action="order-new">'+icon('plus')+'<span class="btn-txt">New order</span></button>');
+  html+='<div class="grid grid-4">'+
+    statCard('To fulfill',String(open.length),'','','truck')+
+    statCard('Awaiting payment',fmtMoney(sum(unpaid,orderTotal)),'<span class="stat-delta flat">'+unpaid.length+' order'+(unpaid.length===1?'':'s')+'</span>','','clock')+
+    statCard('Orders this month',String(monthOrders.length),'','','box')+
+    statCard('Order value this month',fmtMoney(sum(monthOrders,orderTotal)),'','','cash')+
+  '</div>';
+  var sel=ui.orderFilter||'open';
+  html+='<div class="chips mt-lg">'+[['open','To fulfill ('+open.length+')'],['all','All ('+orders.length+')'],['Delivered','Delivered'],['Cancelled','Cancelled']].map(function(x){
+    return '<button class="chip '+(sel===x[0]?'active':'')+'" data-action="order-filter" data-val="'+x[0]+'">'+x[1]+'</button>';}).join('')+'</div>';
+  var list=orders.filter(function(o){
+    if(sel==='open') return o.status!=='Delivered'&&o.status!=='Cancelled';
+    if(sel==='all') return true;
+    return o.status===sel;
+  }).sort(function(a,b){ return (b.orderDate||'').localeCompare(a.orderDate||''); });
+  html+='<div class="card mt">';
+  if(!list.length){
+    html+=emptyState('truck',orders.length?'No orders here':'No orders yet','Create an order: pick products, enter the delivery address, and BizPilot handles stock, totals and income for you.','<button class="btn btn-sm btn-primary" data-action="order-new">'+icon('plus')+' First order</button>');
+  } else {
+    list.forEach(function(o){
+      var d=daysUntil(o.deliveryDate);
+      var late=o.status!=='Delivered'&&o.status!=='Cancelled'&&d!=null&&d<0;
+      html+='<div class="list-row" style="align-items:flex-start;gap:14px;padding:14px 4px">'+
+        '<div style="flex:1.4;min-width:160px"><b class="mono" style="font-size:.8rem;color:var(--accent)">'+esc(o.number)+'</b>'+
+          '<div style="font-weight:700">'+esc(o.clientName||'Walk-in')+'</div>'+
+          (o.address?'<div style="font-size:.76rem;color:var(--text-3);white-space:pre-wrap">'+esc(o.address)+'</div>':'')+
+          (o.contact?'<div style="font-size:.74rem;color:var(--text-3)">'+esc(o.contact)+'</div>':'')+'</div>'+
+        '<div style="flex:2;min-width:170px;font-size:.84rem">'+(o.items||[]).map(function(it){
+          return '<div style="display:flex;justify-content:space-between;gap:8px"><span>'+esc(it.name)+' × '+it.qty+'</span><span class="num">'+fmtMoney(it.qty*it.price)+'</span></div>';
+        }).join('')+
+        ((o.shipFee||0)>0?'<div style="display:flex;justify-content:space-between;gap:8px;color:var(--text-3)"><span>Shipping</span><span class="num">'+fmtMoney(o.shipFee)+'</span></div>':'')+
+        ((o.discount||0)>0?'<div style="display:flex;justify-content:space-between;gap:8px;color:var(--text-3)"><span>Discount</span><span class="num">−'+fmtMoney(o.discount)+'</span></div>':'')+
+        '<div style="display:flex;justify-content:space-between;gap:8px;font-weight:800;border-top:1px dashed var(--border);margin-top:4px;padding-top:4px"><span>Total</span><span class="num">'+fmtMoney(orderTotal(o))+'</span></div></div>'+
+        '<div style="flex:1.1;min-width:150px;display:flex;flex-direction:column;gap:6px;align-items:flex-start">'+
+          '<select class="input" style="width:auto;padding:4px 28px 4px 9px;font-size:.76rem;font-weight:600" data-action-change="order-status" data-id="'+o.id+'">'+
+            ORDER_STATUSES.map(function(s){return '<option'+(o.status===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select>'+
+          (o.payStatus==='Paid'?'<span class="badge good">'+icon('check')+' Paid</span>':'<button class="btn btn-sm btn-good" data-action="order-paid" data-id="'+o.id+'">'+icon('cash')+' Mark paid</button>')+
+          (o.deliveryDate?'<span class="badge '+(late?'risk':'neutral')+'">'+icon('truck')+' '+(late?'Late · was due ':'Deliver ')+fmtDate(o.deliveryDate)+'</span>':'')+
+        '</div>'+
+        '<div class="row-actions" style="flex-direction:column">'+
+          '<button class="btn-icon" data-action="order-print" data-id="'+o.id+'" title="Print slip">'+icon('print')+'</button>'+
+          '<button class="btn-icon" data-action="order-edit" data-id="'+o.id+'">'+icon('edit')+'</button>'+
+          '<button class="btn-icon danger" data-action="order-delete" data-id="'+o.id+'">'+icon('trash')+'</button></div></div>';
+    });
+  }
+  html+='</div>';
+  return html;
+}
+function orderItemRowHTML(it){
+  it=it||{};
+  var prods=(state.products||[]).filter(function(p){return p.active!==false;});
+  return '<div class="oi-row" style="display:flex;gap:7px;margin-bottom:7px;align-items:center">'+
+    '<select class="input oi-prod" style="flex:2;min-width:120px"><option value="">— product —</option>'+
+      prods.map(function(p){return '<option value="'+p.id+'" data-price="'+p.price+'"'+(it.productId===p.id?' selected':'')+'>'+esc(p.name)+((p.attrs&&Object.keys(p.attrs).length)?' ('+Object.keys(p.attrs).map(function(k){return p.attrs[k];}).join(', ')+')':'')+'</option>';}).join('')+
+    '</select>'+
+    '<input class="input oi-qty" type="number" min="1" step="1" value="'+(it.qty||1)+'" style="width:64px" title="Qty">'+
+    '<input class="input oi-price" type="number" min="0" step="any" value="'+(it.price!=null?it.price:'')+'" style="width:96px" placeholder="price" title="Unit price">'+
+    '<button type="button" class="btn-icon danger" data-action="oi-del">'+icon('x')+'</button></div>';
+}
+function orderModal(o){
+  var isEdit=!!o;
+  o=o||{number:nextOrderNumber(),orderDate:todayISO(),status:'Pending',payStatus:'Unpaid',items:[]};
+  var body=
+    '<input type="hidden" name="id" value="'+(o.id||'')+'">'+
+    '<div class="form-row"><div class="field"><label>Order #</label><input class="input" name="number" value="'+esc(o.number)+'"></div>'+
+    '<div class="field"><label>Order date</label><input class="input" type="date" name="orderDate" value="'+esc(o.orderDate||todayISO())+'"></div></div>'+
+    '<div class="form-row"><div class="field"><label>Customer *</label><input class="input" name="clientName" value="'+esc(o.clientName||'')+'" list="ord-clients" required placeholder="Name"><datalist id="ord-clients">'+
+      state.clients.map(function(c){return '<option value="'+esc(c.name)+'">';}).join('')+'</datalist></div>'+
+    '<div class="field"><label>Contact (phone / messenger)</label><input class="input" name="contact" value="'+esc(o.contact||'')+'"></div></div>'+
+    '<div class="field"><label>Delivery address</label><textarea class="input" name="address" rows="2" placeholder="Street, barangay, city…">'+esc(o.address||'')+'</textarea></div>'+
+    '<div class="field"><label>Items *</label><div id="order-items">'+
+      ((o.items&&o.items.length)?o.items.map(orderItemRowHTML).join(''):orderItemRowHTML())+
+    '</div><button type="button" class="btn btn-ghost btn-sm" data-action="oi-add">'+icon('plus')+' Add item</button>'+
+    '<p style="font-size:.72rem;color:var(--text-3);margin-top:5px">Price auto-fills from the product — you can override it per order. Stock is reserved when you save.</p></div>'+
+    '<div class="form-row-3"><div class="field"><label>Shipping fee</label><input class="input" type="number" step="any" min="0" name="shipFee" value="'+(o.shipFee||'')+'"></div>'+
+    '<div class="field"><label>Discount</label><input class="input" type="number" step="any" min="0" name="discount" value="'+(o.discount||'')+'"></div>'+
+    '<div class="field"><label>Deliver by</label><input class="input" type="date" name="deliveryDate" value="'+esc(o.deliveryDate||'')+'"></div></div>'+
+    '<div class="field"><label>Note (gift message, instructions…)</label><input class="input" name="note" value="'+esc(o.note||'')+'"></div>';
+  openModal(isEdit?'Edit order':'New order',body,{wide:true,onSubmit:function(form){
+    var clientName=fv(form,'clientName');
+    if(!clientName){ toast('Enter the customer name.','error'); return false; }
+    var items=[];
+    form.querySelectorAll('#order-items .oi-row').forEach(function(row){
+      var pid=row.querySelector('.oi-prod').value;
+      var qty=Math.round(num(row.querySelector('.oi-qty').value));
+      var price=num(row.querySelector('.oi-price').value);
+      if(!pid||qty<=0) return;
+      var p=findProduct(pid);
+      if(!p) return;
+      if(!price) price=p.price;
+      items.push({productId:pid,name:p.name,qty:qty,price:price});
+    });
+    if(!items.length){ toast('Add at least one item with a product and quantity.','error'); return false; }
+    var id=fv(form,'id');
+    var data={number:fv(form,'number')||nextOrderNumber(),clientName:clientName,contact:fv(form,'contact'),address:form.elements['address'].value,items:items,shipFee:num(fv(form,'shipFee')),discount:num(fv(form,'discount')),orderDate:fv(form,'orderDate')||todayISO(),deliveryDate:fv(form,'deliveryDate'),note:fv(form,'note')};
+    if(id){
+      var ex=state.orders.find(function(x){return x.id===id;});
+      if(ex){
+        if(ex.status!=='Cancelled') applyOrderStock(ex,-1); // give back old reservation
+        Object.assign(ex,data);
+        if(ex.status!=='Cancelled') applyOrderStock(ex,1);  // reserve new items
+        toast('Order updated — stock adjusted.');
+      }
+    } else {
+      data.id=uid(); data.status='Pending'; data.payStatus='Unpaid'; data.incomeRecorded=false; data.createdAt=todayISO();
+      state.orders.push(data);
+      applyOrderStock(data,1);
+      ensureClient(data);
+      var short=items.filter(function(it){ var p=findProduct(it.productId); return p&&p.stock<0; });
+      toast('Order '+data.number+' created — '+fmtMoney(orderTotal(data))+'. Stock updated.'+(short.length?' ⚠ Some items are now oversold — restock!':''));
+    }
+    return true;
+  }});
+}
+function printOrderSlip(o){
+  var html='<div class="pr-doc">'+
+    '<h1>'+esc(state.settings.businessName)+'</h1>'+
+    '<div class="pr-meta">'+(state.settings.bizAddress?esc(state.settings.bizAddress)+' · ':'')+(state.settings.bizPhone?esc(state.settings.bizPhone)+' · ':'')+'Order '+esc(o.number)+' · '+fmtDate(o.orderDate)+'</div>'+
+    '<h2>Deliver to</h2><p><b>'+esc(o.clientName)+'</b>'+(o.contact?' · '+esc(o.contact):'')+'<br>'+esc(o.address||'(pickup)').replace(/\n/g,'<br>')+'</p>'+
+    (o.deliveryDate?'<p>Deliver by: <b>'+fmtDate(o.deliveryDate)+'</b></p>':'')+
+    '<h2>Items</h2><table><thead><tr><th>Item</th><th class="num">Qty</th><th class="num">Price</th><th class="num">Subtotal</th></tr></thead><tbody>'+
+    (o.items||[]).map(function(it){return '<tr><td>'+esc(it.name)+'</td><td class="num">'+it.qty+'</td><td class="num">'+fmtMoney(it.price)+'</td><td class="num">'+fmtMoney(it.qty*it.price)+'</td></tr>';}).join('')+
+    ((o.shipFee||0)>0?'<tr><td colspan="3">Shipping</td><td class="num">'+fmtMoney(o.shipFee)+'</td></tr>':'')+
+    ((o.discount||0)>0?'<tr><td colspan="3">Discount</td><td class="num">−'+fmtMoney(o.discount)+'</td></tr>':'')+
+    '<tr class="pr-total"><td colspan="3">Total '+(o.payStatus==='Paid'?'(PAID)':'(to collect)')+'</td><td class="num">'+fmtMoney(orderTotal(o))+'</td></tr>'+
+    '</tbody></table>'+
+    (o.note?'<h2>Note</h2><p>'+esc(o.note)+'</p>':'')+
+    '<div class="pr-foot">Thank you for your order! · '+esc(state.settings.businessName)+'</div></div>';
+  printDoc(html);
+}
+
+/* ---------- custom module builder ---------- */
+var CM_ICONS=['notes','box','clients','flag','spark','cash','truck','calc','metrics','goals'];
+var CM_TYPES=[['text','Text'],['number','Number'],['money','Money'],['date','Date'],['select','Dropdown'],['check','Checkbox']];
+function findModule(id){ return (state.customModules||[]).find(function(m){return m.id===id;}); }
+function cmFormatCell(f,v){
+  if(v==null||v==='') return '—';
+  if(f.type==='money') return fmtMoney(num(v));
+  if(f.type==='number') return fmtNum(num(v));
+  if(f.type==='date') return fmtDate(v);
+  if(f.type==='check') return v?'<span class="badge good">'+icon('check')+' Yes</span>':'<span class="badge neutral">No</span>';
+  return esc(String(v));
+}
+function viewCustomModule(id){
+  var m=findModule(id);
+  if(!m) return viewDashboard();
+  var html=topbar(m.name,'Your custom module — your fields, your data.',
+    '<button class="btn btn-ghost" data-action="custom-module-fields" data-id="'+m.id+'">'+icon('settings')+'<span class="btn-txt">Fields</span></button>'+
+    '<button class="btn btn-primary" data-action="cm-record-new" data-id="'+m.id+'">'+icon('plus')+'<span class="btn-txt">Add record</span></button>');
+  if(!(m.fields||[]).length){
+    html+='<div class="card">'+emptyState('settings','Define your fields first','Add the columns this module should have — text, numbers, money, dates, dropdowns or checkboxes.','<button class="btn btn-sm btn-primary" data-action="custom-module-fields" data-id="'+m.id+'">'+icon('plus')+' Add fields</button>')+'</div>';
+    html+=cmFooterHTML(m);
+    return html;
+  }
+  var q=(ui.cmQ&&ui.cmQ[m.id])||'';
+  html+='<div class="card"><div class="card-head">'+
+    '<div class="searchbar">'+icon('search')+'<input class="input" placeholder="Search records…" value="'+esc(q)+'" data-action-input="cm-search" data-id="'+m.id+'"></div>'+
+    '<span class="sub">'+(m.records||[]).length+' record'+((m.records||[]).length===1?'':'s')+'</span></div>';
+  var records=(m.records||[]).filter(function(r){
+    if(!q) return true;
+    var hay=m.fields.map(function(f){return String(r[f.key]==null?'':r[f.key]);}).join(' ').toLowerCase();
+    return hay.indexOf(q.toLowerCase())>=0;
+  });
+  if(!records.length){
+    html+=emptyState(m.icon||'notes','No records'+(q?' match your search':' yet'),q?'Try a different search.':'Add your first record — totals for number and money columns are calculated automatically.','<button class="btn btn-sm btn-primary" data-action="cm-record-new" data-id="'+m.id+'">'+icon('plus')+' Add record</button>')+'</div>';
+    html+=cmFooterHTML(m);
+    return html;
+  }
+  html+='<div class="table-wrap"><table><thead><tr>'+m.fields.map(function(f){return '<th'+((f.type==='money'||f.type==='number')?' style="text-align:right"':'')+'>'+esc(f.label)+'</th>';}).join('')+'<th></th></tr></thead><tbody>';
+  records.slice().reverse().forEach(function(r){
+    html+='<tr>'+m.fields.map(function(f){
+      return '<td'+((f.type==='money'||f.type==='number')?' class="num" style="text-align:right"':'')+'>'+cmFormatCell(f,r[f.key])+'</td>';
+    }).join('')+
+    '<td><div class="row-actions"><button class="btn-icon" data-action="cm-record-edit" data-id="'+m.id+'" data-rec="'+r.id+'">'+icon('edit')+'</button><button class="btn-icon danger" data-action="cm-record-delete" data-id="'+m.id+'" data-rec="'+r.id+'">'+icon('trash')+'</button></div></td></tr>';
+  });
+  // totals row for numeric fields
+  var hasNumeric=m.fields.some(function(f){return f.type==='money'||f.type==='number';});
+  if(hasNumeric){
+    html+='</tbody><tfoot><tr>'+m.fields.map(function(f,i){
+      if(f.type==='money') return '<td class="num" style="text-align:right;font-weight:800">'+fmtMoney(sum(records,function(r){return num(r[f.key]);}))+'</td>';
+      if(f.type==='number') return '<td class="num" style="text-align:right;font-weight:800">'+fmtNum(sum(records,function(r){return num(r[f.key]);}))+'</td>';
+      return '<td>'+(i===0?'<b>Total</b>':'')+'</td>';
+    }).join('')+'<td></td></tr></tfoot>';
+  } else html+='</tbody>';
+  html+='</table></div></div>';
+  html+=cmFooterHTML(m);
+  return html;
+}
+function cmFooterHTML(m){
+  return '<div class="card mt"><div class="card-head"><h3>Module settings</h3></div><div style="display:flex;gap:8px;flex-wrap:wrap">'+
+    '<button class="btn btn-ghost btn-sm" data-action="custom-module-edit" data-id="'+m.id+'">'+icon('edit')+' Rename / icon</button>'+
+    '<button class="btn btn-ghost btn-sm" data-action="custom-module-fields" data-id="'+m.id+'">'+icon('settings')+' Manage fields</button>'+
+    '<button class="btn btn-danger btn-sm" data-action="custom-module-delete" data-id="'+m.id+'">'+icon('trash')+' Delete module</button></div></div>';
+}
+function customModuleModal(m){
+  var isEdit=!!m;
+  m=m||{icon:'notes'};
+  var body=
+    '<input type="hidden" name="id" value="'+(m.id||'')+'">'+
+    '<div class="field"><label>Module name *</label><input class="input" name="name" value="'+esc(m.name||'')+'" required placeholder="e.g. Suppliers, Raffle Entries, Equipment…"></div>'+
+    '<div class="field"><label>Icon</label><select class="input" name="icon">'+
+      CM_ICONS.map(function(ic){return '<option value="'+ic+'"'+(m.icon===ic?' selected':'')+'>'+ic+'</option>';}).join('')+'</select></div>'+
+    (isEdit?'':'<p style="font-size:.76rem;color:var(--text-3)">After creating, you’ll define its fields (columns) — then it works like any other section, saved with the rest of your data.</p>');
+  openModal(isEdit?'Edit module':'Create your own module',body,{submitLabel:isEdit?'Save':'Create module',onSubmit:function(form){
+    var name=fv(form,'name');
+    if(!name){ toast('Give the module a name.','error'); return false; }
+    var id=fv(form,'id');
+    if(id){
+      var ex=findModule(id);
+      if(ex){ ex.name=name; ex.icon=fv(form,'icon'); }
+      toast('Module updated.');
+    } else {
+      var nm={id:uid(),name:name,icon:fv(form,'icon'),fields:[],records:[]};
+      state.customModules.push(nm);
+      toast('Module "'+name+'" created — now add its fields.');
+      setTimeout(function(){ nav('custom-'+nm.id); setTimeout(function(){ fieldsModal(nm); },100); },50);
+    }
+    return true;
+  }});
+}
+function fieldsModal(m){
+  var body=
+    '<input type="hidden" name="id" value="'+m.id+'">'+
+    ((m.fields||[]).length?'<div class="field"><label>Current fields</label>'+
+      m.fields.map(function(f){
+        return '<div class="list-row" style="padding:7px 2px"><b style="font-size:.86rem;flex:1">'+esc(f.label)+'</b><span class="badge neutral">'+esc(f.type)+'</span>'+
+          '<button type="button" class="btn-icon danger" data-action="cm-field-delete" data-id="'+m.id+'" data-field="'+f.key+'">'+icon('trash')+'</button></div>';
+      }).join('')+'</div>':'')+
+    '<div class="field"><label>Add a field</label><div class="form-row"><input class="input" name="label" placeholder="Field name, e.g. Supplier name"><select class="input" name="type">'+
+      CM_TYPES.map(function(t){return '<option value="'+t[0]+'">'+t[1]+'</option>';}).join('')+'</select></div></div>'+
+    '<div class="field"><label>Dropdown options (only for Dropdown — comma separated)</label><input class="input" name="options" placeholder="e.g. Pending, Approved, Rejected"></div>';
+  openModal('Fields — '+m.name,body,{submitLabel:'Add field',onSubmit:function(form){
+    var label=fv(form,'label');
+    if(!label){ toast('Type the field name.','warn'); return false; }
+    var mod=findModule(fv(form,'id'));
+    if(!mod) return true;
+    var key='f'+uid();
+    var type=fv(form,'type');
+    var f={key:key,label:label,type:type};
+    if(type==='select') f.options=fv(form,'options').split(',').map(function(s){return s.trim();}).filter(Boolean);
+    mod.fields.push(f);
+    save();
+    toast('Field "'+label+'" added.');
+    setTimeout(function(){ fieldsModal(mod); },50); // reopen to add more
+    return true;
+  }});
+}
+function cmRecordModal(m,rec){
+  var isEdit=!!rec;
+  rec=rec||{};
+  var body='<input type="hidden" name="mid" value="'+m.id+'"><input type="hidden" name="rid" value="'+(rec.id||'')+'">'+
+    m.fields.map(function(f){
+      var v=rec[f.key];
+      if(f.type==='check') return '<label class="checkrow" style="margin-bottom:12px"><input type="checkbox" name="'+f.key+'"'+(v?' checked':'')+'> '+esc(f.label)+'</label>';
+      if(f.type==='select') return '<div class="field"><label>'+esc(f.label)+'</label><select class="input" name="'+f.key+'"><option value="">—</option>'+
+        (f.options||[]).map(function(op){return '<option'+(v===op?' selected':'')+'>'+esc(op)+'</option>';}).join('')+'</select></div>';
+      var inputType=f.type==='date'?'date':(f.type==='money'||f.type==='number'?'number':'text');
+      return '<div class="field"><label>'+esc(f.label)+(f.type==='money'?' ('+esc(state.settings.currency)+')':'')+'</label><input class="input" type="'+inputType+'"'+(inputType==='number'?' step="any"':'')+' name="'+f.key+'" value="'+esc(v==null?'':v)+'"></div>';
+    }).join('');
+  openModal((isEdit?'Edit':'New')+' — '+m.name,body,{onSubmit:function(form){
+    var mod=findModule(fv(form,'mid'));
+    if(!mod) return true;
+    var data={};
+    mod.fields.forEach(function(f){
+      if(f.type==='check') data[f.key]=form.elements[f.key].checked;
+      else if(f.type==='money'||f.type==='number') data[f.key]=form.elements[f.key].value===''?null:num(form.elements[f.key].value);
+      else data[f.key]=fv(form,f.key);
+    });
+    var rid=fv(form,'rid');
+    if(rid){
+      var ex=(mod.records||[]).find(function(r){return r.id===rid;});
+      if(ex) Object.assign(ex,data);
+      toast('Record updated.');
+    } else {
+      data.id=uid(); data.createdAt=todayISO();
+      mod.records=mod.records||[];
+      mod.records.push(data);
+      toast('Record added to '+mod.name+'.');
+    }
+    return true;
+  }});
+}
+
+/* ---------- v3 event wiring ---------- */
+document.addEventListener('click',function(e){
+  var el=e.target.closest('[data-action]');
+  if(!el) return;
+  var action=el.getAttribute('data-action');
+  var id=el.getAttribute('data-id');
+
+  /* products */
+  if(action==='product-new'){ productModal(); return; }
+  if(action==='product-edit'){ var p=findProduct(id); if(p) productModal(p); return; }
+  if(action==='product-delete'){
+    var p2=findProduct(id);
+    if(!p2) return;
+    var inOrders=(state.orders||[]).some(function(o){return (o.items||[]).some(function(it){return it.productId===id;});});
+    if(inOrders){
+      if(confirm('"'+p2.name+'" is used in past orders, so it will be archived instead of deleted. Continue?')){
+        p2.active=false; commit(); toast('Product archived.');
+      }
+    } else if(confirm('Delete product "'+p2.name+'"?')){
+      state.products=state.products.filter(function(x){return x.id!==id;});
+      commit(); toast('Product deleted.','warn');
+    }
+    return;
+  }
+  if(action==='product-unarchive'){ var p3=findProduct(id); if(p3){ p3.active=true; commit(); toast('Product restored.'); } return; }
+  if(action==='product-restock'){ var p4=findProduct(id); if(p4) restockModal(p4); return; }
+  if(action==='stock-adjust'){
+    var p5=findProduct(id);
+    if(p5){ p5.stock+=parseInt(el.getAttribute('data-delta'),10); commit(); }
+    return;
+  }
+  if(action==='product-cat-filter'){ ui.productCat=el.getAttribute('data-val'); render(); return; }
+  if(action==='product-cat-del'){
+    var name=el.getAttribute('data-name');
+    if(confirm('Remove category "'+name+'"? Products keep it until you edit them.')){
+      state.settings.productCats=productCats().filter(function(c){return c!==name;});
+      commit();
+    }
+    return;
+  }
+  if(action==='product-attr-del'){
+    var aname=el.getAttribute('data-name');
+    if(confirm('Remove attribute "'+aname+'" from the catalog? Values already saved on products are kept but hidden.')){
+      state.settings.productAttrs=productAttrs().filter(function(a){return a!==aname;});
+      commit();
+    }
+    return;
+  }
+
+  /* orders */
+  if(action==='order-new'){
+    if(!(state.products||[]).some(function(p){return p.active!==false;})){ toast('Add at least one product first — orders are built from your catalog.','warn'); nav('products'); return; }
+    orderModal(); return;
+  }
+  if(action==='order-edit'){ var o=state.orders.find(function(x){return x.id===id;}); if(o) orderModal(o); return; }
+  if(action==='order-delete'){
+    var o2=state.orders.find(function(x){return x.id===id;});
+    if(o2&&confirm('Delete order '+o2.number+'? Reserved stock will be returned.'+(o2.incomeRecorded?' The income entry already recorded stays in Finance.':''))){
+      if(o2.status!=='Cancelled') applyOrderStock(o2,-1);
+      state.orders=state.orders.filter(function(x){return x.id!==id;});
+      commit(); toast('Order deleted — stock returned.','warn');
+    }
+    return;
+  }
+  if(action==='order-paid'){
+    var o3=state.orders.find(function(x){return x.id===id;});
+    if(o3&&confirm('Mark '+o3.number+' ('+fmtMoney(orderTotal(o3))+' from '+o3.clientName+') as PAID? This records the income in Finance.')){
+      o3.payStatus='Paid';
+      recordOrderIncome(o3);
+      commit(); toast('💰 '+fmtMoney(orderTotal(o3))+' collected — income recorded.');
+    }
+    return;
+  }
+  if(action==='order-print'){ var o4=state.orders.find(function(x){return x.id===id;}); if(o4) printOrderSlip(o4); return; }
+  if(action==='order-filter'){ ui.orderFilter=el.getAttribute('data-val'); render(); return; }
+  if(action==='oi-add'){
+    var box=document.getElementById('order-items');
+    if(box) box.insertAdjacentHTML('beforeend',orderItemRowHTML());
+    return;
+  }
+  if(action==='oi-del'){
+    var row=el.closest('.oi-row');
+    var box2=document.getElementById('order-items');
+    if(row&&box2&&box2.querySelectorAll('.oi-row').length>1) row.remove();
+    return;
+  }
+
+  /* custom modules */
+  if(action==='custom-module-new'){ customModuleModal(); return; }
+  if(action==='custom-module-edit'){ var m=findModule(id); if(m) customModuleModal(m); return; }
+  if(action==='custom-module-fields'){ var m2=findModule(id); if(m2) fieldsModal(m2); return; }
+  if(action==='custom-module-delete'){
+    var m3=findModule(id);
+    if(m3&&confirm('Delete module "'+m3.name+'" and its '+(m3.records||[]).length+' record(s)? This cannot be undone.')){
+      state.customModules=state.customModules.filter(function(x){return x.id!==id;});
+      if(currentRoute()==='custom-'+id) nav('dashboard');
+      commit(); toast('Module deleted.','warn');
+    }
+    return;
+  }
+  if(action==='cm-field-delete'){
+    var m4=findModule(id);
+    if(m4&&confirm('Remove this field? Its values in existing records are deleted too.')){
+      var fkey=el.getAttribute('data-field');
+      m4.fields=m4.fields.filter(function(f){return f.key!==fkey;});
+      (m4.records||[]).forEach(function(r){ delete r[fkey]; });
+      save();
+      closeModal(); render();
+      setTimeout(function(){ fieldsModal(m4); },50);
+      toast('Field removed.');
+    }
+    return;
+  }
+  if(action==='cm-record-new'){ var m5=findModule(id); if(m5){ if(!(m5.fields||[]).length){ fieldsModal(m5); } else cmRecordModal(m5); } return; }
+  if(action==='cm-record-edit'){
+    var m6=findModule(id);
+    if(m6){ var rec=(m6.records||[]).find(function(r){return r.id===el.getAttribute('data-rec');}); if(rec) cmRecordModal(m6,rec); }
+    return;
+  }
+  if(action==='cm-record-delete'){
+    var m7=findModule(id);
+    if(m7&&confirm('Delete this record?')){
+      m7.records=m7.records.filter(function(r){return r.id!==el.getAttribute('data-rec');});
+      commit(); toast('Record deleted.','warn');
+    }
+    return;
+  }
+
+  /* module renaming */
+  if(action==='rename-module'){
+    var route=ROUTES.find(function(r){return r.id===id;});
+    if(route){
+      var cur=(state.settings.moduleLabels||{})[id]||route.label;
+      var nn=prompt('Rename "'+cur+'" to: (leave empty to restore "'+route.label+'")',cur);
+      if(nn===null) return;
+      state.settings.moduleLabels=state.settings.moduleLabels||{};
+      if(nn.trim()&&nn.trim()!==route.label) state.settings.moduleLabels[id]=nn.trim();
+      else delete state.settings.moduleLabels[id];
+      commit(); toast('Module name updated.');
+    }
+    return;
+  }
+});
+
+document.addEventListener('submit',function(e){
+  var form=e.target;
+  var kind=form.getAttribute('data-form');
+  if(kind==='product-cat-add'){
+    var name=fv(form,'name');
+    if(!name){ toast('Type a category name.','warn'); return; }
+    if(productCats().indexOf(name)>=0){ toast('That category already exists.','warn'); return; }
+    state.settings.productCats=productCats().concat([name]);
+    commit(); toast('Category "'+name+'" added.');
+    return;
+  }
+  if(kind==='product-attr-add'){
+    var aname=fv(form,'name');
+    if(!aname){ toast('Type an attribute name.','warn'); return; }
+    if(productAttrs().indexOf(aname)>=0){ toast('That attribute already exists.','warn'); return; }
+    state.settings.productAttrs=productAttrs().concat([aname]);
+    commit(); toast('Attribute "'+aname+'" added — it now appears on every product form.');
+    return;
+  }
+});
+
+document.addEventListener('change',function(e){
+  var el=e.target;
+  if(el.classList&&el.classList.contains('oi-prod')){
+    var opt=el.options[el.selectedIndex];
+    var priceInput=el.closest('.oi-row')&&el.closest('.oi-row').querySelector('.oi-price');
+    if(opt&&priceInput&&opt.getAttribute('data-price')) priceInput.value=opt.getAttribute('data-price');
+    return;
+  }
+  var act=el.getAttribute('data-action-change');
+  if(act==='order-status'){
+    var o=state.orders.find(function(x){return x.id===el.getAttribute('data-id');});
+    if(o){
+      var oldStatus=o.status;
+      o.status=el.value;
+      if(el.value==='Cancelled'&&oldStatus!=='Cancelled') applyOrderStock(o,-1);
+      if(oldStatus==='Cancelled'&&el.value!=='Cancelled') applyOrderStock(o,1);
+      commit();
+      if(el.value==='Delivered') toast('📦 '+o.number+' delivered!'+(o.payStatus!=='Paid'?' Don’t forget to mark it paid once you collect.':''));
+      else if(el.value==='Cancelled') toast('Order cancelled — stock returned.','warn');
+    }
+    return;
+  }
+});
+
+/* live search for custom modules */
+document.addEventListener('input',function(e){
+  var el=e.target;
+  if(el.getAttribute('data-action-input')!=='cm-search') return;
+  ui.cmQ=ui.cmQ||{};
+  ui.cmQ[el.getAttribute('data-id')]=el.value;
+  var pos=el.selectionStart;
+  render();
+  var again=document.querySelector('[data-action-input="cm-search"]');
+  if(again){ again.focus(); try{ again.setSelectionRange(pos,pos); }catch(_){} }
 });
 
 /* keyboard: Escape closes modal / sidebar */
