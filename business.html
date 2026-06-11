@@ -714,8 +714,17 @@ function loadState(){
     state.meta.createdAt=todayISO();
   }
 }
+var DEVICE_ID=(function(){
+  try{
+    var d=localStorage.getItem('bizpilot.device');
+    if(!d){ d=uid(); localStorage.setItem('bizpilot.device',d); }
+    return d;
+  }catch(_){ return 'unknown'; }
+})();
 function save(){
   try{
+    state.meta.updatedAt=Date.now();
+    state.meta.deviceId=DEVICE_ID;
     localStorage.setItem(LS_KEY,JSON.stringify(state));
     scheduleCloudPush();
   }catch(e){
@@ -725,15 +734,28 @@ function save(){
 function commit(){ save(); render(); flashSaved(); }
 
 /* ---------- toast ---------- */
-function toast(msg,type){
+function toast(msg,type,opts){
   var root=byId('toast-root');
   var el=document.createElement('div');
   el.className='toast '+(type||'good');
   var ic=type==='error'?'alert':(type==='warn'?'alert':'check');
-  el.innerHTML='<span class="t-icon">'+icon(ic)+'</span><div>'+esc(msg)+'</div>';
+  el.innerHTML='<span class="t-icon">'+icon(ic)+'</span><div style="flex:1">'+esc(msg)+'</div>'+
+    (opts&&opts.undo?'<button class="btn btn-sm btn-ghost" data-action="do-undo" style="flex-shrink:0">Undo</button>':'');
   root.appendChild(el);
-  setTimeout(function(){ el.classList.add('out'); setTimeout(function(){ el.remove(); },320); },3400);
+  setTimeout(function(){ el.classList.add('out'); setTimeout(function(){ el.remove(); },320); },opts&&opts.undo?6500:3400);
   if(type==='error'||type==='warn') modalInlineError(msg);
+}
+/* one-step undo: snapshot before destructive actions */
+var undoBuf=null;
+function snapshotForUndo(){ try{ undoBuf=JSON.stringify(state); }catch(_){ undoBuf=null; } }
+function doUndo(){
+  if(!undoBuf){ toast('Nothing to undo.','warn'); return; }
+  try{
+    state=deepMerge(JSON.parse(JSON.stringify(DEFAULT_STATE)),JSON.parse(undoBuf));
+    undoBuf=null;
+    commit(); applyTheme();
+    toast('Restored — crisis averted. 🎉');
+  }catch(e){ toast('Undo failed: '+e.message,'error'); }
 }
 /* show validation errors INSIDE the open modal so a rejected save is unmissable */
 function modalInlineError(msg){
@@ -1242,6 +1264,7 @@ function viewDashboard(){
       '</div></div>';
   }
 
+  html+=todayPanelHTML();
   /* KPI cards */
   var mm=monthlyMap();
   var months6=lastNMonths(6);
@@ -1480,8 +1503,10 @@ function financeEntriesHTML(){
     return html;
   }
   var ft=financeTotals(entries);
+  var limit=ui.financeLimit||50;
+  var shown=entries.slice(0,limit);
   html+='<div class="table-wrap"><table><thead><tr><th>Date</th><th>Type</th><th>Category</th><th>Note</th><th>Client</th><th style="text-align:right">Amount</th><th></th></tr></thead><tbody>';
-  entries.forEach(function(e){
+  shown.forEach(function(e){
     html+='<tr><td style="white-space:nowrap">'+fmtDate(e.date)+'</td>'+
       '<td><span class="badge '+(e.type==='income'?'good':'risk')+'">'+(e.type==='income'?'Income':'Expense')+'</span></td>'+
       '<td>'+esc(e.category||'Other')+'</td>'+
@@ -1492,7 +1517,9 @@ function financeEntriesHTML(){
       '<td class="num" style="text-align:right;color:'+(e.type==='income'?'var(--income)':'var(--expense)')+'">'+(e.type==='income'?'+':'−')+fmtMoney(e.amount)+'</td>'+
       '<td><div class="row-actions"><button class="btn-icon" data-action="edit-entry" data-id="'+e.id+'" aria-label="Edit">'+icon('edit')+'</button><button class="btn-icon danger" data-action="delete-entry" data-id="'+e.id+'" aria-label="Delete">'+icon('trash')+'</button></div></td></tr>';
   });
-  html+='</tbody><tfoot><tr><td colspan="5" style="font-weight:700">Filtered total ('+entries.length+' entries)</td><td class="num" style="text-align:right;font-weight:800;color:'+(ft.profit>=0?'var(--income)':'var(--expense)')+'">'+fmtMoney(ft.revenue-ft.expenses)+'</td><td></td></tr></tfoot></table></div></div>';
+  html+='</tbody><tfoot><tr><td colspan="5" style="font-weight:700">Filtered total ('+entries.length+' entries)</td><td class="num" style="text-align:right;font-weight:800;color:'+(ft.profit>=0?'var(--income)':'var(--expense)')+'">'+fmtMoney(ft.revenue-ft.expenses)+'</td><td></td></tr></tfoot></table></div>';
+  if(entries.length>limit) html+='<div style="text-align:center;margin-top:12px"><button class="btn btn-ghost btn-sm" data-action="finance-more">Show more ('+(entries.length-limit)+' remaining)</button></div>';
+  html+='</div>';
   return html;
 }
 
@@ -1949,7 +1976,7 @@ function viewClients(){
     list.forEach(function(c){
       var stCls={Lead:'info',Active:'good',Inactive:'neutral',Churned:'risk'}[c.status]||'neutral';
       var tracked=revByClient[(c.name||'').toLowerCase()]||0;
-      html+='<tr><td style="font-weight:700">'+esc(c.name)+'</td>'+
+      html+='<tr><td><button style="font-weight:700;color:var(--accent);text-align:left" data-action="client-view" data-id="'+c.id+'">'+esc(c.name)+'</button></td>'+
         '<td><span class="badge '+stCls+'">'+esc(c.status)+'</span></td>'+
         '<td>'+esc(c.contact||'—')+'</td>'+
         '<td class="num" style="text-align:right">'+(c.value?fmtMoney(c.value):'—')+'</td>'+
@@ -2151,7 +2178,12 @@ function viewReviews(){
 function viewSettings(){
   var s=state.settings;
   var entryCount=state.finance.length+state.goals.length+state.tasks.length+state.notes.length+state.clients.length;
+  var tab=ui.settingsTab||'business';
   var html=topbar('Settings & Data','Your business profile, plus full control of your data.');
+  html+='<div class="tabs">'+[['business','Business'],['custom','Customization'],['data','Data & Sync']].map(function(x){
+    return '<button class="'+(tab===x[0]?'active':'')+'" data-action="settings-tab" data-tab="'+x[0]+'">'+x[1]+'</button>';}).join('')+'</div>';
+  if(tab==='custom'){ return html+'<div class="grid grid-2">'+customizationCardHTML()+'</div>'; }
+  if(tab==='data'){ return html+settingsDataHTML(); }
   html+='<div class="grid grid-2">';
   html+='<div class="card"><div class="card-head"><h3>Business profile</h3></div>'+
     '<form data-form="settings">'+
@@ -2164,21 +2196,30 @@ function viewSettings(){
     '<div class="field"><label>Auto-backup every</label><select class="input" name="autoBackupDays">'+
       [[0,'Off — manual exports only'],[3,'3 days'],[7,'7 days'],[14,'14 days'],[30,'30 days']].map(function(o){return '<option value="'+o[0]+'"'+((s.autoBackupDays||0)===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+
       '</select><p style="font-size:.74rem;color:var(--text-3);margin-top:4px">When due, a JSON backup downloads automatically on app open.</p></div>'+
-    '<button class="btn btn-primary" type="submit">'+icon('check')+' Save settings</button></form></div>'+
-    customizationCardHTML()+cloudSyncCardHTML();
-  html+='<div><div class="card"><div class="card-head"><h3>Backup & restore</h3></div>'+
-    '<p style="font-size:.84rem;color:var(--text-2);margin-bottom:14px">All data lives only in this browser’s localStorage ('+entryCount+' records). Export a backup regularly — clearing browser data would erase everything.'+
+    '<button class="btn btn-primary" type="submit">'+icon('check')+' Save settings</button></form></div>';
+  html+='<div class="card"><div class="card-head"><h3>About</h3></div>'+
+    '<p style="font-size:.84rem;color:var(--text-2)">BizPilot is a single-file, local-first business command center. No accounts, no servers, no tracking — your numbers never leave this device unless you enable cloud sync. Works offline once loaded.</p></div>';
+  html+='</div>';
+  return html;
+}
+function settingsDataHTML(){
+  var s=state.settings;
+  var entryCount=state.finance.length+state.goals.length+state.tasks.length+state.notes.length+state.clients.length;
+  var html='<div class="grid grid-2">';
+  html+=storageCardHTML();
+  html+=cloudSyncCardHTML();
+  html+='<div class="card"><div class="card-head"><h3>Backup & restore</h3></div>'+
+    '<p style="font-size:.84rem;color:var(--text-2);margin-bottom:14px">'+entryCount+' records in this browser. Export a backup regularly — clearing browser data would erase everything.'+
     (s.lastBackup?' Last backup: <b>'+fmtDate(s.lastBackup)+'</b>.':' <b>No backup yet.</b>')+'</p>'+
     '<div style="display:flex;gap:9px;flex-wrap:wrap">'+
     '<button class="btn btn-primary" data-action="export-data">'+icon('download')+' Export JSON backup</button>'+
     '<button class="btn btn-ghost" data-action="import-data">'+icon('upload')+' Import backup</button></div></div>';
-  html+='<div class="card mt"><div class="card-head"><h3>Sample data & reset</h3></div>'+
+  html+='<div class="card"><div class="card-head"><h3>Sample data & reset</h3></div>'+
     '<p style="font-size:.84rem;color:var(--text-2);margin-bottom:14px">Load realistic demo data to explore every feature, or wipe everything and start fresh.</p>'+
     '<div style="display:flex;gap:9px;flex-wrap:wrap">'+
     '<button class="btn btn-ghost" data-action="load-sample">'+icon('spark')+' Load sample data</button>'+
     '<button class="btn btn-danger" data-action="reset-data">'+icon('trash')+' Reset all data</button></div></div>';
-  html+='<div class="card mt"><div class="card-head"><h3>About</h3></div>'+
-    '<p style="font-size:.84rem;color:var(--text-2)">BizPilot is a single-file, local-first business command center. No accounts, no servers, no tracking — your numbers never leave this device. Works offline once loaded.</p></div></div></div>';
+  html+='</div>';
   return html;
 }
 
@@ -2726,8 +2767,9 @@ document.addEventListener('click',function(e){
   if(action==='delete-entry'){
     var en2=findEntry(id);
     if(en2&&confirm('Delete this '+en2.type+' of '+fmtMoney(en2.amount)+'?')){
+      snapshotForUndo();
       state.finance=state.finance.filter(function(x){return x.id!==id;});
-      commit(); toast('Entry deleted.','warn');
+      commit(); toast('Entry deleted.','warn',{undo:true});
     } return;
   }
   if(action==='finance-tab'){ ui.financeTab=el.getAttribute('data-tab'); render(); return; }
@@ -2756,8 +2798,9 @@ document.addEventListener('click',function(e){
   if(action==='delete-goal'){
     var g2=state.goals.find(function(x){return x.id===id;});
     if(g2&&confirm('Delete goal "'+g2.title+'"?')){
+      snapshotForUndo();
       state.goals=state.goals.filter(function(x){return x.id!==id;});
-      commit(); toast('Goal deleted.','warn');
+      commit(); toast('Goal deleted.','warn',{undo:true});
     } return;
   }
   if(action==='complete-goal'){
@@ -2786,8 +2829,9 @@ document.addEventListener('click',function(e){
   if(action==='delete-phase'){
     var p2=state.phases.find(function(x){return x.id===id;});
     if(p2&&confirm('Delete phase "'+p2.name+'" and its '+(p2.tasks||[]).length+' task(s)?')){
+      snapshotForUndo();
       state.phases=state.phases.filter(function(x){return x.id!==id;});
-      commit(); toast('Phase deleted.','warn');
+      commit(); toast('Phase deleted.','warn',{undo:true});
     } return;
   }
   if(action==='open-phase-task-modal'){ phaseTaskModal(el.getAttribute('data-phase')); return; }
@@ -2814,8 +2858,9 @@ document.addEventListener('click',function(e){
   if(action==='delete-task'){
     var t2=state.tasks.find(function(x){return x.id===id;});
     if(t2&&confirm('Delete task "'+t2.title+'"?')){
+      snapshotForUndo();
       state.tasks=state.tasks.filter(function(x){return x.id!==id;});
-      commit(); toast('Task deleted.','warn');
+      commit(); toast('Task deleted.','warn',{undo:true});
     } return;
   }
   if(action==='toggle-task'){
@@ -2836,8 +2881,9 @@ document.addEventListener('click',function(e){
     e.stopPropagation();
     var n2=state.notes.find(function(x){return x.id===id;});
     if(n2&&confirm('Delete note "'+n2.title+'"?')){
+      snapshotForUndo();
       state.notes=state.notes.filter(function(x){return x.id!==id;});
-      commit(); toast('Note deleted.','warn');
+      commit(); toast('Note deleted.','warn',{undo:true});
     } return;
   }
   if(action==='open-note-modal'){
@@ -2852,8 +2898,9 @@ document.addEventListener('click',function(e){
   if(action==='delete-client'){
     var c2=state.clients.find(function(x){return x.id===id;});
     if(c2&&confirm('Delete client "'+c2.name+'"?')){
+      snapshotForUndo();
       state.clients=state.clients.filter(function(x){return x.id!==id;});
-      commit(); toast('Client deleted.','warn');
+      commit(); toast('Client deleted.','warn',{undo:true});
     } return;
   }
   if(action==='client-filter'){ ui.clientFilter=el.getAttribute('data-val'); render(); return; }
@@ -3317,9 +3364,14 @@ function viewReport(){
   monthsAvail.sort();
   var selected=ui.reportMonth||thisMonthKey();
   if(monthsAvail.indexOf(selected)<0) selected=monthsAvail[monthsAvail.length-1];
-  var html=topbar('Monthly Report','A clean P&L-style summary for any month — print it or save as PDF.',
+  var period=ui.reportPeriod||'month';
+  if(period==='year') return viewYearReport();
+  var html=topbar('Reports','P&L summaries — print any of them or save as PDF.',
     '<button class="btn btn-primary" data-action="print-report" data-month="'+selected+'">'+icon('print')+'<span class="btn-txt">Print / Save PDF</span></button>');
-  html+='<div class="card"><div class="card-head"><h3>Report month</h3><span class="spacer"></span>'+
+  html+='<div class="card"><div class="card-head"><div class="seg">'+
+    '<button class="active" data-action="report-period" data-val="month">Monthly</button>'+
+    '<button data-action="report-period" data-val="year">Yearly</button></div>'+
+    '<span class="spacer"></span>'+
     '<select class="input" style="width:auto" data-action-change="report-month">'+
     monthsAvail.slice().reverse().map(function(k){return '<option value="'+k+'"'+(selected===k?' selected':'')+'>'+monthLabel(k)+'</option>';}).join('')+'</select></div>';
   var d=mm[selected]||{revenue:0,expenses:0};
@@ -3451,15 +3503,34 @@ function scheduleCloudPush(){
   clearTimeout(cloudTimer);
   cloudTimer=setTimeout(function(){ cloudPush(true); },4000);
 }
+var cloudConflictWarned=false;
 function cloudPush(silent){
   var ep=cloudEndpoint();
   if(!ep){ if(!silent) toast('Enter your database URL first, then save sync settings.','warn'); return; }
   if(cloudBusy) return;
   cloudBusy=true;
+  // conflict guard: don't silently overwrite newer changes from another device
+  fetch(ep.replace(/\.json$/,'/meta.json')).then(function(r){ return r.ok?r.json():null; }).catch(function(){ return null; })
+  .then(function(cloudMeta){
+    if(cloudMeta&&cloudMeta.updatedAt&&cloudMeta.deviceId&&cloudMeta.deviceId!==DEVICE_ID&&cloudMeta.updatedAt>(state.settings.sync.lastSyncStamp||0)){
+      cloudBusy=false;
+      if(silent){
+        if(!cloudConflictWarned){ cloudConflictWarned=true; toast('Cloud has newer changes from another device — auto-push paused. Go to Settings → Cloud sync to Pull (or Push to overwrite).','warn'); }
+        return;
+      }
+      if(!confirm('The cloud copy has NEWER changes from another device. Overwrite it with THIS device’s data?')){ return; }
+    }
+    cloudBusy=true;
+    doCloudPut(ep,silent);
+  });
+}
+function doCloudPut(ep,silent){
   fetch(ep,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(state)})
     .then(function(r){
       if(!r.ok) throw new Error('HTTP '+r.status+((r.status===401||r.status===403)?' — your Firebase database rules denied the write. Open Firebase console → Realtime Database → Rules.':''));
       state.settings.sync.lastSync=new Date().toISOString();
+      state.settings.sync.lastSyncStamp=state.meta.updatedAt;
+      cloudConflictWarned=false;
       try{ localStorage.setItem(LS_KEY,JSON.stringify(state)); }catch(_){}
       if(!silent){ toast('Pushed to cloud ✓'); render(); }
     })
@@ -3477,9 +3548,12 @@ function cloudPull(){
     .then(function(data){
       if(!data||typeof data!=='object'||!data.settings){ toast('No BizPilot data found in the cloud yet — push first.','warn'); return; }
       if(!confirm('Replace the data on THIS device with the cloud copy? Local changes not yet pushed will be lost.')) return;
+      if(state.meta&&state.meta.updatedAt&&data.meta&&data.meta.updatedAt&&state.meta.updatedAt>data.meta.updatedAt){
+        if(!confirm('Heads up: THIS device has newer changes than the cloud copy. Pulling will lose them. Continue?')) return;
+      }
       var sync=JSON.parse(JSON.stringify(state.settings.sync));
       state=deepMerge(JSON.parse(JSON.stringify(DEFAULT_STATE)),data);
-      state.settings.sync=Object.assign(state.settings.sync||{},sync,{lastSync:new Date().toISOString()});
+      state.settings.sync=Object.assign(state.settings.sync||{},sync,{lastSync:new Date().toISOString(),lastSyncStamp:(data.meta&&data.meta.updatedAt)||Date.now()});
       try{ localStorage.setItem(LS_KEY,JSON.stringify(state)); }catch(_){}
       applyTheme(); render();
       toast('Pulled from cloud — '+state.finance.length+' finance entries on this device now.');
@@ -3532,8 +3606,9 @@ document.addEventListener('click',function(e){
   if(action==='invoice-delete'){
     var iv2=state.invoices.find(function(x){return x.id===id;});
     if(iv2&&confirm('Delete invoice '+iv2.number+' ('+fmtMoney(iv2.amount)+')? The income entry, if already recorded, stays in Finance.')){
+      snapshotForUndo();
       state.invoices=state.invoices.filter(function(x){return x.id!==id;});
-      commit(); toast('Invoice deleted.','warn');
+      commit(); toast('Invoice deleted.','warn',{undo:true});
     } return;
   }
   if(action==='invoice-sent'){
@@ -3562,8 +3637,9 @@ document.addEventListener('click',function(e){
   if(action==='recurring-delete'){
     var r3=state.recurring.find(function(x){return x.id===id;});
     if(r3&&confirm('Delete this recurring rule? Entries it already posted stay in Finance.')){
+      snapshotForUndo();
       state.recurring=state.recurring.filter(function(x){return x.id!==id;});
-      commit(); toast('Recurring rule deleted.','warn');
+      commit(); toast('Recurring rule deleted.','warn',{undo:true});
     } return;
   }
 
@@ -3878,6 +3954,9 @@ function viewOrders(){
     if(sel==='all') return true;
     return o.status===sel;
   }).sort(function(a,b){ return (b.orderDate||'').localeCompare(a.orderDate||''); });
+  var oLimit=ui.ordersLimit||30;
+  var oTotal=list.length;
+  list=list.slice(0,oLimit);
   html+='<div class="card mt">';
   if(!list.length){
     html+=emptyState('truck',orders.length?'No orders here':'No orders yet','Create an order: pick products, enter the delivery address, and BizPilot handles stock, totals and income for you.','<button class="btn btn-sm btn-primary" data-action="order-new">'+icon('plus')+' First order</button>');
@@ -3908,9 +3987,11 @@ function viewOrders(){
         '</div>'+
         '<div class="row-actions" style="flex-direction:column">'+
           '<button class="btn-icon" data-action="order-print" data-id="'+o.id+'" title="Print slip">'+icon('print')+'</button>'+
+          '<button class="btn-icon" data-action="order-invoice" data-id="'+o.id+'" title="Create invoice from this order">'+icon('invoice')+'</button>'+
           '<button class="btn-icon" data-action="order-edit" data-id="'+o.id+'">'+icon('edit')+'</button>'+
           '<button class="btn-icon danger" data-action="order-delete" data-id="'+o.id+'">'+icon('trash')+'</button></div></div>';
     });
+    if(oTotal>oLimit) html+='<div style="text-align:center;margin-top:12px"><button class="btn btn-ghost btn-sm" data-action="orders-more">Show more ('+(oTotal-oLimit)+' remaining)</button></div>';
   }
   html+='</div>';
   return html;
@@ -4196,8 +4277,9 @@ document.addEventListener('click',function(e){
         p2.active=false; commit(); toast('Product archived.');
       }
     } else if(confirm('Delete product "'+p2.name+'"?')){
+      snapshotForUndo();
       state.products=state.products.filter(function(x){return x.id!==id;});
-      commit(); toast('Product deleted.','warn');
+      commit(); toast('Product deleted.','warn',{undo:true});
     }
     return;
   }
@@ -4235,9 +4317,10 @@ document.addEventListener('click',function(e){
   if(action==='order-delete'){
     var o2=state.orders.find(function(x){return x.id===id;});
     if(o2&&confirm('Delete order '+o2.number+'? Reserved stock will be returned.'+(o2.incomeRecorded?' The income entry already recorded stays in Finance.':''))){
+      snapshotForUndo();
       if(o2.status!=='Cancelled') applyOrderStock(o2,-1);
       state.orders=state.orders.filter(function(x){return x.id!==id;});
-      commit(); toast('Order deleted — stock returned.','warn');
+      commit(); toast('Order deleted — stock returned.','warn',{undo:true});
     }
     return;
   }
@@ -4272,9 +4355,10 @@ document.addEventListener('click',function(e){
   if(action==='custom-module-delete'){
     var m3=findModule(id);
     if(m3&&confirm('Delete module "'+m3.name+'" and its '+(m3.records||[]).length+' record(s)? This cannot be undone.')){
+      snapshotForUndo();
       state.customModules=state.customModules.filter(function(x){return x.id!==id;});
       if(currentRoute()==='custom-'+id) nav('dashboard');
-      commit(); toast('Module deleted.','warn');
+      commit(); toast('Module deleted.','warn',{undo:true});
     }
     return;
   }
@@ -4300,8 +4384,9 @@ document.addEventListener('click',function(e){
   if(action==='cm-record-delete'){
     var m7=findModule(id);
     if(m7&&confirm('Delete this record?')){
+      snapshotForUndo();
       m7.records=m7.records.filter(function(r){return r.id!==el.getAttribute('data-rec');});
-      commit(); toast('Record deleted.','warn');
+      commit(); toast('Record deleted.','warn',{undo:true});
     }
     return;
   }
@@ -4892,7 +4977,8 @@ function orderBoardHTML(){
           (o.payStatus==='Paid'?'<span class="badge good">Paid</span>':'<span class="badge warn">Unpaid</span>')+
           (o.deliveryDate?'<span class="badge '+(late?'risk':'neutral')+'">'+(late?'late':fmtDate(o.deliveryDate))+'</span>':'')+
         '</div>'+
-        '<div style="display:flex;gap:4px;margin-top:7px">'+
+        '<div style="display:flex;gap:4px;margin-top:7px;flex-wrap:wrap">'+
+          (col!=='Delivered'?'<button class="btn btn-sm btn-ghost" data-action="order-next-stage" data-id="'+o.id+'" style="padding:3px 9px;font-size:.7rem" title="Move to next stage">→ '+KB_COLS[KB_COLS.indexOf(col)+1]+'</button>':'')+
           (o.payStatus!=='Paid'?'<button class="btn btn-sm btn-good" data-action="order-paid" data-id="'+o.id+'" style="padding:3px 9px;font-size:.7rem">Paid</button>':'')+
           '<button class="btn btn-sm btn-ghost" data-action="order-print" data-id="'+o.id+'" style="padding:3px 9px;font-size:.7rem">Slip</button>'+
           '<button class="btn btn-sm btn-ghost" data-action="order-edit" data-id="'+o.id+'" style="padding:3px 9px;font-size:.7rem">Edit</button>'+
@@ -5081,9 +5167,10 @@ document.addEventListener('click',function(e){
     if(!m3) return;
     var usedIn=(state.products||[]).filter(function(p){return (p.bom||[]).some(function(b){return b.materialId===id;});});
     if(confirm('Delete material "'+m3.name+'"?'+(usedIn.length?' It is used in '+usedIn.length+' recipe(s) — it will be removed from them.':''))){
+      snapshotForUndo();
       state.materials=state.materials.filter(function(x){return x.id!==id;});
       (state.products||[]).forEach(function(p){ if(p.bom) p.bom=p.bom.filter(function(b){return b.materialId!==id;}); });
-      commit(); toast('Material deleted.','warn');
+      commit(); toast('Material deleted.','warn',{undo:true});
     }
     return;
   }
@@ -5365,10 +5452,11 @@ document.addEventListener('click',function(e){
   if(action==='account-delete'){
     var a3=findAccount(id);
     if(a3&&confirm('Delete account "'+a3.name+'" ('+fmtMoney(accountBalance(a3))+')? Entries assigned to it become unassigned; its transfers are removed.')){
+      snapshotForUndo();
       state.accounts=state.accounts.filter(function(x){return x.id!==id;});
       state.finance.forEach(function(en){ if(en.account===id) en.account=''; });
       state.transfers=(state.transfers||[]).filter(function(t){return t.from!==id&&t.to!==id;});
-      commit(); toast('Account deleted.','warn');
+      commit(); toast('Account deleted.','warn',{undo:true});
     }
     return;
   }
@@ -5380,6 +5468,227 @@ document.addEventListener('click',function(e){
     }
     return;
   }
+});
+
+/* ============================================================
+   v11 additions: Today panel, storage meter, client profile,
+   order→invoice, year report, settings tabs wiring
+   ============================================================ */
+
+/* ---------- Today panel: what needs your attention right now ---------- */
+function todayPanelHTML(){
+  var items=[];
+  var today=todayISO();
+  // deliveries
+  var dueToday=(state.orders||[]).filter(function(o){ return o.status!=='Delivered'&&o.status!=='Cancelled'&&o.deliveryDate===today; });
+  var lateDeliv=(state.orders||[]).filter(function(o){ var d=daysUntil(o.deliveryDate); return o.status!=='Delivered'&&o.status!=='Cancelled'&&d!=null&&d<0; });
+  if(dueToday.length) items.push({cls:'info',icon:'truck',text:'<b>'+dueToday.length+'</b> deliver'+(dueToday.length>1?'ies':'y')+' today — '+esc(dueToday.map(function(o){return o.clientName;}).join(', ')),route:'orders'});
+  if(lateDeliv.length) items.push({cls:'risk',icon:'truck',text:'<b>'+lateDeliv.length+'</b> late deliver'+(lateDeliv.length>1?'ies':'y')+' — oldest: '+esc(lateDeliv[0].clientName),route:'orders'});
+  // follow-ups
+  var fu=unpaidFollowUps();
+  if(fu.length) items.push({cls:'warn',icon:'cash',text:'<b>'+fu.length+'</b> unpaid order'+(fu.length>1?'s':'')+' to follow up ('+fmtMoney(sum(fu,function(x){return orderTotal(x.o);}))+')',route:'orders'});
+  // tasks due today / overdue
+  var tToday=state.tasks.filter(function(t){ return !t.done&&t.deadline===today; });
+  var tLate=state.tasks.filter(function(t){ var d=daysUntil(t.deadline); return !t.done&&d!=null&&d<0; });
+  if(tToday.length) items.push({cls:'info',icon:'tasks',text:'<b>'+tToday.length+'</b> task'+(tToday.length>1?'s':'')+' due today',route:'tasks'});
+  if(tLate.length) items.push({cls:'warn',icon:'clock',text:'<b>'+tLate.length+'</b> overdue task'+(tLate.length>1?'s':''),route:'tasks'});
+  // low stock
+  var low=(state.products||[]).filter(function(p){ return p.active!==false&&p.stock<=(p.lowStock!=null?p.lowStock:5); });
+  if(low.length) items.push({cls:'warn',icon:'box',text:'<b>'+esc(low[0].name)+'</b>'+(low.length>1?' +'+(low.length-1)+' more':'')+' low on stock',route:'products'});
+  var lowMat=(state.materials||[]).filter(function(m){ return m.stock<=(m.lowStock!=null?m.lowStock:0); });
+  if(lowMat.length) items.push({cls:'warn',icon:'box',text:'<b>'+esc(lowMat[0].name)+'</b> running out — restock materials',route:'products'});
+  // cash position (always shown when accounts exist)
+  if((state.accounts||[]).length){
+    var cash=sum(state.accounts,accountBalance);
+    items.push({cls:'good',icon:'bank',text:'Cash on hand: <b>'+fmtMoney(cash)+'</b> · true position <b>'+fmtMoney(cash+receivablesTotal())+'</b>',route:'accounts'});
+  }
+  if(!items.length) return '';
+  return '<div class="card" style="margin-bottom:13px;padding:13px 16px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:9px"><b style="font-size:.92rem">☀️ Today</b><span style="font-size:.72rem;color:var(--text-3)">'+new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})+'</span></div>'+
+    '<div style="display:flex;flex-direction:column;gap:5px">'+items.map(function(it){
+      return '<button style="display:flex;align-items:center;gap:9px;text-align:left;padding:6px 9px;border-radius:9px;width:100%;font-size:.85rem;background:var(--bg-sunken)" data-action="nav" data-route="'+it.route+'">'+
+        '<span style="color:var(--'+(it.cls==='good'?'good':(it.cls==='risk'?'risk':(it.cls==='warn'?'warn':'info')))+')">'+icon(it.icon,14)+'</span>'+
+        '<span style="flex:1">'+it.text+'</span><span style="color:var(--text-3)">→</span></button>';
+    }).join('')+'</div></div>';
+}
+
+/* ---------- storage meter ---------- */
+function storageUsage(){
+  var bytes=0;
+  try{ bytes=(localStorage.getItem(LS_KEY)||'').length*2; }catch(_){ }
+  var photoBytes=0, photoCount=0;
+  function countImg(v){ if(v&&typeof v==='string'&&v.indexOf('data:')===0){ photoBytes+=v.length*2; photoCount++; } }
+  (state.products||[]).forEach(function(p){ countImg(p.photo); });
+  (state.accounts||[]).forEach(function(a){ countImg(a.logo); });
+  state.finance.forEach(function(e){ countImg(e.receipt); });
+  (state.customModules||[]).forEach(function(m){ (m.records||[]).forEach(function(r){ m.fields.forEach(function(f){ if(f.type==='image'&&r[f.key]&&r[f.key].data) countImg(r[f.key].data); }); }); });
+  return {bytes:bytes,photoBytes:photoBytes,photoCount:photoCount,limit:5*1024*1024};
+}
+function storageCardHTML(){
+  var u=storageUsage();
+  var pct=clamp(u.bytes/u.limit*100,0,100);
+  var cls=pct>=85?'risk':(pct>=65?'warn':'good');
+  return '<div class="card"><div class="card-head"><h3>Storage health</h3><span class="spacer"></span><span class="badge '+cls+'">'+fmtNum(pct,0)+'% used</span></div>'+
+    '<div class="progress thick"><div class="bar '+cls+'" style="width:'+pct+'%"></div></div>'+
+    '<p style="font-size:.8rem;color:var(--text-2);margin-top:10px">'+fmtNum(u.bytes/1024,0)+' KB of ~5,120 KB browser storage. Photos: <b>'+u.photoCount+'</b> using '+fmtNum(u.photoBytes/1024,0)+' KB.'+
+    (pct>=65?' <b style="color:var(--'+(pct>=85?'risk':'warn')+')">Getting full</b> — export a backup, then remove old receipt photos (the entries stay; only the images go).':' Plenty of room.')+'</p></div>';
+}
+function storageWarnOnBoot(){
+  var u=storageUsage();
+  var pct=u.bytes/u.limit*100;
+  if(pct>=65) setTimeout(function(){
+    toast('Browser storage is '+fmtNum(pct,0)+'% full (mostly photos). Export a backup and trim old receipt images in Settings → Data & Sync.',pct>=85?'error':'warn');
+  },2600);
+}
+
+/* ---------- client profile ---------- */
+function clientProfileModal(c){
+  var nameL=(c.name||'').toLowerCase();
+  var entries=state.finance.filter(function(e){ return e.type==='income'&&(e.client||'').toLowerCase()===nameL; });
+  var revenue=sum(entries,function(e){return e.amount;});
+  var orders=(state.orders||[]).filter(function(o){ return (o.clientName||'').toLowerCase()===nameL&&o.status!=='Cancelled'; });
+  var lastDate=null;
+  entries.forEach(function(e){ if(!lastDate||e.date>lastDate) lastDate=e.date; });
+  orders.forEach(function(o){ if(!lastDate||o.orderDate>lastDate) lastDate=o.orderDate; });
+  var daysQuiet=lastDate?-daysUntil(lastDate):null;
+  var stCls={Lead:'info',Active:'good',Inactive:'neutral',Churned:'risk'}[c.status]||'neutral';
+  var body=
+    '<div style="display:flex;gap:10px;align-items:center;margin-bottom:14px"><span class="stat-icon">'+icon('clients')+'</span>'+
+    '<div><b style="font-size:1.05rem">'+esc(c.name)+'</b><div style="display:flex;gap:6px;margin-top:3px"><span class="badge '+stCls+'">'+esc(c.status)+'</span>'+
+    (daysQuiet!=null&&daysQuiet>=45&&c.status!=='Churned'?'<span class="badge info">win-back: '+daysQuiet+'d quiet</span>':'')+'</div></div></div>'+
+    '<div class="grid grid-3" style="gap:9px;margin-bottom:14px">'+
+      '<div style="background:var(--bg-sunken);border-radius:10px;padding:9px"><div style="font-size:.64rem;color:var(--text-3);text-transform:uppercase;font-weight:700">Revenue</div><b class="num">'+fmtMoney(revenue)+'</b></div>'+
+      '<div style="background:var(--bg-sunken);border-radius:10px;padding:9px"><div style="font-size:.64rem;color:var(--text-3);text-transform:uppercase;font-weight:700">Orders</div><b class="num">'+orders.length+'</b></div>'+
+      '<div style="background:var(--bg-sunken);border-radius:10px;padding:9px"><div style="font-size:.64rem;color:var(--text-3);text-transform:uppercase;font-weight:700">Last purchase</div><b style="font-size:.86rem">'+(lastDate?fmtDate(lastDate):'—')+'</b></div></div>'+
+    (c.contact?'<p style="font-size:.84rem;margin-bottom:10px"><b>Contact:</b> '+esc(c.contact)+'</p>':'')+
+    (c.note?'<p style="font-size:.82rem;color:var(--text-2);margin-bottom:12px">'+esc(c.note)+'</p>':'')+
+    (orders.length?'<div class="field"><label>Recent orders</label>'+orders.slice().sort(function(a,b){return (b.orderDate||'').localeCompare(a.orderDate||'');}).slice(0,5).map(function(o){
+      return '<div class="list-row" style="padding:7px 2px"><span class="mono" style="font-size:.74rem;color:var(--accent)">'+esc(o.number)+'</span>'+
+        '<span style="flex:1;font-size:.8rem;color:var(--text-2)">'+fmtDate(o.orderDate)+' · '+esc(o.status)+'</span>'+
+        '<b class="num" style="font-size:.84rem">'+fmtMoney(orderTotal(o))+'</b>'+
+        (o.payStatus==='Paid'?'<span class="badge good">paid</span>':'<span class="badge warn">unpaid</span>')+'</div>';
+    }).join('')+'</div>':'')+
+    (entries.length&&!orders.length?'<p style="font-size:.78rem;color:var(--text-3)">'+entries.length+' income entr'+(entries.length>1?'ies':'y')+' tagged to this client.</p>':'');
+  openModal('Client — '+c.name,body,{wide:true,submitLabel:'Edit client',onSubmit:function(){
+    setTimeout(function(){ clientModal(c); },60);
+    return true;
+  }});
+}
+
+/* ---------- year report ---------- */
+function viewYearReport(){
+  var years={};
+  state.finance.forEach(function(e){ var y=(e.date||'').slice(0,4); if(y) years[y]=1; });
+  var yearList=Object.keys(years).sort();
+  var thisYear=todayISO().slice(0,4);
+  if(yearList.indexOf(thisYear)<0) yearList.push(thisYear);
+  var selected=ui.reportYear||thisYear;
+  if(yearList.indexOf(selected)<0) selected=yearList[yearList.length-1];
+  var html=topbar('Reports','P&L summaries — print any of them or save as PDF.',
+    '<button class="btn btn-primary" data-action="print-year-report" data-year="'+selected+'">'+icon('print')+'<span class="btn-txt">Print / Save PDF</span></button>');
+  html+='<div class="card"><div class="card-head"><div class="seg">'+
+    '<button data-action="report-period" data-val="month">Monthly</button>'+
+    '<button class="active" data-action="report-period" data-val="year">Yearly</button></div>'+
+    '<span class="spacer"></span>'+
+    '<select class="input" style="width:auto" data-action-change="report-year">'+
+    yearList.slice().reverse().map(function(y){return '<option value="'+y+'"'+(selected===y?' selected':'')+'>'+y+'</option>';}).join('')+'</select></div>';
+  var yd=yearData(selected);
+  html+='<div class="grid grid-4" style="margin-top:4px">'+
+    statCard('Revenue '+selected,fmtMoney(yd.revenue),'','','arrowur')+
+    statCard('Expenses',fmtMoney(yd.expenses),'','','arrowdr')+
+    statCard('Net profit',fmtMoney(yd.profit),'<span class="stat-delta '+(yd.profit>=0?'up':'down')+'">'+(yd.revenue>0?fmtPct(yd.profit/yd.revenue*100,0)+' margin':'—')+'</span>','','wallet')+
+    statCard('Best month',yd.bestMonth?monthLabel(yd.bestMonth):'—',yd.bestMonth?'<span class="stat-delta up">'+fmtMoney(yd.bestAmount)+' revenue</span>':'','','spark')+
+  '</div></div>';
+  html+='<div class="card mt"><div class="card-head"><h3>Month by month — '+selected+'</h3></div><div class="table-wrap"><table><thead><tr><th>Month</th><th style="text-align:right">Revenue</th><th style="text-align:right">Expenses</th><th style="text-align:right">Profit</th></tr></thead><tbody>'+
+    yd.months.map(function(r){
+      return '<tr><td style="font-weight:600">'+monthLabel(r.k)+'</td><td class="num" style="text-align:right;color:var(--income)">'+fmtMoney(r.rev)+'</td><td class="num" style="text-align:right;color:var(--expense)">'+fmtMoney(r.exp)+'</td><td class="num" style="text-align:right;font-weight:700;color:'+(r.rev-r.exp>=0?'var(--income)':'var(--expense)')+'">'+fmtMoney(r.rev-r.exp)+'</td></tr>';
+    }).join('')+
+    '</tbody></table></div></div>';
+  html+='<div class="grid grid-2 mt">'+
+    '<div class="card"><div class="card-head"><h3>Top income sources</h3></div>'+rankListHTML(yd.topIncomeCats)+'</div>'+
+    '<div class="card"><div class="card-head"><h3>Top clients</h3></div>'+rankListHTML(yd.topClients)+'</div></div>';
+  return html;
+}
+function yearData(year){
+  var rev=0,exp=0,byMonth={},cats={},clients={};
+  state.finance.forEach(function(e){
+    if((e.date||'').slice(0,4)!==year) return;
+    var mk=monthKey(e.date);
+    byMonth[mk]=byMonth[mk]||{rev:0,exp:0};
+    if(e.type==='income'){ rev+=e.amount; byMonth[mk].rev+=e.amount; cats[e.category||'Other']=(cats[e.category||'Other']||0)+e.amount; if(e.client) clients[e.client]=(clients[e.client]||0)+e.amount; }
+    else { exp+=e.amount; byMonth[mk].exp+=e.amount; }
+  });
+  var months=Object.keys(byMonth).sort().map(function(k){ return {k:k,rev:byMonth[k].rev,exp:byMonth[k].exp}; });
+  var best=null,bestAmt=0;
+  months.forEach(function(m){ if(m.rev>bestAmt){ bestAmt=m.rev; best=m.k; } });
+  function rank(map){ return Object.keys(map).sort(function(a,b){return map[b]-map[a];}).slice(0,6).map(function(k){return {label:k,value:map[k]};}); }
+  return {revenue:rev,expenses:exp,profit:rev-exp,months:months,bestMonth:best,bestAmount:bestAmt,topIncomeCats:rank(cats),topClients:rank(clients)};
+}
+function rankListHTML(list){
+  if(!list.length) return '<p style="font-size:.8rem;color:var(--text-3)">No data for this year.</p>';
+  var max=list[0].value||1;
+  return list.map(function(x){
+    return '<div style="margin-bottom:9px"><div style="display:flex;justify-content:space-between;font-size:.84rem"><span>'+esc(x.label)+'</span><b class="num">'+fmtMoney(x.value)+'</b></div>'+
+      '<div class="progress" style="height:5px;margin-top:3px"><div class="bar" style="width:'+(x.value/max*100)+'%"></div></div></div>';
+  }).join('');
+}
+function buildYearReportDoc(year){
+  var yd=yearData(year);
+  return '<div class="pr-doc"><h1>'+esc(state.settings.businessName)+'</h1>'+
+    '<div class="pr-meta">Annual business report — '+year+' · generated '+fmtDate(todayISO())+'</div>'+
+    '<h2>Summary</h2><table><tbody>'+
+    '<tr><td>Revenue</td><td class="num">'+fmtMoney(yd.revenue)+'</td></tr>'+
+    '<tr><td>Expenses</td><td class="num">'+fmtMoney(yd.expenses)+'</td></tr>'+
+    '<tr class="pr-total"><td>Net profit</td><td class="num">'+fmtMoney(yd.profit)+(yd.revenue>0?' ('+fmtPct(yd.profit/yd.revenue*100,0)+' margin)':'')+'</td></tr></tbody></table>'+
+    '<h2>Month by month</h2><table><thead><tr><th>Month</th><th class="num">Revenue</th><th class="num">Expenses</th><th class="num">Profit</th></tr></thead><tbody>'+
+    yd.months.map(function(r){ return '<tr><td>'+monthLabel(r.k)+'</td><td class="num">'+fmtMoney(r.rev)+'</td><td class="num">'+fmtMoney(r.exp)+'</td><td class="num">'+fmtMoney(r.rev-r.exp)+'</td></tr>'; }).join('')+
+    '</tbody></table>'+
+    (yd.topIncomeCats.length?'<h2>Top income sources</h2><table><tbody>'+yd.topIncomeCats.map(function(x){return '<tr><td>'+esc(x.label)+'</td><td class="num">'+fmtMoney(x.value)+'</td></tr>';}).join('')+'</tbody></table>':'')+
+    (yd.topClients.length?'<h2>Top clients</h2><table><tbody>'+yd.topClients.map(function(x){return '<tr><td>'+esc(x.label)+'</td><td class="num">'+fmtMoney(x.value)+'</td></tr>';}).join('')+'</tbody></table>':'')+
+    '<div class="pr-foot">Generated by BizPilot</div></div>';
+}
+
+/* ---------- v11 wiring ---------- */
+document.addEventListener('click',function(e){
+  var el=e.target.closest('[data-action]');
+  if(!el) return;
+  var action=el.getAttribute('data-action');
+  var id=el.getAttribute('data-id');
+  if(action==='do-undo'){ doUndo(); return; }
+  if(action==='finance-more'){ ui.financeLimit=(ui.financeLimit||50)+100; render(); return; }
+  if(action==='orders-more'){ ui.ordersLimit=(ui.ordersLimit||30)+60; render(); return; }
+  if(action==='settings-tab'){ ui.settingsTab=el.getAttribute('data-tab'); render(); return; }
+  if(action==='report-period'){ ui.reportPeriod=el.getAttribute('data-val'); render(); return; }
+  if(action==='print-year-report'){ printDoc(buildYearReportDoc(el.getAttribute('data-year')||ui.reportYear||todayISO().slice(0,4))); return; }
+  if(action==='client-view'){
+    var c=state.clients.find(function(x){return x.id===id;});
+    if(c) clientProfileModal(c);
+    return;
+  }
+  if(action==='order-next-stage'){
+    var o=state.orders.find(function(x){return x.id===id;});
+    if(o){
+      var idx=KB_COLS.indexOf(o.status);
+      if(idx>=0&&idx<KB_COLS.length-1){
+        o.status=KB_COLS[idx+1];
+        commit();
+        if(o.status==='Delivered') toast('📦 '+o.number+' delivered!'+(o.payStatus!=='Paid'?' Mark it paid once you collect.':''));
+      }
+    }
+    return;
+  }
+  if(action==='order-invoice'){
+    var o2=state.orders.find(function(x){return x.id===id;});
+    if(o2){
+      var due=new Date(); due.setDate(due.getDate()+7);
+      var dueISO=due.getFullYear()+'-'+String(due.getMonth()+1).padStart(2,'0')+'-'+String(due.getDate()).padStart(2,'0');
+      invoiceModal({number:nextInvoiceNumber(),client:o2.clientName,desc:'Order '+o2.number+' — '+(o2.items||[]).map(function(it){return it.name+' ×'+it.qty;}).join(', '),amount:orderTotal(o2),issueDate:todayISO(),dueDate:dueISO,status:o2.payStatus==='Paid'?'Paid':'Sent'});
+      toast('Invoice prefilled from '+o2.number+' — review and save.');
+    }
+    return;
+  }
+});
+document.addEventListener('change',function(e){
+  if(e.target.getAttribute&&e.target.getAttribute('data-action-change')==='report-year'){ ui.reportYear=e.target.value; render(); }
 });
 
 /* keyboard: Escape closes modal / sidebar */
@@ -5403,6 +5712,7 @@ render();
 probeStorage();
 autoBackupCheck();
 maybeOnboard();
+storageWarnOnBoot();
 
 /* backup reminder — once per session if data exists and backup is stale */
 (function(){
