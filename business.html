@@ -422,7 +422,15 @@ details.calc summary{font-size:.8rem;font-weight:700;color:var(--accent);cursor:
 details.calc summary::before{content:'▸';transition:transform .2s;font-size:.7rem}
 details.calc[open] summary::before{transform:rotate(90deg)}
 details.calc .calc-body{margin-top:10px}
-.calc-result{margin-top:10px;padding:11px 14px;border-radius:10px;background:var(--accent-soft);font-size:.88rem;font-weight:600;color:var(--accent);display:none}
+.calc-card{transition:border-color .2s}
+.calc-card:hover{border-color:var(--accent)}
+.calc-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:9px;margin-top:8px}
+.calc-fields .field{margin-bottom:0}
+.calc-fields label{font-size:.66rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3)}
+.calc-fields .input{padding:6px 9px;font-size:.88rem}
+.calc-desc{font-size:.74rem;color:var(--text-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.calc-result{margin-top:11px;padding:11px 14px;border-radius:10px;background:var(--accent-soft);border-left:3px solid var(--accent);font-size:.92rem;font-weight:600;color:var(--text);display:none}
+.calc-result b{color:var(--accent)}
 .calc-result.show{display:block;animation:fadeUp .3s var(--ease)}
 .calc-result small{display:block;font-weight:500;color:var(--text-2);margin-top:3px;font-size:.78rem}
 
@@ -667,7 +675,8 @@ var DEFAULT_STATE={
     customCats:{ income:[], expense:[] },
     sync:{ url:'https://love-notes-eae0b-default-rtdb.firebaseio.com', path:'bizpilot', enabled:false, lastSync:null },
     productCats:['Candle','Keychain','Gift Box'], productAttrs:['Scent','Color'],
-    moduleLabels:{}, bizAddress:'', bizPhone:'', onboarded:false, lang:'en', payQR:'', payQRLabel:'' },
+    moduleLabels:{}, bizAddress:'', bizPhone:'', onboarded:false, lang:'en', payQR:'', payQRLabel:'',
+    fx:{ auto:true, updated:null, phpPer:{USD:58.5,EUR:63.5,GBP:74,AUD:38,CAD:42.5,SGD:43.5,AED:16,JPY:0.39} } },
   invoices:[],  // {id,number,client,desc,amount,issueDate,dueDate,status,paidDate,createdAt}
   recurring:[], // {id,type,amount,category,note,client,day,active,lastPosted,startMonth}
   offers:[],    // {id,name,price,desc}
@@ -680,7 +689,8 @@ var DEFAULT_STATE={
   transfers:[],     // {id,from,to,amount,date,note} — not revenue/expense, just money moving
   finance:[],   // {id,type:'income'|'expense',amount,category,date,note,client}
   goals:[],     // {id,title,type:'revenue'|'profit'|'custom',target,current,unit,deadline,priority,steps:[{id,text,done}],done,createdAt}
-  phases:[],    // {id,name,desc,order,tasks:[{id,title,deadline,status,priority}]}
+  phases:[],    // legacy (v1–v14) — migrated into roadmaps on load
+  roadmaps:[],  // {id,name,phases:[{id,name,desc,order,tasks:[{id,title,deadline,status,priority}]}]}
   tasks:[],     // {id,title,deadline,priority,bucket,done,createdAt,completedAt}
   notes:[],     // {id,title,body,category,tags:[],pinned,updatedAt}
   clients:[],   // {id,name,status,contact,value,note,createdAt}
@@ -715,6 +725,23 @@ function loadState(){
     state=JSON.parse(JSON.stringify(DEFAULT_STATE));
     state.meta.createdAt=todayISO();
   }
+  // migrate legacy single roadmap (state.phases) into multi-roadmap structure
+  if((state.phases||[]).length&&!(state.roadmaps||[]).length){
+    state.roadmaps=[{id:uid(),name:'Main roadmap',phases:state.phases}];
+    state.phases=[];
+  }
+}
+function allPhases(){
+  var out=[];
+  (state.roadmaps||[]).forEach(function(r){ (r.phases||[]).forEach(function(p){ out.push(p); }); });
+  return out;
+}
+function currentRoadmap(){
+  var rs=state.roadmaps||[];
+  return rs.find(function(r){return r.id===ui.roadmapId;})||rs[0]||null;
+}
+function roadmapOf(phaseId){
+  return (state.roadmaps||[]).find(function(r){ return (r.phases||[]).some(function(p){return p.id===phaseId;}); });
 }
 var DEVICE_ID=(function(){
   try{
@@ -1071,7 +1098,7 @@ function buildInsights(){
   if(overdue.length>0) out.push({sev:'warn',title:overdue.length+' overdue task'+(overdue.length>1?'s':''),text:'Oldest: "'+overdue[0].title+'". Clear or reschedule overdue work to keep momentum honest.'});
   // blocked roadmap
   var blocked=[];
-  state.phases.forEach(function(p){ (p.tasks||[]).forEach(function(tk){ if(tk.status==='Blocked') blocked.push(tk.title); }); });
+  allPhases().forEach(function(p){ (p.tasks||[]).forEach(function(tk){ if(tk.status==='Blocked') blocked.push(tk.title); }); });
   if(blocked.length) out.push({sev:'warn',title:blocked.length+' blocked roadmap item'+(blocked.length>1?'s':''),text:'"'+blocked[0]+'" is blocked. Unblocking it may unlock the rest of the phase.'});
   // suggested focus
   out.push(suggestedFocus(t));
@@ -1425,7 +1452,7 @@ function insightHTML(i){
 }
 function upcomingMilestones(){
   var out=[];
-  state.phases.forEach(function(p){
+  allPhases().forEach(function(p){
     (p.tasks||[]).forEach(function(t){
       if(t.status!=='Completed'&&t.deadline) out.push({title:t.title,phase:p.name,deadline:t.deadline});
     });
@@ -1614,56 +1641,71 @@ function financeCashflowHTML(){
    view: calculators
    ============================================================ */
 function viewCalculators(){
-  var html=topbar('Business Calculators','Quick decision tools — results are computed instantly, nothing is saved.');
+  /* prefill every calculator from real business data — answers appear with zero clicks */
+  var mm=monthlyMap();
+  var avg3=Math.round(avgMonthlyRevenue(3))||'';
+  var avgExp3=(function(){ var ms=lastNMonths(3),t=0,c=0; ms.forEach(function(k){ if(mm[k]){ t+=mm[k].expenses; c++; } }); return c?Math.round(t/c):''; })();
+  var cur=mm[thisMonthKey()]||{revenue:0,expenses:0};
+  var prods=(state.products||[]).filter(function(p){return p.active!==false&&p.price>0;});
+  var avgPrice=prods.length?Math.round(sum(prods,function(p){return p.price;})/prods.length):'';
+  var avgCost=prods.length?Math.round(sum(prods,function(p){return p.cost||0;})/prods.length):'';
+  var aovDef=METRIC_DEFS.find(function(d){return d.key==='aov';});
+  var aovV=aovDef?metricValue(aovDef):null;
+  var aov=aovV?Math.round(aovV.value):avgPrice;
+  var topExp=topCategory('expense');
+  var totalExp=Math.round(financeTotals().expenses)||'';
+  var offersN=(state.offers||[]).length;
+  var avgOffer=offersN?Math.round(sum(state.offers,function(o){return o.price||0;})/offersN):avgPrice;
+  var target=state.settings.monthlyTarget||(avg3?Math.round(avg3*1.2):'');
+  var monthProfit=Math.max(0,Math.round(cur.revenue-cur.expenses))||'';
+
+  var html=topbar('Business Calculators','Pre-filled from your real numbers and computed live — change anything, the answer updates instantly.');
   html+='<div class="grid grid-2">';
-  html+=calcCard('breakeven','Break-even calculator','How many units (or sales) you need to cover your costs.',
-    '<div class="form-row-3">'+
-    calcField('fixed','Fixed costs / month','e.g. 30000')+
-    calcField('price','Price per sale','e.g. 1500')+
-    calcField('varcost','Variable cost per sale','e.g. 600')+'</div>');
-  html+=calcCard('pricing','Pricing & margin calculator','Find the right price from cost and target margin — or check the margin of a current price.',
-    '<div class="form-row-3">'+
-    calcField('cost','Cost per unit','e.g. 600')+
-    calcField('targetmargin','Target margin %','e.g. 50')+
-    calcField('curprice','Current price (optional)','e.g. 1200')+'</div>');
-  html+=calcCard('tax','Tax set-aside estimator','How much of each payment to set aside so taxes never surprise you.',
-    '<div class="form-row">'+
-    calcField('income','Income amount','e.g. 50000')+
-    calcField('rate','Tax rate %','default '+(state.settings.taxRate||8))+'</div>');
-  html+=calcCard('forecast','Simple revenue forecast','Project the next months from your average revenue and an assumed growth rate.',
-    '<div class="form-row-3">'+
-    calcField('base','Monthly revenue','avg: '+Math.round(avgMonthlyRevenue(3)))+
-    calcField('growth','Monthly growth %','e.g. 5')+
-    calcField('months','Months ahead','e.g. 6')+'</div>');
-  html+=calcCard('target','Monthly target calculator','Turn a revenue target into a daily and weekly sales quota.',
-    '<div class="form-row-3">'+
-    calcField('goal','Monthly revenue target','e.g. 100000')+
-    calcField('avgsale','Average sale value','e.g. 1500')+
-    calcField('done','Already earned this month','e.g. 20000')+'</div>');
-  html+=calcCard('peroffer','Revenue per offer','Compare what each offer must produce to hit a goal.',
-    '<div class="form-row-3">'+
-    calcField('total','Revenue goal','e.g. 100000')+
-    calcField('offers','Number of offers','e.g. 3')+
-    calcField('offerprice','Price of one offer','e.g. 2500')+'</div>');
-  html+=calcCard('expshare','Expense category % calculator','What share of total spending a category takes.',
-    '<div class="form-row">'+
-    calcField('catamount','Category amount','e.g. 12000')+
-    calcField('totalexp','Total expenses','total: '+Math.round(financeTotals().expenses))+'</div>');
-  html+=calcCard('savings','Profit allocation (Profit First style)','Split a profit amount into owner pay, taxes, savings and reinvestment.',
-    '<div class="form-row">'+
-    calcField('profitamt','Profit to allocate','e.g. 40000')+
-    calcField('ownerpct','Owner pay %','e.g. 50')+'</div>');
+  html+=calcCard('breakeven','Break-even','How many sales cover your costs.','metrics',
+    calcField('fixed','Fixed costs / month','',avgExp3)+
+    calcField('price','Price per sale','',aov)+
+    calcField('varcost','Variable cost / sale','',avgCost));
+  html+=calcCard('pricing','Pricing & margin','The right price from cost and target margin.','cash',
+    calcField('cost','Cost per unit','',avgCost)+
+    calcField('targetmargin','Target margin %','',50)+
+    calcField('curprice','Current price','',avgPrice));
+  html+=calcCard('tax','Tax set-aside','Put this aside so taxes never surprise you.','shield',
+    calcField('income','Income amount','',Math.round(cur.revenue)||'')+
+    calcField('rate','Tax rate %','',state.settings.taxRate||8));
+  html+=calcCard('forecast','Revenue forecast','Project the months ahead from your average.','arrowur',
+    calcField('base','Monthly revenue','',avg3)+
+    calcField('growth','Growth % / month','',5)+
+    calcField('months','Months ahead','',6));
+  html+=calcCard('target','Monthly target','Your target as a daily and weekly quota.','goals',
+    calcField('goal','Revenue target','',target)+
+    calcField('avgsale','Average sale','',aov)+
+    calcField('done','Earned so far','',Math.round(cur.revenue)||''));
+  html+=calcCard('peroffer','Revenue per offer','What each offer must produce to hit a goal.','spark',
+    calcField('total','Revenue goal','',target)+
+    calcField('offers','Number of offers','',offersN||3)+
+    calcField('offerprice','Price of one offer','',avgOffer));
+  html+=calcCard('expshare','Expense share','How much of total spending one category takes.','pie',
+    calcField('catamount','Category amount','',topExp?Math.round(topExp.amount):'')+
+    calcField('totalexp','Total expenses','',totalExp));
+  html+=calcCard('savings','Profit allocation','Split profit into pay, taxes, savings, reinvest.','wallet',
+    calcField('profitamt','Profit to allocate','',monthProfit)+
+    calcField('ownerpct','Owner pay %','',50));
   html+='</div>';
+  /* compute all results immediately after the page paints */
+  setTimeout(function(){
+    if(currentRoute()!=='calculators') return;
+    document.querySelectorAll('form[data-calc]').forEach(function(f){ runCalculator(f.getAttribute('data-calc'),f); });
+  },60);
   return html;
 }
-function calcField(name,label,ph){
-  return '<div class="field"><label>'+esc(label)+'</label><input class="input" type="number" step="any" name="'+name+'" placeholder="'+esc(ph||'')+'"></div>';
+function calcField(name,label,ph,value){
+  return '<div class="field"><label>'+esc(label)+'</label><input class="input" type="number" step="any" name="'+name+'" placeholder="'+esc(ph||'')+'" value="'+(value===''||value==null?'':value)+'"></div>';
 }
-function calcCard(key,title,desc,fieldsHTML){
-  return '<div class="card"><div class="card-head"><h3>'+esc(title)+'</h3></div>'+
-    '<p style="font-size:.82rem;color:var(--text-2);margin-bottom:12px">'+esc(desc)+'</p>'+
-    '<form data-calc="'+key+'">'+fieldsHTML+
-    '<button type="submit" class="btn btn-primary btn-sm">'+icon('calc')+' Calculate</button>'+
+function calcCard(key,title,desc,iconName,fieldsHTML){
+  return '<div class="card calc-card"><div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">'+
+    '<span class="stat-icon">'+icon(iconName)+'</span>'+
+    '<div style="flex:1;min-width:0"><b style="font-size:.94rem">'+esc(title)+'</b><div class="calc-desc">'+esc(desc)+'</div></div></div>'+
+    '<form data-calc="'+key+'"><div class="calc-fields">'+fieldsHTML+'</div>'+
     '<div class="calc-result" id="calc-result-'+key+'"></div></form></div>';
 }
 function runCalculator(key,form){
@@ -1714,8 +1756,20 @@ function runCalculator(key,form){
     out='Owner pay: <b>'+fmtMoney(pa*owner/100)+'</b> ('+owner+'%)<small>Taxes: '+fmtMoney(pa*taxPct/100)+' ('+taxPct+'%) · Savings buffer: '+fmtMoney(pa*savePct/100)+' ('+savePct+'%) · Reinvest: '+fmtMoney(pa*reinvest/100)+' ('+reinvest+'%)</small>';
   }
   var resEl=byId('calc-result-'+key);
-  if(resEl){ resEl.innerHTML=out; resEl.classList.add('show'); }
+  if(resEl){
+    if(!out) out='<span style="color:var(--text-3);font-weight:500">Fill in the values above to see the result.</span>';
+    resEl.innerHTML=out;
+    resEl.classList.add('show');
+  }
 }
+/* live recalculation as you type — zero clicks */
+var calcLiveTimer=null;
+document.addEventListener('input',function(e){
+  var f=e.target&&e.target.closest&&e.target.closest('form[data-calc]');
+  if(!f) return;
+  clearTimeout(calcLiveTimer);
+  calcLiveTimer=setTimeout(function(){ runCalculator(f.getAttribute('data-calc'),f); },200);
+});
 
 /* ============================================================
    view: goals
@@ -1784,9 +1838,9 @@ function goalCardHTML(g){
    view: roadmap
    ============================================================ */
 var ROADMAP_STATUSES=['Not Started','In Progress','Blocked','Completed'];
-function roadmapStats(){
+function roadmapStats(rm){
   var total=0,done=0,blocked=0,late=0;
-  state.phases.forEach(function(p){
+  ((rm&&rm.phases)||[]).forEach(function(p){
     (p.tasks||[]).forEach(function(t){
       total++;
       if(t.status==='Completed') done++;
@@ -1798,22 +1852,40 @@ function roadmapStats(){
   return {total:total,done:done,blocked:blocked,late:late,pct:total?done/total*100:0};
 }
 function viewRoadmap(){
-  var rs=roadmapStats();
-  var html=topbar('Roadmap','Your business plan as phases and milestones — see exactly where you are.',
-    '<button class="btn btn-primary" data-action="open-phase-modal">'+icon('plus')+'<span class="btn-txt">New phase</span></button>');
+  var rms=state.roadmaps||[];
+  var rm=currentRoadmap();
+  var html=topbar('Roadmap','Plan as many roadmaps as you need — a launch, a quarter, a big idea — each with its own phases.',
+    (rm?'<button class="btn btn-ghost" data-action="open-phase-modal">'+icon('plus')+'<span class="btn-txt">New phase</span></button>':'')+
+    '<button class="btn btn-primary" data-action="roadmap-new">'+icon('plus')+'<span class="btn-txt">New roadmap</span></button>');
+  // roadmap switcher
+  if(rms.length){
+    html+='<div class="chips" style="margin-bottom:14px">'+rms.map(function(r){
+      var rs=roadmapStats(r);
+      return '<button class="chip '+(rm&&rm.id===r.id?'active':'')+'" data-action="roadmap-switch" data-id="'+r.id+'">'+esc(r.name)+' · '+fmtPct(rs.pct,0)+'</button>';
+    }).join('')+
+    (rm?'<button class="chip" data-action="roadmap-rename" data-id="'+rm.id+'" title="Rename this roadmap">'+icon('edit',11)+'</button>'+
+        '<button class="chip" data-action="roadmap-delete" data-id="'+rm.id+'" title="Delete this roadmap" style="color:var(--risk)">'+icon('trash',11)+'</button>':'')+
+    '</div>';
+  }
+  if(!rm){
+    html+='<div class="card">'+emptyState('roadmap','No roadmaps yet','Create a roadmap for each big push — "Launch 1", "Q3 expansion", "Christmas collection" — then break it into phases with milestone tasks.','<button class="btn btn-sm btn-primary" data-action="roadmap-new">'+icon('plus')+' Create first roadmap</button>')+'</div>';
+    return html;
+  }
+  var rs=roadmapStats(rm);
   html+='<div class="grid grid-4">'+
-    statCard('Overall progress',fmtPct(rs.pct,0),'','','roadmap')+
+    statCard('Progress — '+rm.name,fmtPct(rs.pct,0),'','','roadmap')+
     statCard('Milestones',rs.done+' / '+rs.total,'','','flag')+
     statCard('Blocked',String(rs.blocked),rs.blocked?'<span class="stat-delta down">unblock these first</span>':'','','alert')+
     statCard('Delayed',String(rs.late),rs.late?'<span class="stat-delta down">past deadline</span>':'','','clock')+
   '</div>';
-  if(rs.total>0) html+='<div class="card mt"><div class="progress thick"><div class="bar good" style="width:'+rs.pct+'%"></div></div><p style="font-size:.78rem;color:var(--text-3);margin-top:7px">'+fmtPct(rs.pct,0)+' of all roadmap items completed</p></div>';
-  if(!state.phases.length){
-    html+='<div class="card mt">'+emptyState('roadmap','No roadmap yet','Break your business plan into phases (e.g. "Launch", "First 10 clients", "Systemize") and add milestone tasks under each.','<button class="btn btn-sm btn-primary" data-action="open-phase-modal">'+icon('plus')+' Create first phase</button>')+'</div>';
+  if(rs.total>0) html+='<div class="card mt"><div class="progress thick"><div class="bar good" style="width:'+rs.pct+'%"></div></div><p style="font-size:.78rem;color:var(--text-3);margin-top:7px">'+fmtPct(rs.pct,0)+' of "'+esc(rm.name)+'" completed</p></div>';
+  var phases=(rm.phases||[]);
+  if(!phases.length){
+    html+='<div class="card mt">'+emptyState('roadmap','"'+rm.name+'" has no phases yet','Break it into stages (e.g. "Prepare", "Launch", "Scale") and add milestone tasks under each.','<button class="btn btn-sm btn-primary" data-action="open-phase-modal">'+icon('plus')+' First phase</button>')+'</div>';
     return html;
   }
   html+='<div class="card mt" style="padding:24px 24px 6px">';
-  state.phases.slice().sort(function(a,b){return (a.order||0)-(b.order||0);}).forEach(function(p){
+  phases.slice().sort(function(a,b){return (a.order||0)-(b.order||0);}).forEach(function(p){
     var tasks=p.tasks||[];
     var doneN=tasks.filter(function(t){return t.status==='Completed';}).length;
     var pct=tasks.length?doneN/tasks.length*100:0;
@@ -1899,6 +1971,15 @@ function viewTasks(){
   if(!list.length) html+=emptyState('tasks','No tasks here','Adjust the filters or add a task with the quick-add bar above.');
   else html+=list.map(taskRowHTML).join('');
   html+='</div>';
+  // completed tasks stay visible (and editable) below the open list
+  if(tf.status==='open'){
+    var doneList=state.tasks.filter(function(t){return t.done;})
+      .sort(function(a,b){ return (b.completedAt||'').localeCompare(a.completedAt||''); }).slice(0,8);
+    if(doneList.length){
+      html+='<div class="card mt"><div class="card-head"><h3>✅ Completed recently</h3><span class="sub">still editable — untick to reopen</span><span class="spacer"></span><button class="btn btn-sm btn-ghost" data-action="task-filter-status" data-val="done">All completed</button></div>'+
+        doneList.map(taskRowHTML).join('')+'</div>';
+    }
+  }
   return html;
 }
 function taskRowHTML(t){
@@ -2224,6 +2305,7 @@ function viewSettings(){
       [[0,'Off — manual exports only'],[3,'3 days'],[7,'7 days'],[14,'14 days'],[30,'30 days']].map(function(o){return '<option value="'+o[0]+'"'+((s.autoBackupDays||0)===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+
       '</select><p style="font-size:.74rem;color:var(--text-3);margin-top:4px">When due, a JSON backup downloads automatically on app open.</p></div>'+
     '<button class="btn btn-primary" type="submit">'+icon('check')+' Save settings</button></form></div>';
+  html+=fxCardHTML();
   html+='<div class="card"><div class="card-head"><h3>About</h3></div>'+
     '<p style="font-size:.84rem;color:var(--text-2)">BizPilot is a single-file, local-first business command center. No accounts, no servers, no tracking — your numbers never leave this device unless you enable cloud sync. Works offline once loaded.</p></div>';
   html+='</div>';
@@ -2434,6 +2516,29 @@ function clientModal(client){
     return true;
   }});
 }
+function roadmapModal(rm){
+  var isEdit=!!rm;
+  rm=rm||{};
+  var body='<input type="hidden" name="id" value="'+(rm.id||'')+'">'+
+    '<div class="field"><label>Roadmap name *</label><input class="input" name="name" value="'+esc(rm.name||'')+'" required placeholder="e.g. Launch 1, Christmas Collection, Q3 Push"></div>'+
+    (isEdit?'':'<p style="font-size:.74rem;color:var(--text-3)">Each roadmap has its own phases and milestones. Create one per big push and switch between them with the chips on top.</p>');
+  openModal(isEdit?'Rename roadmap':'New roadmap',body,{submitLabel:isEdit?'Save':'Create roadmap',onSubmit:function(form){
+    var name=fv(form,'name');
+    if(!name){ toast('Give the roadmap a name.','error'); return false; }
+    var id=fv(form,'id');
+    if(id){
+      var ex=(state.roadmaps||[]).find(function(r){return r.id===id;});
+      if(ex) ex.name=name;
+      toast('Roadmap renamed.');
+    } else {
+      var nr={id:uid(),name:name,phases:[]};
+      state.roadmaps.push(nr);
+      ui.roadmapId=nr.id;
+      toast('"'+name+'" created — add its first phase.');
+    }
+    return true;
+  }});
+}
 function phaseModal(phase){
   var isEdit=!!phase;
   phase=phase||{};
@@ -2446,12 +2551,14 @@ function phaseModal(phase){
     if(!name){ toast('Give the phase a name.','error'); return false; }
     var id=fv(form,'id');
     if(id){
-      var p=state.phases.find(function(x){return x.id===id;});
+      var p=allPhases().find(function(x){return x.id===id;});
       if(p){ p.name=name; p.desc=form.elements['desc'].value; }
       toast('Phase updated.');
     } else {
-      state.phases.push({id:uid(),name:name,desc:form.elements['desc'].value,order:state.phases.length,tasks:[]});
-      toast('Phase added to roadmap.');
+      var rm=currentRoadmap();
+      if(!rm){ rm={id:uid(),name:'Main roadmap',phases:[]}; state.roadmaps.push(rm); ui.roadmapId=rm.id; }
+      rm.phases.push({id:uid(),name:name,desc:form.elements['desc'].value,order:rm.phases.length,tasks:[]});
+      toast('Phase added to "'+rm.name+'".');
     }
     return true;
   }});
@@ -2468,7 +2575,7 @@ function phaseTaskModal(phaseId,task){
   openModal(isEdit?'Edit roadmap task':'Add roadmap task',body,{onSubmit:function(form){
     var title=fv(form,'title');
     if(!title){ toast('Give it a title.','error'); return false; }
-    var phase=state.phases.find(function(p){return p.id===fv(form,'phaseId');});
+    var phase=allPhases().find(function(p){return p.id===fv(form,'phaseId');});
     if(!phase){ toast('Phase not found.','error'); return false; }
     var id=fv(form,'id');
     var data={title:title,deadline:fv(form,'deadline'),status:fv(form,'status'),priority:fv(form,'priority')};
@@ -2592,7 +2699,7 @@ function loadSampleData(){
       steps:[{id:uid(),text:'Productize the social media retainer offer',done:true},{id:uid(),text:'Pitch retainer to PetPals',done:false}]},
     {id:uid(),title:'Build 1-month expense buffer',type:'profit',target:60000,startDate:mk(-2)+'-01',deadline:shiftMonth(thisMonthKey(),1)+'-30',priority:'Medium',done:false,current:0,createdAt:d(-2,5),steps:[]}
   ];
-  state.phases=[
+  state.roadmaps=[{id:uid(),name:'Business Foundation',phases:[
     {id:uid(),name:'Phase 1 — Stabilize',desc:'Consistent income and clean finances.',order:0,tasks:[
       {id:uid(),title:'Set up finance tracking',status:'Completed',deadline:d(-2,15),priority:'High'},
       {id:uid(),title:'Standardize proposals & contracts',status:'Completed',deadline:d(-1,10),priority:'Medium'},
@@ -2604,7 +2711,15 @@ function loadSampleData(){
     {id:uid(),name:'Phase 3 — Scale',desc:'Team, systems and steady pipeline.',order:2,tasks:[
       {id:uid(),title:'Hire part-time designer',status:'Not Started',deadline:shiftMonth(thisMonthKey(),2)+'-15',priority:'Medium'},
       {id:uid(),title:'Document delivery SOPs',status:'Not Started',deadline:shiftMonth(thisMonthKey(),2)+'-28',priority:'Medium'}]}
-  ];
+  ]},
+  {id:uid(),name:'Holiday Collection Launch',phases:[
+    {id:uid(),name:'Design & prototype',desc:'Scents, colors and packaging for the holiday line.',order:0,tasks:[
+      {id:uid(),title:'Finalize 3 holiday scents',status:'In Progress',deadline:d(0,Math.min(28,new Date().getDate()+10)),priority:'High'},
+      {id:uid(),title:'Order holiday packaging samples',status:'Not Started',deadline:shiftMonth(thisMonthKey(),1)+'-05',priority:'Medium'}]},
+    {id:uid(),name:'Pre-launch',desc:'Teasers, pre-orders and stock build-up.',order:1,tasks:[
+      {id:uid(),title:'Photoshoot for holiday catalog',status:'Not Started',deadline:shiftMonth(thisMonthKey(),1)+'-20',priority:'Medium'}]}
+  ]}];
+  state.phases=[];
   state.tasks=[
     {id:uid(),title:'Follow up with Sunrise Bakery lead',deadline:todayISO(),priority:'High',bucket:'daily',done:false,createdAt:todayISO()},
     {id:uid(),title:'Send Northwind content package proposal',deadline:d(0,Math.min(28,new Date().getDate()+3)),priority:'High',bucket:'weekly',done:false,createdAt:todayISO()},
@@ -2737,7 +2852,8 @@ function loadSampleData(){
   state.invoices=[
     {id:uid(),number:'INV-0012',client:'Northwind Gym',desc:'Rebrand — final 50% milestone',amount:26000,issueDate:d(0,2),dueDate:d(0,Math.min(28,new Date().getDate()+9)),status:'Sent',paidDate:null,createdAt:d(0,2)},
     {id:uid(),number:'INV-0011',client:'Verde Realty',desc:'Brand refresh — balance',amount:15000,issueDate:d(-1,20),dueDate:d(-1,28),status:'Sent',paidDate:null,createdAt:d(-1,20)},
-    {id:uid(),number:'INV-0010',client:'Harbor Dental',desc:'Website sprint — 50% deposit',amount:30000,issueDate:d(0,1),dueDate:d(0,4),status:'Paid',paidDate:d(0,4),createdAt:d(0,1)}
+    {id:uid(),number:'INV-0010',client:'Harbor Dental',desc:'Website sprint — 50% deposit',amount:30000,issueDate:d(0,1),dueDate:d(0,4),status:'Paid',paidDate:d(0,4),createdAt:d(0,1)},
+    {id:uid(),number:'INV-0013',client:'Aussie Wellness Co.',desc:'Brand kit — international client',amount:450,currency:'USD',fxRate:58.5,payMethod:'Wise',issueDate:d(0,3),dueDate:d(0,Math.min(28,new Date().getDate()+12)),status:'Sent',paidDate:null,createdAt:d(0,3)}
   ];
   state.settings.businessName=state.settings.businessName==='My Business'?'Studio Hiraya':state.settings.businessName;
   state.settings.monthlyTarget=state.settings.monthlyTarget||100000;
@@ -2860,23 +2976,37 @@ document.addEventListener('click',function(e){
 
   /* roadmap */
   if(action==='open-phase-modal'){ phaseModal(); return; }
-  if(action==='edit-phase'){ var p=state.phases.find(function(x){return x.id===id;}); if(p) phaseModal(p); return; }
+  if(action==='roadmap-new'){ roadmapModal(); return; }
+  if(action==='roadmap-switch'){ ui.roadmapId=id; render(); return; }
+  if(action==='roadmap-rename'){ var rmr=(state.roadmaps||[]).find(function(r){return r.id===id;}); if(rmr) roadmapModal(rmr); return; }
+  if(action==='roadmap-delete'){
+    var rmd=(state.roadmaps||[]).find(function(r){return r.id===id;});
+    if(rmd&&confirm('Delete roadmap "'+rmd.name+'" with '+(rmd.phases||[]).length+' phase(s)? This cannot be undone — except with the Undo button.')){
+      snapshotForUndo();
+      state.roadmaps=state.roadmaps.filter(function(r){return r.id!==id;});
+      ui.roadmapId=null;
+      commit(); toast('Roadmap deleted.','warn',{undo:true});
+    }
+    return;
+  }
+  if(action==='edit-phase'){ var p=allPhases().find(function(x){return x.id===id;}); if(p) phaseModal(p); return; }
   if(action==='delete-phase'){
-    var p2=state.phases.find(function(x){return x.id===id;});
+    var p2=allPhases().find(function(x){return x.id===id;});
     if(p2&&confirm('Delete phase "'+p2.name+'" and its '+(p2.tasks||[]).length+' task(s)?')){
       snapshotForUndo();
-      state.phases=state.phases.filter(function(x){return x.id!==id;});
+      var owner=roadmapOf(id);
+      if(owner) owner.phases=owner.phases.filter(function(x){return x.id!==id;});
       commit(); toast('Phase deleted.','warn',{undo:true});
     } return;
   }
   if(action==='open-phase-task-modal'){ phaseTaskModal(el.getAttribute('data-phase')); return; }
   if(action==='edit-phase-task'){
-    var p3=state.phases.find(function(x){return x.id===el.getAttribute('data-phase');});
+    var p3=allPhases().find(function(x){return x.id===el.getAttribute('data-phase');});
     if(p3){ var pt=(p3.tasks||[]).find(function(t){return t.id===el.getAttribute('data-task');});
       if(pt) phaseTaskModal(p3.id,pt); } return;
   }
   if(action==='delete-phase-task'){
-    var p4=state.phases.find(function(x){return x.id===el.getAttribute('data-phase');});
+    var p4=allPhases().find(function(x){return x.id===el.getAttribute('data-phase');});
     if(p4){
       var tid=el.getAttribute('data-task');
       var ptt=(p4.tasks||[]).find(function(t){return t.id===tid;});
@@ -3074,7 +3204,7 @@ document.addEventListener('change',function(e){
   if(act==='finance-filter-cat'){ ui.financeFilter.category=el.value; render(); return; }
   if(act==='review-month'){ ui.reviewMonth=el.value; render(); return; }
   if(act==='phase-task-status'){
-    var phase=state.phases.find(function(p){return p.id===el.getAttribute('data-phase');});
+    var phase=allPhases().find(function(p){return p.id===el.getAttribute('data-phase');});
     if(phase){
       var t=(phase.tasks||[]).find(function(x){return x.id===el.getAttribute('data-task');});
       if(t){ t.status=el.value; commit(); if(el.value==='Completed') toast('Milestone completed 🏁'); }
@@ -3261,10 +3391,10 @@ function receivablesSummary(){
   var overdue=unpaid.filter(function(iv){ var d=daysUntil(iv.dueDate); return iv.status==='Sent'&&d!=null&&d<0; });
   return {
     count:unpaid.length,
-    total:sum(unpaid,function(iv){return iv.amount;}),
+    total:sum(unpaid,invPHP),
     overdueCount:overdue.length,
-    overdueTotal:sum(overdue,function(iv){return iv.amount;}),
-    top:unpaid.slice().sort(function(a,b){return b.amount-a.amount;}).slice(0,2)
+    overdueTotal:sum(overdue,invPHP),
+    top:unpaid.slice().sort(function(a,b){return invPHP(b)-invPHP(a);}).slice(0,2)
   };
 }
 function invoiceBadge(iv){
@@ -3287,14 +3417,14 @@ function nextInvoiceNumber(){
 function viewInvoices(){
   var recv=receivablesSummary();
   var curM=thisMonthKey();
-  var paidThisMonth=sum((state.invoices||[]).filter(function(iv){return iv.status==='Paid'&&monthKey(iv.paidDate||'')===curM;}),function(iv){return iv.amount;});
+  var paidThisMonth=sum((state.invoices||[]).filter(function(iv){return iv.status==='Paid'&&monthKey(iv.paidDate||'')===curM;}),invPHP);
   var html=topbar('Invoices','Bill clients, track receivables, and never lose sight of who owes you.',
     '<button class="btn btn-primary" data-action="invoice-new">'+icon('plus')+'<span class="btn-txt">New invoice</span></button>');
   html+='<div class="grid grid-4">'+
     statCard('Outstanding',fmtMoney(recv.total),'<span class="stat-delta flat">'+recv.count+' unpaid invoice'+(recv.count===1?'':'s')+'</span>','','invoice')+
     statCard('Overdue',fmtMoney(recv.overdueTotal),recv.overdueCount?'<span class="stat-delta down">'+recv.overdueCount+' need follow-up</span>':'<span class="stat-delta up">nothing overdue</span>','','alert')+
     statCard('Collected this month',fmtMoney(paidThisMonth),'','','check')+
-    statCard('All-time invoiced',fmtMoney(sum(state.invoices||[],function(iv){return iv.amount;})),'','','cash')+
+    statCard('All-time invoiced',fmtMoney(sum(state.invoices||[],invPHP)),'','','cash')+
   '</div>';
   html+='<div class="card mt-lg">';
   if(!(state.invoices||[]).length){
@@ -3312,8 +3442,9 @@ function viewInvoices(){
       '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(iv.desc||'')+'">'+esc(iv.desc||'—')+'</td>'+
       '<td style="white-space:nowrap">'+fmtDate(iv.issueDate)+'</td>'+
       '<td style="white-space:nowrap">'+fmtDate(iv.dueDate)+'</td>'+
-      '<td class="num" style="text-align:right;font-weight:700">'+fmtMoney(iv.amount)+'</td>'+
-      '<td>'+invoiceBadge(iv)+'</td>'+
+      '<td class="num" style="text-align:right;font-weight:700">'+fmtInvAmt(iv)+
+        (iv.currency&&iv.currency!=='PHP'?'<div style="font-size:.68rem;color:var(--text-3)">≈ '+fmtMoney(invPHP(iv))+'</div>':'')+'</td>'+
+      '<td>'+invoiceBadge(iv)+(iv.payMethod?'<div style="font-size:.66rem;color:var(--text-3);margin-top:2px">'+esc(iv.payMethod)+'</div>':'')+'</td>'+
       '<td><div class="row-actions">'+
         (iv.status==='Draft'?'<button class="btn-icon" data-action="invoice-sent" data-id="'+iv.id+'" title="Mark sent">'+icon('flag')+'</button>':'')+
         (iv.status!=='Paid'?'<button class="btn-icon" data-action="invoice-paid" data-id="'+iv.id+'" title="Mark paid (records income)">'+icon('check')+'</button>':'')+
@@ -3333,6 +3464,11 @@ function invoiceModal(iv){
     '<input type="hidden" name="id" value="'+(iv.id||'')+'">'+
     '<div class="form-row"><div class="field"><label>Invoice #</label><input class="input" name="number" value="'+esc(iv.number)+'" required></div>'+
     '<div class="field"><label>Status</label><select class="input" name="status">'+['Draft','Sent','Paid'].map(function(s){return '<option'+(iv.status===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select></div></div>'+
+    '<div class="form-row"><div class="field"><label>Currency</label><select class="input" name="currency">'+
+      FX_CURRENCIES.map(function(c){return '<option value="'+c+'"'+((iv.currency||'PHP')===c?' selected':'')+'>'+c+' ('+FX_SYMBOLS[c]+')'+(c==='PHP'?' — local':'')+'</option>';}).join('')+
+      '</select><p style="font-size:.68rem;color:var(--text-3);margin-top:3px">Foreign amounts auto-convert to ₱ on the invoice and in your books.</p></div>'+
+    '<div class="field"><label>Payment method</label><select class="input" name="ipayMethod">'+
+      ['Local bank transfer','GCash','Maya','PayPal','Wise','Payoneer','Card','Cash','Other'].map(function(pm){return '<option'+((iv.payMethod||'Local bank transfer')===pm?' selected':'')+'>'+pm+'</option>';}).join('')+'</select></div></div>'+
     '<div class="field"><label>Client *</label><input class="input" name="client" value="'+esc(iv.client||'')+'" list="inv-clients" required placeholder="Who is being billed?"><datalist id="inv-clients">'+
       state.clients.map(function(c){return '<option value="'+esc(c.name)+'">';}).join('')+'</datalist></div>'+
     '<div class="field"><label>Description of work</label><input class="input" name="desc" value="'+esc(iv.desc||'')+'" placeholder="e.g. Website redesign — 50% deposit"></div>'+
@@ -3346,7 +3482,8 @@ function invoiceModal(iv){
     if(!client){ toast('Enter the client name.','error'); return false; }
     if(amount<=0){ toast('Enter an amount greater than zero.','error'); return false; }
     var id=fv(form,'id');
-    var data={number:fv(form,'number')||nextInvoiceNumber(),client:client,desc:fv(form,'desc'),amount:amount,issueDate:fv(form,'issueDate')||todayISO(),dueDate:fv(form,'dueDate'),status:fv(form,'status')};
+    var cur=fv(form,'currency')||'PHP';
+    var data={number:fv(form,'number')||nextInvoiceNumber(),client:client,desc:fv(form,'desc'),amount:amount,issueDate:fv(form,'issueDate')||todayISO(),dueDate:fv(form,'dueDate'),status:fv(form,'status'),currency:cur,fxRate:fxRateFor(cur),payMethod:fv(form,'ipayMethod')};
     if(id){
       var ex=state.invoices.find(function(x){return x.id===id;});
       if(ex){
@@ -3365,8 +3502,18 @@ function invoiceModal(iv){
     return true;
   }});
 }
+function invPHP(iv){
+  if(!iv.currency||iv.currency==='PHP') return iv.amount;
+  return Math.round(iv.amount*(iv.fxRate||fxRateFor(iv.currency))*100)/100;
+}
+function fmtInvAmt(iv){
+  var sym=FX_SYMBOLS[iv.currency||'PHP']||'';
+  return sym+Number(iv.amount).toLocaleString(undefined,{maximumFractionDigits:2});
+}
 function recordInvoiceIncome(iv){
-  state.finance.push({id:uid(),type:'income',amount:iv.amount,date:iv.paidDate||todayISO(),category:'Sales',note:'Invoice '+iv.number+(iv.desc?' — '+iv.desc:''),client:iv.client,offer:''});
+  state.finance.push({id:uid(),type:'income',amount:invPHP(iv),date:iv.paidDate||todayISO(),category:'Sales',
+    note:'Invoice '+iv.number+(iv.desc?' — '+iv.desc:'')+(iv.currency&&iv.currency!=='PHP'?' ('+fmtInvAmt(iv)+' via '+(iv.payMethod||'—')+')':(iv.payMethod?' via '+iv.payMethod:'')),
+    client:iv.client,offer:'',account:accountForMethod(iv.payMethod)});
 }
 
 /* ---------- print system ---------- */
@@ -3385,8 +3532,9 @@ function printInvoice(iv){
     '<h2>Billed to</h2><p>'+esc(iv.client)+'</p>'+
     '<h2>Details</h2>'+
     '<table><thead><tr><th>Description</th><th class="num">Amount</th></tr></thead><tbody>'+
-    '<tr><td>'+esc(iv.desc||'Professional services')+'</td><td class="num">'+fmtMoney(iv.amount)+'</td></tr>'+
-    '<tr class="pr-total"><td>Total due</td><td class="num">'+fmtMoney(iv.amount)+'</td></tr>'+
+    '<tr><td>'+esc(iv.desc||'Professional services')+'</td><td class="num">'+fmtInvAmt(iv)+'</td></tr>'+
+    '<tr class="pr-total"><td>Total due'+(iv.payMethod?' · via '+esc(iv.payMethod):'')+'</td><td class="num">'+fmtInvAmt(iv)+'</td></tr>'+
+    (iv.currency&&iv.currency!=='PHP'?'<tr><td>Equivalent in Philippine Peso (rate: ₱'+fmtNum(iv.fxRate||fxRateFor(iv.currency),2)+' per 1 '+iv.currency+')</td><td class="num">≈ ₱'+fmtNum(invPHP(iv),2)+'</td></tr>':'')+
     '</tbody></table>'+
     '<p style="margin-top:14px">Status: <b>'+esc(iv.status)+(iv.status==='Paid'&&iv.paidDate?' on '+fmtDate(iv.paidDate):'')+'</b></p>'+
     payQRDocHTML()+
@@ -3656,10 +3804,10 @@ document.addEventListener('click',function(e){
   }
   if(action==='invoice-paid'){
     var iv4=state.invoices.find(function(x){return x.id===id;});
-    if(iv4&&confirm('Mark '+iv4.number+' ('+fmtMoney(iv4.amount)+' from '+iv4.client+') as PAID? This records the income in Finance.')){
+    if(iv4&&confirm('Mark '+iv4.number+' ('+fmtInvAmt(iv4)+(iv4.currency&&iv4.currency!=='PHP'?' ≈ '+fmtMoney(invPHP(iv4)):'')+' from '+iv4.client+') as PAID? This records the income in Finance'+(iv4.currency&&iv4.currency!=='PHP'?' in pesos':'')+'.')){
       iv4.status='Paid'; iv4.paidDate=todayISO();
       recordInvoiceIncome(iv4);
-      commit(); toast('💰 '+fmtMoney(iv4.amount)+' collected from '+iv4.client+'.');
+      commit(); toast('💰 '+fmtMoney(invPHP(iv4))+' collected from '+iv4.client+'.');
     } return;
   }
   if(action==='invoice-print'){
@@ -4193,56 +4341,68 @@ function cmFooterHTML(m){
     '<button class="btn btn-ghost btn-sm" data-action="export-csv" data-what="module" data-id="'+m.id+'">'+icon('download')+' Export CSV</button>'+
     '<button class="btn btn-danger btn-sm" data-action="custom-module-delete" data-id="'+m.id+'">'+icon('trash')+' Delete module</button></div></div>';
 }
-function customModuleModal(m){
+function fieldRowHTML(f){
+  f=f||{};
+  var isExisting=!!f.key;
+  return '<div class="mb-row" style="display:flex;gap:7px;margin-bottom:7px;align-items:center;flex-wrap:wrap">'+
+    (isExisting?'<input type="hidden" class="mb-key" value="'+f.key+'">':'')+
+    '<input class="input mb-label" value="'+esc(f.label||'')+'" placeholder="Field name, e.g. Supplier" style="flex:2;min-width:120px">'+
+    (isExisting
+      ?'<span class="badge neutral" style="flex-shrink:0">'+esc(f.type)+'</span><input type="hidden" class="mb-type" value="'+f.type+'">'
+      :'<select class="input mb-type" style="width:auto">'+CM_TYPES.map(function(t){return '<option value="'+t[0]+'"'+(f.type===t[0]?' selected':'')+'>'+t[1]+'</option>';}).join('')+'</select>')+
+    '<input class="input mb-opts" value="'+esc((f.options||[]).join(', '))+'" placeholder="options, comma separated" style="flex:1.5;min-width:110px;'+((f.type==='select')?'':'display:none')+'">'+
+    '<button type="button" class="btn-icon danger mb-del" title="Remove field">'+icon('x')+'</button></div>';
+}
+function moduleBuilderModal(m){
   var isEdit=!!m;
-  m=m||{icon:'notes'};
+  m=m||{icon:'notes',fields:[]};
   var body=
     '<input type="hidden" name="id" value="'+(m.id||'')+'">'+
-    '<div class="field"><label>Module name *</label><input class="input" name="name" value="'+esc(m.name||'')+'" required placeholder="e.g. Suppliers, Raffle Entries, Equipment…"></div>'+
+    '<div class="form-row"><div class="field"><label>Module name *</label><input class="input" name="name" value="'+esc(m.name||'')+'" required placeholder="e.g. Suppliers, Equipment, Event Bookings…"></div>'+
     '<div class="field"><label>Icon</label><select class="input" name="icon">'+
-      CM_ICONS.map(function(ic){return '<option value="'+ic+'"'+(m.icon===ic?' selected':'')+'>'+ic+'</option>';}).join('')+'</select></div>'+
-    (isEdit?'':'<p style="font-size:.76rem;color:var(--text-3)">After creating, you’ll define its fields (columns) — then it works like any other section, saved with the rest of your data.</p>');
-  openModal(isEdit?'Edit module':'Create your own module',body,{submitLabel:isEdit?'Save':'Create module',onSubmit:function(form){
+      CM_ICONS.map(function(ic){return '<option value="'+ic+'"'+(m.icon===ic?' selected':'')+'>'+ic+'</option>';}).join('')+'</select></div></div>'+
+    '<div class="field"><label>Fields — the columns of your table</label>'+
+    '<div id="mb-rows">'+
+      ((m.fields&&m.fields.length)?m.fields.map(fieldRowHTML).join(''):fieldRowHTML({type:'text'})+fieldRowHTML({type:'money'}))+
+    '</div>'+
+    '<button type="button" class="btn btn-ghost btn-sm" data-action="mb-add-field">'+icon('plus')+' Add another field</button>'+
+    '<p style="font-size:.72rem;color:var(--text-3);margin-top:6px">Money and number fields get automatic totals. Dropdowns need their options listed (e.g. "Pending, Approved"). Photo/file fields accept uploads.</p></div>';
+  openModal(isEdit?'Edit module — '+m.name:'Create your own module',body,{wide:true,submitLabel:isEdit?'Save module':'Create module',onSubmit:function(form){
     var name=fv(form,'name');
     if(!name){ toast('Give the module a name.','error'); return false; }
+    var rows=form.querySelectorAll('#mb-rows .mb-row');
+    var fields=[];
+    var bad=false;
+    rows.forEach(function(row){
+      var label=row.querySelector('.mb-label').value.trim();
+      var keyEl=row.querySelector('.mb-key');
+      var type=row.querySelector('.mb-type').value;
+      var opts=row.querySelector('.mb-opts').value.split(',').map(function(s){return s.trim();}).filter(Boolean);
+      if(!label){ if(keyEl) bad=true; return; }
+      var f={key:keyEl?keyEl.value:'f'+uid(),label:label,type:type};
+      if(type==='select') f.options=opts;
+      fields.push(f);
+    });
+    if(bad){ toast('Every existing field needs a name (or remove it with the ✕).','error'); return false; }
+    if(!fields.length){ toast('Add at least one field — that becomes your first column.','error'); return false; }
     var id=fv(form,'id');
     if(id){
       var ex=findModule(id);
-      if(ex){ ex.name=name; ex.icon=fv(form,'icon'); }
-      toast('Module updated.');
+      if(!ex) return true;
+      var newKeys={}; fields.forEach(function(f){ newKeys[f.key]=1; });
+      var removed=ex.fields.filter(function(f){ return !newKeys[f.key]; });
+      var hasData=removed.some(function(f){ return (ex.records||[]).some(function(r){ return r[f.key]!=null&&r[f.key]!==''; }); });
+      if(removed.length&&hasData&&!confirm('You removed '+removed.length+' field(s) that contain data — their values will be deleted from all records. Continue?')) return false;
+      if(removed.length) snapshotForUndo();
+      removed.forEach(function(f){ (ex.records||[]).forEach(function(r){ delete r[f.key]; }); });
+      ex.name=name; ex.icon=fv(form,'icon'); ex.fields=fields;
+      toast('Module saved.'+(removed.length?' ('+removed.length+' field(s) removed)':''),removed.length?'warn':'good',removed.length?{undo:true}:undefined);
     } else {
-      var nm={id:uid(),name:name,icon:fv(form,'icon'),fields:[],records:[]};
+      var nm={id:uid(),name:name,icon:fv(form,'icon'),fields:fields,records:[]};
       state.customModules.push(nm);
-      toast('Module "'+name+'" created — now add its fields.');
-      setTimeout(function(){ nav('custom-'+nm.id); setTimeout(function(){ fieldsModal(nm); },100); },50);
+      toast('"'+name+'" is ready — add your first record!');
+      setTimeout(function(){ nav('custom-'+nm.id); },50);
     }
-    return true;
-  }});
-}
-function fieldsModal(m){
-  var body=
-    '<input type="hidden" name="id" value="'+m.id+'">'+
-    ((m.fields||[]).length?'<div class="field"><label>Current fields</label>'+
-      m.fields.map(function(f){
-        return '<div class="list-row" style="padding:7px 2px"><b style="font-size:.86rem;flex:1">'+esc(f.label)+'</b><span class="badge neutral">'+esc(f.type)+'</span>'+
-          '<button type="button" class="btn-icon danger" data-action="cm-field-delete" data-id="'+m.id+'" data-field="'+f.key+'">'+icon('trash')+'</button></div>';
-      }).join('')+'</div>':'')+
-    '<div class="field"><label>Add a field</label><div class="form-row"><input class="input" name="label" placeholder="Field name, e.g. Supplier name"><select class="input" name="type">'+
-      CM_TYPES.map(function(t){return '<option value="'+t[0]+'">'+t[1]+'</option>';}).join('')+'</select></div></div>'+
-    '<div class="field"><label>Dropdown options (only for Dropdown — comma separated)</label><input class="input" name="options" placeholder="e.g. Pending, Approved, Rejected"></div>';
-  openModal('Fields — '+m.name,body,{submitLabel:'Add field',onSubmit:function(form){
-    var label=fv(form,'label');
-    if(!label){ toast('Type the field name.','warn'); return false; }
-    var mod=findModule(fv(form,'id'));
-    if(!mod) return true;
-    var key='f'+uid();
-    var type=fv(form,'type');
-    var f={key:key,label:label,type:type};
-    if(type==='select') f.options=fv(form,'options').split(',').map(function(s){return s.trim();}).filter(Boolean);
-    mod.fields.push(f);
-    save();
-    toast('Field "'+label+'" added.');
-    setTimeout(function(){ fieldsModal(mod); },50); // reopen to add more
     return true;
   }});
 }
@@ -4389,9 +4549,14 @@ document.addEventListener('click',function(e){
   }
 
   /* custom modules */
-  if(action==='custom-module-new'){ customModuleModal(); return; }
-  if(action==='custom-module-edit'){ var m=findModule(id); if(m) customModuleModal(m); return; }
-  if(action==='custom-module-fields'){ var m2=findModule(id); if(m2) fieldsModal(m2); return; }
+  if(action==='custom-module-new'){ moduleBuilderModal(); return; }
+  if(action==='custom-module-edit'){ var m=findModule(id); if(m) moduleBuilderModal(m); return; }
+  if(action==='custom-module-fields'){ var m2=findModule(id); if(m2) moduleBuilderModal(m2); return; }
+  if(action==='mb-add-field'){
+    var mbBox=document.getElementById('mb-rows');
+    if(mbBox) mbBox.insertAdjacentHTML('beforeend',fieldRowHTML({type:'text'}));
+    return;
+  }
   if(action==='custom-module-delete'){
     var m3=findModule(id);
     if(m3&&confirm('Delete module "'+m3.name+'" and its '+(m3.records||[]).length+' record(s)? This cannot be undone.')){
@@ -4402,20 +4567,7 @@ document.addEventListener('click',function(e){
     }
     return;
   }
-  if(action==='cm-field-delete'){
-    var m4=findModule(id);
-    if(m4&&confirm('Remove this field? Its values in existing records are deleted too.')){
-      var fkey=el.getAttribute('data-field');
-      m4.fields=m4.fields.filter(function(f){return f.key!==fkey;});
-      (m4.records||[]).forEach(function(r){ delete r[fkey]; });
-      save();
-      closeModal(); render();
-      setTimeout(function(){ fieldsModal(m4); },50);
-      toast('Field removed.');
-    }
-    return;
-  }
-  if(action==='cm-record-new'){ var m5=findModule(id); if(m5){ if(!(m5.fields||[]).length){ fieldsModal(m5); } else cmRecordModal(m5); } return; }
+  if(action==='cm-record-new'){ var m5=findModule(id); if(m5){ if(!(m5.fields||[]).length){ moduleBuilderModal(m5); } else cmRecordModal(m5); } return; }
   if(action==='cm-record-edit'){
     var m6=findModule(id);
     if(m6){ var rec=(m6.records||[]).find(function(r){return r.id===el.getAttribute('data-rec');}); if(rec) cmRecordModal(m6,rec); }
@@ -4530,6 +4682,7 @@ function exportCSV(what,id){
   var today=todayISO();
   if(what==='finance'){
     var rows=[['Date','Type','Category','Amount','Note','Client']];
+    // (invoice export gains currency below)
     state.finance.slice().sort(function(a,b){return (a.date||'').localeCompare(b.date||'');}).forEach(function(e){
       rows.push([e.date,e.type,e.category||'',e.amount,e.note||'',e.client||'']);
     });
@@ -5138,11 +5291,11 @@ function copyCatalogText(){
 
 /* ---------- onboarding wizard ---------- */
 var BIZ_PRESETS={
-  candles:{label:'Candles, crafts & gifts',cats:['Candle','Keychain','Gift Box','Bundle'],attrs:['Scent','Color']},
-  food:{label:'Food & baked goods',cats:['Cake','Pastry','Cookies','Drinks','Box'],attrs:['Flavor','Size']},
-  services:{label:'Services & freelance',cats:['Package','Retainer','Add-on'],attrs:['Tier']},
-  reseller:{label:'Reseller / online shop',cats:['Apparel','Beauty','Gadgets','Home'],attrs:['Brand','Variant']},
-  general:{label:'Something else',cats:['Product','Service'],attrs:['Variant']}
+  candles:{label:'Candles, crafts & gifts',cats:['Candle','Keychain','Gift Box','Bundle'],attrs:['Scent','Color'],hide:[]},
+  food:{label:'Food & baked goods',cats:['Cake','Pastry','Cookies','Drinks','Box'],attrs:['Flavor','Size'],hide:[]},
+  services:{label:'Services & freelance (VA, editor, coach…)',cats:['Package','Retainer','Add-on','Rush fee'],attrs:['Tier'],hide:['products','orders']},
+  reseller:{label:'Reseller / online shop',cats:['Apparel','Beauty','Gadgets','Home'],attrs:['Brand','Variant'],hide:[]},
+  general:{label:'Something else',cats:['Product','Service'],attrs:['Variant'],hide:[]}
 };
 function maybeOnboard(){
   if(state.settings.onboarded) return;
@@ -5174,7 +5327,11 @@ function applyBizPreset(key,silent){
   if(!p) return;
   state.settings.productCats=p.cats.slice();
   state.settings.productAttrs=p.attrs.slice();
-  if(!silent){ commit(); toast('"'+p.label+'" preset applied — categories and attributes updated.'); }
+  state.settings.hiddenModules=(p.hide||[]).slice();
+  if(!silent){
+    commit();
+    toast('"'+p.label+'" preset applied.'+(p.hide&&p.hide.length?' Inventory & order sections were hidden for a service business — bring any back in Settings → Customization.':''));
+  }
 }
 
 /* ---------- image lightbox ---------- */
@@ -5464,6 +5621,17 @@ function reconcileModal(a){
   }});
 }
 
+document.addEventListener('click',function(e){
+  var del=e.target.closest&&e.target.closest('.mb-del');
+  if(del){ var row=del.closest('.mb-row'); if(row) row.remove(); }
+});
+document.addEventListener('change',function(e){
+  var el=e.target;
+  if(el.classList&&el.classList.contains('mb-type')){
+    var opts=el.closest('.mb-row').querySelector('.mb-opts');
+    if(opts) opts.style.display=el.value==='select'?'':'none';
+  }
+});
 document.addEventListener('input',function(e){
   var el=e.target;
   if(el.getAttribute&&el.getAttribute('data-acct-name')){
@@ -6116,6 +6284,78 @@ document.addEventListener('click',function(e){
   if(action==='trim-receipts'){ trimOldReceipts(); return; }
 });
 
+/* ============================================================
+   v15 additions: multi-currency engine with automatic rates
+   ============================================================ */
+var FX_CURRENCIES=['PHP','USD','EUR','GBP','AUD','CAD','SGD','AED','JPY'];
+var FX_SYMBOLS={PHP:'₱',USD:'$',EUR:'€',GBP:'£',AUD:'A$',CAD:'C$',SGD:'S$',AED:'د.إ',JPY:'¥'};
+function fxRateFor(cur){
+  if(!cur||cur==='PHP') return 1;
+  var fx=state.settings.fx||{};
+  return (fx.phpPer&&fx.phpPer[cur])||1;
+}
+/* automatic rates: free open API, no key. Falls back to saved/manual rates offline. */
+var fxFetching=false;
+function fetchFxRates(manual){
+  if(fxFetching) return;
+  fxFetching=true;
+  fetch('https://open.er-api.com/v6/latest/PHP')
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(function(d){
+      if(!d||!d.rates) throw new Error('no rates in response');
+      var fx=state.settings.fx=state.settings.fx||{auto:true,phpPer:{}};
+      fx.phpPer=fx.phpPer||{};
+      FX_CURRENCIES.forEach(function(c){
+        if(c!=='PHP'&&d.rates[c]) fx.phpPer[c]=Math.round((1/d.rates[c])*10000)/10000;
+      });
+      fx.updated=new Date().toISOString();
+      save();
+      if(manual){ toast('Exchange rates updated — ₱'+fmtNum(fx.phpPer.USD,2)+' per $1.'); render(); }
+    })
+    .catch(function(e){
+      if(manual) toast('Could not fetch live rates ('+e.message+') — using your saved rates. You can edit them manually below.','warn');
+    })
+    .then(function(){ fxFetching=false; });
+}
+function fxAutoUpdateCheck(){
+  var fx=state.settings.fx||{};
+  if(fx.auto===false) return;
+  var stale=!fx.updated||(Date.now()-new Date(fx.updated).getTime())>24*3600*1000;
+  if(stale&&navigator.onLine!==false) setTimeout(function(){ fetchFxRates(false); },3000);
+}
+function fxCardHTML(){
+  var fx=state.settings.fx||{phpPer:{}};
+  return '<div class="card"><div class="card-head"><h3>Currency conversion</h3><span class="spacer"></span>'+
+    '<span class="badge '+(fx.updated?'good':'neutral')+'">'+(fx.updated?'rates from '+fmtDate(fx.updated.slice(0,10)):'built-in rates')+'</span></div>'+
+    '<p style="font-size:.8rem;color:var(--text-2);margin-bottom:12px">Used when an invoice is in a foreign currency — the peso equivalent shows on the invoice and your books record pesos. Rates auto-update daily when online (free public API); edit them manually anytime.</p>'+
+    '<form data-form="fx-rates"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:9px">'+
+      FX_CURRENCIES.filter(function(c){return c!=='PHP';}).map(function(c){
+        return '<div class="field" style="margin-bottom:0"><label>₱ per 1 '+c+'</label><input class="input" type="number" step="any" min="0" name="fx_'+c+'" value="'+(fx.phpPer&&fx.phpPer[c]!=null?fx.phpPer[c]:'')+'"></div>';
+      }).join('')+'</div>'+
+    '<label class="checkrow" style="margin:12px 0"><input type="checkbox" name="fxauto"'+(fx.auto!==false?' checked':'')+'> Auto-update rates daily when online</label>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+    '<button class="btn btn-primary btn-sm" type="submit">'+icon('check')+' Save rates</button>'+
+    '<button class="btn btn-ghost btn-sm" type="button" data-action="fx-update-now">'+icon('refresh')+' Update from live rates now</button>'+
+    '</div></form></div>';
+}
+document.addEventListener('click',function(e){
+  var el=e.target.closest('[data-action="fx-update-now"]');
+  if(el) fetchFxRates(true);
+});
+document.addEventListener('submit',function(e){
+  var form=e.target;
+  if(form.getAttribute('data-form')!=='fx-rates') return;
+  var fx=state.settings.fx=state.settings.fx||{phpPer:{}};
+  fx.phpPer=fx.phpPer||{};
+  FX_CURRENCIES.forEach(function(c){
+    if(c==='PHP') return;
+    var v=num(fv(form,'fx_'+c));
+    if(v>0) fx.phpPer[c]=v;
+  });
+  fx.auto=form.elements['fxauto'].checked;
+  commit(); toast('Exchange rates saved.');
+});
+
 /* keyboard: Escape closes modal / sidebar */
 document.addEventListener('keydown',function(e){
   if(e.key==='Escape'){
@@ -6138,6 +6378,7 @@ probeStorage();
 autoBackupCheck();
 maybeOnboard();
 storageWarnOnBoot();
+fxAutoUpdateCheck();
 
 /* backup reminder — once per session if data exists and backup is stale */
 (function(){
