@@ -6336,12 +6336,46 @@ function fxCardHTML(){
     '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
     '<button class="btn btn-primary btn-sm" type="submit">'+icon('check')+' Save rates</button>'+
     '<button class="btn btn-ghost btn-sm" type="button" data-action="fx-update-now">'+icon('refresh')+' Update from live rates now</button>'+
-    '</div></form></div>';
+    '</div></form>'+
+    fxConverterHTML()+'</div>';
+}
+function fxConverterHTML(){
+  var cur=ui.fxConvCur||'USD';
+  return '<div style="margin-top:14px;padding-top:14px;border-top:1px dashed var(--border)">'+
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span class="stat-icon">'+icon('calc')+'</span><b style="font-size:.9rem">Quick converter</b></div>'+
+    '<div style="display:flex;gap:9px;align-items:flex-end;flex-wrap:wrap">'+
+      '<div class="field" style="margin-bottom:0;flex:1;min-width:130px"><label>Amount</label><input class="input" type="number" step="any" min="0" id="fxconv-amt" placeholder="e.g. 100" value="'+(ui.fxConvAmt!=null?ui.fxConvAmt:'')+'"></div>'+
+      '<div class="field" style="margin-bottom:0;width:auto"><label>Currency</label><select class="input" id="fxconv-cur" style="width:auto">'+
+        FX_CURRENCIES.filter(function(c){return c!=='PHP';}).map(function(c){return '<option value="'+c+'"'+(cur===c?' selected':'')+'>'+c+' ('+FX_SYMBOLS[c]+')</option>';}).join('')+
+      '</select></div>'+
+    '</div>'+
+    '<div id="fxconv-result" class="calc-result show" style="margin-top:11px">'+fxConvResult(ui.fxConvAmt,cur)+'</div>'+
+    '<p style="font-size:.68rem;color:var(--text-3);margin-top:6px" id="fxconv-ratenote">Uses your saved rate of ₱'+fmtNum(fxRateFor(cur),2)+' per 1 '+cur+'. Update the rates above to keep it accurate.</p></div>';
+}
+function fxConvResult(amt,cur){
+  var rate=fxRateFor(cur);
+  var a=num(amt);
+  if(!a) return '<span style="color:var(--text-3);font-weight:500">Enter an amount to convert.</span>';
+  var toPhp=Math.round(a*rate*100)/100;
+  var fromPhp=rate>0?Math.round(a/rate*100)/100:0;
+  var sym=FX_SYMBOLS[cur]||'';
+  return '<div style="display:flex;flex-direction:column;gap:6px">'+
+    '<div><b style="font-size:1.05rem">'+sym+fmtNum(a,2)+'</b> '+cur+' &nbsp;=&nbsp; <b style="font-size:1.05rem;color:var(--accent)">₱'+fmtNum(toPhp,2)+'</b></div>'+
+    '<div style="font-size:.82rem;color:var(--text-2)">…and the other way: <b>₱'+fmtNum(a,2)+'</b> = <b>'+sym+fmtNum(fromPhp,2)+' '+cur+'</b></div></div>';
 }
 document.addEventListener('click',function(e){
   var el=e.target.closest('[data-action="fx-update-now"]');
   if(el) fetchFxRates(true);
 });
+function fxConvRefresh(){
+  var amtEl=byId('fxconv-amt'), curEl=byId('fxconv-cur'), out=byId('fxconv-result'), note=byId('fxconv-ratenote');
+  if(!amtEl||!curEl||!out) return;
+  ui.fxConvAmt=amtEl.value; ui.fxConvCur=curEl.value;
+  out.innerHTML=fxConvResult(amtEl.value,curEl.value);
+  if(note) note.textContent='Uses your saved rate of ₱'+fmtNum(fxRateFor(curEl.value),2)+' per 1 '+curEl.value+'. Update the rates above to keep it accurate.';
+}
+document.addEventListener('input',function(e){ if(e.target&&e.target.id==='fxconv-amt') fxConvRefresh(); });
+document.addEventListener('change',function(e){ if(e.target&&e.target.id==='fxconv-cur') fxConvRefresh(); });
 document.addEventListener('submit',function(e){
   var form=e.target;
   if(form.getAttribute('data-form')!=='fx-rates') return;
