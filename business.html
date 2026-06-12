@@ -719,6 +719,22 @@ function icon(name,size){
   return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"'+(size?' style="width:'+size+'px;height:'+size+'px"':'')+'>'+(ICONS[name]||'')+'</svg>';
 }
 
+/* ---------- license (Tier 0: stamp + key, injected per buyer by the generator) ---------- */
+var EMBEDDED_LICENSE=null;/*@LICENSE@*/
+function licHash(s){ var h=5381; for(var i=0;i<s.length;i++){ h=((h<<5)+h+s.charCodeAt(i))>>>0; } return h; }
+function licenseKeyFor(name,email){
+  var basis=(String(name).trim().toLowerCase()+'|'+String(email).trim().toLowerCase()+'|bizpilot-2026-hiraya');
+  var s=(licHash(basis).toString(36)+licHash(basis.split('').reverse().join('')).toString(36)).toUpperCase().replace(/[^A-Z0-9]/g,'');
+  while(s.length<12) s+='X';
+  return s.slice(0,4)+'-'+s.slice(4,8)+'-'+s.slice(8,12);
+}
+function licenseInfo(){
+  if(!EMBEDDED_LICENSE||!EMBEDDED_LICENSE.name) return null;
+  var l=EMBEDDED_LICENSE;
+  return {name:l.name,email:l.email||'',key:l.key||'',valid:l.key===licenseKeyFor(l.name,l.email||'')};
+}
+function licTag(){ var l=licenseInfo(); return l?' · Licensed to '+esc(l.name):''; }
+
 /* ---------- state ---------- */
 var LS_KEY='bizpilot.v1';
 var DEFAULT_STATE={
@@ -1357,7 +1373,7 @@ function renderSidebar(){
   html+='</nav><div class="sidebar-foot"><div class="biz-chip">'+
     (bl?'<img src="'+bl+'" alt="" style="width:30px;height:30px;border-radius:8px;object-fit:cover;flex-shrink:0">'
        :'<div class="avatar">'+esc((state.settings.businessName||'B').charAt(0).toUpperCase())+'</div>')+
-    '<div><b>'+esc(state.settings.businessName||'My Business')+'</b><span>Local data · private</span></div></div></div>';
+    '<div><b>'+esc(state.settings.businessName||'My Business')+'</b><span>'+(licenseInfo()?'Licensed to '+esc(licenseInfo().name):'Local data · private')+'</span></div></div></div>';
   var sb=byId('sidebar');
   var navEl=sb.querySelector('.nav');
   var keepScroll=navEl?navEl.scrollTop:0;
@@ -2418,6 +2434,11 @@ function viewSettings(){
   html+=fxCardHTML();
   html+='<div class="card"><div class="card-head"><h3>About</h3></div>'+
     '<p style="font-size:.84rem;color:var(--text-2)">BizPilot is a single-file, local-first business command center. No accounts, no servers, no tracking — your numbers never leave this device unless you enable cloud sync. Works offline once loaded.</p>'+
+    (function(){ var l=licenseInfo(); if(!l) return '';
+      return '<div style="margin-top:12px;padding:11px 14px;border-radius:11px;background:var(--accent-soft);border-left:3px solid var(--accent)">'+
+        '<b style="font-size:.84rem">🔑 Licensed to '+esc(l.name)+'</b>'+
+        '<div style="font-size:.74rem;color:var(--text-2);margin-top:2px">'+esc(l.email)+' · key <span class="mono">'+esc(l.key)+'</span> '+(l.valid?'<span class="badge good" style="font-size:.6rem">valid</span>':'<span class="badge risk" style="font-size:.6rem">invalid key</span>')+'</div>'+
+        '<div style="font-size:.7rem;color:var(--text-3);margin-top:4px">This copy is registered to the name above — it appears on all printed documents.</div></div>'; })()+
     '<button class="btn btn-ghost btn-sm" data-action="show-tour" style="margin-top:12px">'+icon('spark')+' Replay the welcome tour</button></div>';
   html+='</div>';
   return html;
@@ -3706,7 +3727,7 @@ function printInvoice(iv){
     '<p style="margin-top:14px">Status: <b>'+esc(iv.status)+(iv.status==='Paid'&&iv.paidDate?' on '+fmtDate(iv.paidDate):'')+'</b></p>'+
     (iv.payDetails?'<h2>Payment details</h2><p>'+esc(iv.payDetails).replace(/\n/g,'<br>')+'</p>':'')+
     (qr?'<img class="pr-qr pr-qr-'+pos+'" src="'+qr+'" alt="Payment QR">':'')+
-    '<div class="pr-foot">'+esc(state.settings.businessName)+' · Thank you for your business! · '+fmtDate(todayISO())+'</div>'+
+    '<div class="pr-foot">'+esc(state.settings.businessName)+' · Thank you for your business! · '+fmtDate(todayISO())+licTag()+'</div>'+
     '</div>';
   printDoc(html);
 }
@@ -3799,7 +3820,7 @@ function buildReportDoc(selected){
     '<h2>Expenses by category</h2>'+catTable('expense',d.expenses)+
     (clientKeys.length?'<h2>Top clients</h2><table><thead><tr><th>Client</th><th class="num">Revenue</th></tr></thead><tbody>'+
       clientKeys.map(function(k){return '<tr><td>'+esc(k)+'</td><td class="num">'+fmtMoney(byClient[k])+'</td></tr>';}).join('')+'</tbody></table>':'')+
-    '<div class="pr-foot">'+esc(state.settings.businessName)+' · prepared from the owner\'s records</div>'+
+    '<div class="pr-foot">'+esc(state.settings.businessName)+' · prepared from the owner\'s records'+licTag()+'</div>'+
     '</div>';
 }
 
@@ -4482,7 +4503,7 @@ function printOrderSlip(o){
     '</tbody></table>'+
     (o.note?'<h2>Note</h2><p>'+esc(o.note)+'</p>':'')+
     (o.payStatus!=='Paid'?payQRDocHTML():'')+
-    '<div class="pr-foot">Thank you for your order! · '+esc(state.settings.businessName)+'</div></div>';
+    '<div class="pr-foot">Thank you for your order! · '+esc(state.settings.businessName)+licTag()+'</div></div>';
   printDoc(html);
 }
 
@@ -5498,7 +5519,7 @@ function catalogDocHTML(){
         '<div style="font-size:1.05rem;font-weight:bold;margin-top:4px">'+fmtMoney(p.price)+'</div></div>';
     }).join('')+'</div>'+
     payQRDocHTML()+
-    '<div class="pr-foot">Message us to order! · '+esc(state.settings.businessName)+'</div></div>';
+    '<div class="pr-foot">Message us to order! · '+esc(state.settings.businessName)+licTag()+'</div></div>';
 }
 function copyCatalogText(){
   var prods=(state.products||[]).filter(function(p){return p.active!==false&&p.stock>0;});
@@ -6146,7 +6167,7 @@ function buildYearReportDoc(year){
     '</tbody></table>'+
     (yd.topIncomeCats.length?'<h2>Top income sources</h2><table><tbody>'+yd.topIncomeCats.map(function(x){return '<tr><td>'+esc(x.label)+'</td><td class="num">'+fmtMoney(x.value)+'</td></tr>';}).join('')+'</tbody></table>':'')+
     (yd.topClients.length?'<h2>Top clients</h2><table><tbody>'+yd.topClients.map(function(x){return '<tr><td>'+esc(x.label)+'</td><td class="num">'+fmtMoney(x.value)+'</td></tr>';}).join('')+'</tbody></table>':'')+
-    '<div class="pr-foot">'+esc(state.settings.businessName)+'</div></div>';
+    '<div class="pr-foot">'+esc(state.settings.businessName)+licTag()+'</div></div>';
 }
 
 /* ---------- v11 wiring ---------- */

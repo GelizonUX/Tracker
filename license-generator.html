@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BizPilot License Generator — SELLER TOOL, keep private</title>
+<style>
+:root{--bg:#0c0e1a;--card:#151829;--text:#e8eaf6;--text2:#a4aac6;--text3:#6f7592;--border:#252a44;--accent:#818cf8;--good:#34d399;--risk:#f87171}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:40px 16px}
+.wrap{width:100%;max-width:560px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:26px;margin-bottom:16px}
+h1{font-size:1.3rem;letter-spacing:-.02em}
+.sub{color:var(--text2);font-size:.86rem;margin-top:4px}
+.warn{background:rgba(248,113,113,.12);border:1px solid var(--risk);border-radius:12px;padding:10px 14px;font-size:.8rem;margin:16px 0;color:#fecaca}
+label{display:block;font-size:.78rem;font-weight:600;color:var(--text2);margin:14px 0 5px}
+input[type=text],input[type=email]{width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border);background:#1b1f33;color:var(--text);font-size:.95rem}
+input:focus{outline:none;border-color:var(--accent)}
+.file-drop{border:2px dashed var(--border);border-radius:12px;padding:18px;text-align:center;color:var(--text3);font-size:.85rem;cursor:pointer;transition:border-color .2s;margin-top:5px}
+.file-drop:hover{border-color:var(--accent);color:var(--text2)}
+.file-drop.loaded{border-color:var(--good);color:var(--good)}
+button.go{width:100%;margin-top:20px;padding:13px;border:none;border-radius:12px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:1rem;font-weight:700;cursor:pointer}
+button.go:disabled{opacity:.4;cursor:not-allowed}
+.result{display:none;margin-top:16px;background:rgba(52,211,153,.1);border:1px solid var(--good);border-radius:12px;padding:14px;font-size:.86rem}
+.result.show{display:block}
+.result .key{font-family:ui-monospace,Menlo,monospace;font-size:1.1rem;font-weight:700;color:var(--good)}
+table{width:100%;border-collapse:collapse;font-size:.8rem;margin-top:10px}
+th{text-align:left;color:var(--text3);font-size:.68rem;text-transform:uppercase;padding:6px 8px;border-bottom:1px solid var(--border)}
+td{padding:7px 8px;border-bottom:1px solid var(--border);color:var(--text2)}
+td.k{font-family:ui-monospace,Menlo,monospace;color:var(--accent)}
+.muted{color:var(--text3);font-size:.74rem;margin-top:10px;line-height:1.5}
+.rowbtns{display:flex;gap:8px;margin-top:10px}
+.rowbtns button{flex:1;padding:8px;border-radius:9px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:.78rem;cursor:pointer}
+.rowbtns button:hover{border-color:var(--accent);color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>🔑 BizPilot License Generator</h1>
+    <div class="sub">Creates a personalized copy of BizPilot for each buyer — their name and key are burned into the file and printed on every document it produces.</div>
+    <div class="warn">⚠️ <b>SELLER TOOL — never share this file.</b> Anyone holding it can generate licenses. Keep it off your website and out of the product folder you sell from.</div>
+
+    <label>1 · Buyer's name (appears on their invoices)</label>
+    <input type="text" id="bname" placeholder="e.g. Maria Santos / Maria's Candle Co.">
+
+    <label>2 · Buyer's email</label>
+    <input type="email" id="bemail" placeholder="e.g. maria@gmail.com">
+
+    <label>3 · Your master <b>business.html</b> file</label>
+    <div class="file-drop" id="drop" onclick="document.getElementById('mfile').click()">Click to choose the master file…</div>
+    <input type="file" id="mfile" accept=".html" style="display:none">
+
+    <button class="go" id="go" disabled>Generate licensed copy ⬇</button>
+    <div class="result" id="result"></div>
+    <div class="muted">How it works: the buyer's details are injected into the file's license slot. Their copy shows “Licensed to NAME” in the sidebar, the About page, and on every printed invoice, delivery slip, report and catalog. The key is verifiable inside their app (About page shows <b>valid</b>).</div>
+  </div>
+
+  <div class="card">
+    <h1 style="font-size:1.05rem">📒 Licenses issued (saved on this device)</h1>
+    <table id="ledger"><thead><tr><th>Date</th><th>Name</th><th>Email</th><th>Key</th></tr></thead><tbody></tbody></table>
+    <div class="rowbtns">
+      <button onclick="copyLedger()">Copy as CSV</button>
+      <button onclick="clearLedger()">Clear list</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* === MUST match the formula inside business.html === */
+function licHash(s){ var h=5381; for(var i=0;i<s.length;i++){ h=((h<<5)+h+s.charCodeAt(i))>>>0; } return h; }
+function licenseKeyFor(name,email){
+  var basis=(String(name).trim().toLowerCase()+'|'+String(email).trim().toLowerCase()+'|bizpilot-2026-hiraya');
+  var s=(licHash(basis).toString(36)+licHash(basis.split('').reverse().join('')).toString(36)).toUpperCase().replace(/[^A-Z0-9]/g,'');
+  while(s.length<12) s+='X';
+  return s.slice(0,4)+'-'+s.slice(4,8)+'-'+s.slice(8,12);
+}
+
+var masterText=null;
+var MARKER='var EMBEDDED_LICENSE=null;/*@LICENSE@*/';
+
+document.getElementById('mfile').addEventListener('change',function(){
+  var f=this.files[0];
+  if(!f) return;
+  var r=new FileReader();
+  r.onload=function(){
+    if(r.result.indexOf(MARKER)<0){
+      alert('This file has no license slot — use business.html v22 or newer (the version with the license system).');
+      return;
+    }
+    masterText=r.result;
+    var d=document.getElementById('drop');
+    d.textContent='✓ '+f.name+' loaded ('+Math.round(f.size/1024)+' KB)';
+    d.classList.add('loaded');
+    check();
+  };
+  r.readAsText(f);
+});
+['bname','bemail'].forEach(function(id){
+  document.getElementById(id).addEventListener('input',check);
+});
+function check(){
+  document.getElementById('go').disabled=!(masterText&&document.getElementById('bname').value.trim()&&document.getElementById('bemail').value.trim());
+}
+
+document.getElementById('go').addEventListener('click',function(){
+  var name=document.getElementById('bname').value.trim();
+  var email=document.getElementById('bemail').value.trim();
+  var key=licenseKeyFor(name,email);
+  var lic={name:name,email:email,key:key,issued:new Date().toISOString().slice(0,10)};
+  var injected='var EMBEDDED_LICENSE='+JSON.stringify(lic)+';/*licensed*/';
+  var out=masterText.replace(MARKER,injected);
+  if(out===masterText){ alert('Injection failed — marker not found.'); return; }
+  var slug=name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'buyer';
+  var blob=new Blob([out],{type:'text/html'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='bizpilot-'+slug+'.html';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); },2000);
+  // record
+  var led=JSON.parse(localStorage.getItem('bizpilot.licenses')||'[]');
+  led.push(lic);
+  localStorage.setItem('bizpilot.licenses',JSON.stringify(led));
+  renderLedger();
+  var res=document.getElementById('result');
+  res.innerHTML='✅ <b>bizpilot-'+slug+'.html</b> downloaded — send that file to the buyer.<br>License key: <span class="key">'+key+'</span><br><span style="color:var(--text3);font-size:.76rem">Keep the key with the sale record; the buyer sees it in Settings → About.</span>';
+  res.classList.add('show');
+});
+
+function renderLedger(){
+  var led=JSON.parse(localStorage.getItem('bizpilot.licenses')||'[]');
+  document.querySelector('#ledger tbody').innerHTML=led.slice().reverse().map(function(l){
+    return '<tr><td>'+(l.issued||'')+'</td><td>'+l.name.replace(/</g,'&lt;')+'</td><td>'+l.email.replace(/</g,'&lt;')+'</td><td class="k">'+l.key+'</td></tr>';
+  }).join('')||'<tr><td colspan="4" style="color:var(--text3)">None yet — your first sale goes here. 🚀</td></tr>';
+}
+function copyLedger(){
+  var led=JSON.parse(localStorage.getItem('bizpilot.licenses')||'[]');
+  var csv='date,name,email,key\n'+led.map(function(l){return [l.issued,l.name,l.email,l.key].map(function(v){return '"'+String(v).replace(/"/g,'""')+'"';}).join(',');}).join('\n');
+  navigator.clipboard.writeText(csv).then(function(){ alert('CSV copied.'); },function(){ alert('Copy failed — select manually.'); });
+}
+function clearLedger(){
+  if(confirm('Clear the issued-license list on this device? (Files already sent are unaffected.)')){
+    localStorage.removeItem('bizpilot.licenses'); renderLedger();
+  }
+}
+renderLedger();
+</script>
+</body>
+</html>
