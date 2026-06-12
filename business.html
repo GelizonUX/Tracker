@@ -131,6 +131,10 @@ a{color:var(--accent);text-decoration:none}
 
 .nav{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:2px}
 .nav-section{font-size:.64rem;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--sidebar-text);opacity:.65;padding:14px 12px 5px}
+.nav-sec-toggle{display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;border-radius:7px;transition:opacity .15s}
+.nav-sec-toggle:hover{opacity:1}
+.nav-chev{transition:transform .2s var(--ease);display:inline-flex}
+.nav-chev.closed{transform:rotate(-90deg)}
 .nav-item{
   display:flex;align-items:center;gap:10px;
   padding:6.5px 11px;border-radius:9px;
@@ -522,6 +526,16 @@ body{background-image:radial-gradient(1100px 500px at 18% -8%,var(--accent-soft)
 @media (max-width:900px){.kb-board{grid-template-columns:repeat(2,1fr)}}
 /* bulk bar */
 .bulk-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--accent-soft);border:1px solid var(--accent);border-radius:12px;padding:9px 14px;margin-bottom:14px;animation:fadeUp .25s var(--ease)}
+/* task calendar */
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.cal-dow{font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);text-align:center;padding:4px 0}
+.cal-cell{min-height:78px;background:var(--bg-sunken);border-radius:9px;padding:5px;display:flex;flex-direction:column;gap:3px;overflow:hidden}
+.cal-empty{background:transparent}
+.cal-today{outline:2px solid var(--accent);outline-offset:-2px}
+.cal-num{font-size:.68rem;font-weight:700;color:var(--text-3)}
+.cal-today .cal-num{color:var(--accent)}
+.cal-chip{font-size:.64rem;font-weight:600;padding:2px 6px;border-radius:6px;text-align:left;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+@media (max-width:700px){.cal-cell{min-height:54px}.cal-chip{font-size:.56rem}}
 @media print{ .pr-doc .pr-page-break{page-break-after:always} #print-area .cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px} #print-area .cat-grid img{width:100%;height:150px;object-fit:cover;border-radius:8px} }
 .img-placeholder{display:grid;place-items:center;color:var(--text-3)}
 /* print system */
@@ -533,7 +547,13 @@ body{background-image:radial-gradient(1100px 500px at 18% -8%,var(--accent-soft)
 @media print{
   body.printing > .app,body.printing > .toast-root,body.printing > #modal-root{display:none !important}
   body.printing #print-area{display:block !important}
-  #print-area{color:#000;background:#fff;font-family:Georgia,'Times New Roman',serif}
+  #print-area{color:#000;background:#fff;font-family:Helvetica,Arial,sans-serif}
+  #print-area .pr-qr{position:absolute;width:108px;height:108px;object-fit:contain;border:1px solid #ccc;border-radius:8px;background:#fff}
+  #print-area .pr-qr-ur{top:0;right:0} #print-area .pr-qr-ul{top:0;left:0}
+  #print-area .pr-qr-br{bottom:34px;right:0} #print-area .pr-qr-bl{bottom:34px;left:0}
+  #print-area .pr-doc{position:relative}
+  #print-area .pr-doc.qr-ul h1,#print-area .pr-doc.qr-ul .pr-meta{margin-left:124px}
+  #print-area .pr-doc.qr-bl .pr-foot,#print-area .pr-doc.qr-br .pr-foot{min-height:80px}
   #print-area .pr-doc{max-width:720px;margin:0 auto;padding:10px}
   #print-area h1{font-size:1.6rem;margin-bottom:2px}
   #print-area h2{font-size:1.05rem;margin:18px 0 8px;border-bottom:2px solid #000;padding-bottom:4px}
@@ -635,6 +655,7 @@ var ICONS = {
   menu:'<path d="M3 12h18M3 6h18M3 18h18"/>',
   up:'<path d="M23 6l-9.5 9.5-5-5L1 18"/><path d="M17 6h6v6"/>',
   down:'<path d="M23 18l-9.5-9.5-5 5L1 6"/><path d="M17 18h6v-6"/>',
+  'down-chev':'<path d="M6 9l6 6 6-6"/>',
   wallet:'<path d="M21 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/>',
   arrowdr:'<path d="M7 7l10 10M17 7v10H7"/>',
   arrowur:'<path d="M7 17L17 7M7 7h10v10"/>',
@@ -676,6 +697,7 @@ var DEFAULT_STATE={
     sync:{ url:'https://love-notes-eae0b-default-rtdb.firebaseio.com', path:'bizpilot', enabled:false, lastSync:null },
     productCats:['Candle','Keychain','Gift Box'], productAttrs:['Scent','Color'],
     moduleLabels:{}, bizAddress:'', bizPhone:'', onboarded:false, lang:'en', payQR:'', payQRLabel:'',
+    collapsedNav:[], taskLanes:['To do','Doing','Done'],
     fx:{ auto:true, updated:null, phpPer:{USD:58.5,EUR:63.5,GBP:74,AUD:38,CAD:42.5,SGD:43.5,AED:16,JPY:0.39} } },
   invoices:[],  // {id,number,client,desc,amount,issueDate,dueDate,status,paidDate,createdAt}
   recurring:[], // {id,type,amount,category,note,client,day,active,lastPosted,startMonth}
@@ -725,6 +747,11 @@ function loadState(){
     state=JSON.parse(JSON.stringify(DEFAULT_STATE));
     state.meta.createdAt=todayISO();
   }
+  // migrate tasks to lane-based status (v17+)
+  var lanes=(state.settings.taskLanes&&state.settings.taskLanes.length)?state.settings.taskLanes:['To do','Doing','Done'];
+  (state.tasks||[]).forEach(function(t){
+    if(!t.status) t.status=t.done?lanes[lanes.length-1]:lanes[0];
+  });
   // migrate legacy single roadmap (state.phases) into multi-roadmap structure
   if((state.phases||[]).length&&!(state.roadmaps||[]).length){
     state.roadmaps=[{id:uid(),name:'Main roadmap',phases:state.phases}];
@@ -1253,15 +1280,31 @@ function renderSidebar(){
   var route=currentRoute();
   var openTasks=state.tasks.filter(function(t){ var d=daysUntil(t.deadline); return !t.done&&d!=null&&d<0; }).length;
   var html='<div class="brand"><div class="brand-logo">'+icon('logo')+'</div><div><div class="brand-name">BizPilot</div><div class="brand-sub">Command Center</div></div></div><nav class="nav">';
-  var lastSection='';
   var labels=state.settings.moduleLabels||{};
+  var collapsed=state.settings.collapsedNav||[];
+  // group routes by section; a section containing the active route is always shown open
+  var sections=[];
   visibleRoutes().forEach(function(r){
-    if(r.section!==lastSection){ html+='<div class="nav-section">'+esc(tr(r.section))+'</div>'; lastSection=r.section; }
-    html+='<button class="nav-item'+(route===r.id?' active':'')+'" data-action="nav" data-route="'+r.id+'">'+icon(r.icon)+'<span>'+esc(labels[r.id]||tr(r.label))+'</span>'+
-      (r.id==='tasks'&&openTasks>0?'<span class="nav-badge">'+openTasks+'</span>':'')+'</button>';
+    var s=sections[sections.length-1];
+    if(!s||s.name!==r.section){ s={name:r.section,items:[]}; sections.push(s); }
+    s.items.push(r);
   });
-  if((state.customModules||[]).length||true){
-    html+='<div class="nav-section">'+esc(tr('My Modules'))+'</div>';
+  sections.forEach(function(sec){
+    var hasActive=sec.items.some(function(r){return r.id===route;});
+    var isCollapsed=collapsed.indexOf(sec.name)>=0&&!hasActive;
+    html+='<div class="nav-section nav-sec-toggle" data-action="nav-sec-toggle" data-sec="'+esc(sec.name)+'" role="button">'+esc(tr(sec.name))+
+      '<span class="nav-chev'+(isCollapsed?' closed':'')+'">'+icon('down-chev',10)+'</span></div>';
+    if(isCollapsed) return;
+    sec.items.forEach(function(r){
+      html+='<button class="nav-item'+(route===r.id?' active':'')+'" data-action="nav" data-route="'+r.id+'">'+icon(r.icon)+'<span>'+esc(labels[r.id]||tr(r.label))+'</span>'+
+        (r.id==='tasks'&&openTasks>0?'<span class="nav-badge">'+openTasks+'</span>':'')+'</button>';
+    });
+  });
+  var modsActive=route.indexOf('custom-')===0;
+  var modsCollapsed=collapsed.indexOf('My Modules')>=0&&!modsActive;
+  html+='<div class="nav-section nav-sec-toggle" data-action="nav-sec-toggle" data-sec="My Modules" role="button">'+esc(tr('My Modules'))+
+    '<span class="nav-chev'+(modsCollapsed?' closed':'')+'">'+icon('down-chev',10)+'</span></div>';
+  if(!modsCollapsed){
     (state.customModules||[]).forEach(function(m){
       html+='<button class="nav-item'+(route==='custom-'+m.id?' active':'')+'" data-action="nav" data-route="custom-'+m.id+'">'+icon(m.icon||'notes')+'<span>'+esc(m.name)+'</span></button>';
     });
@@ -1661,6 +1704,7 @@ function viewCalculators(){
 
   var html=topbar('Business Calculators','Pre-filled from your real numbers and computed live — change anything, the answer updates instantly.');
   html+='<div class="grid grid-2">';
+  html+=fxCompareCardHTML();
   html+=calcCard('breakeven','Break-even','How many sales cover your costs.','metrics',
     calcField('fixed','Fixed costs / month','',avgExp3)+
     calcField('price','Price per sale','',aov)+
@@ -1946,6 +1990,12 @@ function viewTasks(){
     '<select class="input" name="priority" style="width:auto"><option>Medium</option><option>High</option><option>Low</option></select>'+
     '<select class="input" name="bucket" style="width:auto"><option value="daily">Daily</option><option value="weekly" selected>Weekly</option><option value="monthly">Monthly</option></select>'+
     '<button class="btn btn-primary" type="submit">'+icon('plus')+' Add</button></form></div>';
+  // view switcher
+  var tv=ui.taskView||'list';
+  html+='<div style="display:flex;gap:14px;align-items:center;margin-top:16px;flex-wrap:wrap">'+taskViewSwitcherHTML()+'</div>';
+  if(tv==='board') return html+taskBoardHTML();
+  if(tv==='table') return html+taskTableHTML();
+  if(tv==='calendar') return html+taskCalendarHTML();
   // filters
   var tf=ui.taskFilter;
   html+='<div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:16px;align-items:center">'+
@@ -1986,7 +2036,7 @@ function taskRowHTML(t){
   var d=daysUntil(t.deadline);
   var late=!t.done&&d!=null&&d<0;
   var prioCls={High:'risk',Medium:'warn',Low:'neutral'}[t.priority]||'neutral';
-  return '<div class="task-row'+(t.done?' done':'')+'">'+
+  return '<div class="task-row'+(t.done?' done':'')+'" style="'+taskColorStyle(t)+'">'+
     '<button class="task-check'+(t.done?' checked':'')+'" data-action="toggle-task" data-id="'+t.id+'" aria-label="Toggle">'+icon('check')+'</button>'+
     '<div style="flex:1;min-width:0"><div class="task-title">'+esc(t.title)+'</div>'+
     '<div class="task-meta">'+
@@ -2072,10 +2122,10 @@ function viewClients(){
   } else {
     html+='<div class="table-wrap"><table><thead><tr><th>Client</th><th>Status</th><th>Contact</th><th style="text-align:right">Est. value / mo</th><th style="text-align:right">Tracked revenue</th><th>Note</th><th></th></tr></thead><tbody>';
     list.forEach(function(c){
-      var stCls={Lead:'info',Active:'good',Inactive:'neutral',Churned:'risk'}[c.status]||'neutral';
       var tracked=revByClient[(c.name||'').toLowerCase()]||0;
       html+='<tr><td><button style="font-weight:700;color:var(--accent);text-align:left" data-action="client-view" data-id="'+c.id+'">'+esc(c.name)+'</button></td>'+
-        '<td><span class="badge '+stCls+'">'+esc(c.status)+'</span></td>'+
+        '<td><select class="input" style="width:auto;padding:3px 26px 3px 8px;font-size:.74rem;font-weight:600" data-action-change="client-status" data-id="'+c.id+'">'+
+          CLIENT_STATUSES.map(function(s){return '<option'+(c.status===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select></td>'+
         '<td>'+esc(c.contact||'—')+'</td>'+
         '<td class="num" style="text-align:right">'+(c.value?fmtMoney(c.value):'—')+'</td>'+
         '<td class="num" style="text-align:right;color:var(--income)">'+(tracked?fmtMoney(tracked):'—')+'</td>'+
@@ -2441,19 +2491,27 @@ function taskModal(task){
     '<div class="field"><label>Task *</label><input class="input" name="title" value="'+esc(task.title||'')+'" required placeholder="What needs to get done?"></div>'+
     '<div class="form-row-3"><div class="field"><label>Deadline</label><input class="input" type="date" name="deadline" value="'+esc(task.deadline||'')+'"></div>'+
     '<div class="field"><label>Priority</label><select class="input" name="priority">'+['High','Medium','Low'].map(function(p){return '<option'+(task.priority===p?' selected':'')+'>'+p+'</option>';}).join('')+'</select></div>'+
-    '<div class="field"><label>Cadence</label><select class="input" name="bucket">'+[['daily','Daily'],['weekly','Weekly'],['monthly','Monthly']].map(function(b){return '<option value="'+b[0]+'"'+(task.bucket===b[0]?' selected':'')+'>'+b[1]+'</option>';}).join('')+'</select></div></div>';
+    '<div class="field"><label>Cadence</label><select class="input" name="bucket">'+[['daily','Daily'],['weekly','Weekly'],['monthly','Monthly']].map(function(b){return '<option value="'+b[0]+'"'+(task.bucket===b[0]?' selected':'')+'>'+b[1]+'</option>';}).join('')+'</select></div></div>'+
+    '<div class="form-row"><div class="field"><label>Status (board lane)</label><select class="input" name="status">'+
+      taskLanes().map(function(l){return '<option'+((task.status||taskLanes()[0])===l?' selected':'')+'>'+esc(l)+'</option>';}).join('')+'</select></div>'+
+    '<div class="field"><label>Color tag</label><div class="swatches" style="margin-top:4px">'+
+      TASK_COLORS.map(function(c){
+        return '<button type="button" class="color-dot'+((task.color||'')===c?' active':'')+'" style="background:'+(c||'var(--bg-sunken)')+';'+(c?'':'border:1.5px dashed var(--border-2)')+'" data-action="task-color" data-color="'+c+'" title="'+(c||'none')+'"></button>';
+      }).join('')+
+      '</div><input type="hidden" name="color" value="'+esc(task.color||'')+'"></div></div>';
   openModal(isEdit?'Edit task':'New task',body,{onSubmit:function(form){
     var title=fv(form,'title');
     if(!title){ toast('Give the task a title.','error'); return false; }
     var id=fv(form,'id');
-    var data={title:title,deadline:fv(form,'deadline'),priority:fv(form,'priority'),bucket:fv(form,'bucket')};
+    var data={title:title,deadline:fv(form,'deadline'),priority:fv(form,'priority'),bucket:fv(form,'bucket'),color:form.elements['color']?form.elements['color'].value:''};
     if(id){
       var t=state.tasks.find(function(x){return x.id===id;});
-      if(t) Object.assign(t,data);
+      if(t){ Object.assign(t,data); setTaskStatus(t,fv(form,'status')||t.status||taskLanes()[0]); }
       toast('Task updated.');
     } else {
-      data.id=uid(); data.done=false; data.createdAt=todayISO();
+      data.id=uid(); data.createdAt=todayISO();
       state.tasks.push(data);
+      setTaskStatus(data,fv(form,'status')||taskLanes()[0]);
       toast('Task added.');
     }
     return true;
@@ -3030,7 +3088,7 @@ document.addEventListener('click',function(e){
   }
   if(action==='toggle-task'){
     var t3=state.tasks.find(function(x){return x.id===id;});
-    if(t3){ t3.done=!t3.done; t3.completedAt=t3.done?todayISO():null; commit(); if(t3.done) toast('Nice — task done.'); } return;
+    if(t3){ setTaskStatus(t3,t3.done?taskLanes()[0]:doneLane()); commit(); if(t3.done) toast('Nice — task done.'); } return;
   }
   if(action==='task-filter-status'){ ui.taskFilter.status=el.getAttribute('data-val'); render(); return; }
   if(action==='task-filter-priority'){ ui.taskFilter.priority=el.getAttribute('data-val'); render(); return; }
@@ -3145,7 +3203,9 @@ document.addEventListener('submit',function(e){
   if(kind==='quick-task'){
     var title=fv(form,'title');
     if(!title){ toast('Type a task first.','warn'); return; }
-    state.tasks.push({id:uid(),title:title,deadline:fv(form,'deadline'),priority:fv(form,'priority'),bucket:fv(form,'bucket'),done:false,createdAt:todayISO()});
+    var qt={id:uid(),title:title,deadline:fv(form,'deadline'),priority:fv(form,'priority'),bucket:fv(form,'bucket'),createdAt:todayISO()};
+    setTaskStatus(qt,taskLanes()[0]);
+    state.tasks.push(qt);
     commit(); toast('Task added.');
     return;
   }
@@ -3444,7 +3504,10 @@ function viewInvoices(){
       '<td style="white-space:nowrap">'+fmtDate(iv.dueDate)+'</td>'+
       '<td class="num" style="text-align:right;font-weight:700">'+fmtInvAmt(iv)+
         (iv.currency&&iv.currency!=='PHP'?'<div style="font-size:.68rem;color:var(--text-3)">≈ '+fmtMoney(invPHP(iv))+'</div>':'')+'</td>'+
-      '<td>'+invoiceBadge(iv)+(iv.payMethod?'<div style="font-size:.66rem;color:var(--text-3);margin-top:2px">'+esc(iv.payMethod)+'</div>':'')+'</td>'+
+      '<td><select class="input" style="width:auto;padding:3px 26px 3px 8px;font-size:.74rem;font-weight:600" data-action-change="invoice-status" data-id="'+iv.id+'">'+
+        ['Draft','Sent','Paid'].map(function(s){return '<option'+(iv.status===s?' selected':'')+'>'+s+'</option>';}).join('')+'</select>'+
+        '<div style="margin-top:3px">'+invoiceBadge(iv)+'</div>'+
+        (iv.payMethod?'<div style="font-size:.66rem;color:var(--text-3);margin-top:2px">'+esc(iv.payMethod)+'</div>':'')+'</td>'+
       '<td><div class="row-actions">'+
         (iv.status==='Draft'?'<button class="btn-icon" data-action="invoice-sent" data-id="'+iv.id+'" title="Mark sent">'+icon('flag')+'</button>':'')+
         (iv.status!=='Paid'?'<button class="btn-icon" data-action="invoice-paid" data-id="'+iv.id+'" title="Mark paid (records income)">'+icon('check')+'</button>':'')+
@@ -3469,10 +3532,19 @@ function invoiceModal(iv){
       '</select><p style="font-size:.68rem;color:var(--text-3);margin-top:3px">Foreign amounts auto-convert to ₱ on the invoice and in your books.</p></div>'+
     '<div class="field"><label>Payment method</label><select class="input" name="ipayMethod">'+
       ['Local bank transfer','GCash','Maya','PayPal','Wise','Payoneer','Card','Cash','Other'].map(function(pm){return '<option'+((iv.payMethod||'Local bank transfer')===pm?' selected':'')+'>'+pm+'</option>';}).join('')+'</select></div></div>'+
+    '<div class="field"><label>Payment details on the invoice (account #, PayPal email, payment link…)</label><textarea class="input" name="payDetails" rows="2" placeholder="e.g. BPI 1234-5678-90 · PayPal: you@mail.com · pay.link/yourname">'+esc(iv.payDetails!=null?iv.payDetails:(state.settings.payQRLabel||''))+'</textarea></div>'+
+    '<div class="form-row"><div class="field"><label>Payment QR on invoice</label><div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">'+
+      (function(){ var q=iv.payQR!=null?iv.payQR:(state.settings.payQR||''); return '<img class="img-thumb img-prev" src="'+q+'" style="'+(q?'':'display:none')+'" alt="">'+
+      '<input type="file" accept="image/*" class="input img-input" style="flex:1;min-width:120px;padding:6px">'+
+      '<input type="hidden" name="invPayQR" value="'+esc(q)+'">'+
+      (q?'<button type="button" class="btn btn-sm btn-danger" data-action="img-clear">'+icon('x')+'</button>':''); })()+
+    '</div></div>'+
+    '<div class="field"><label>QR position</label><select class="input" name="payQRPos">'+
+      [['br','Bottom right'],['bl','Bottom left'],['ur','Upper right'],['ul','Upper left']].map(function(p){return '<option value="'+p[0]+'"'+((iv.payQRPos||'br')===p[0]?' selected':'')+'>'+p[1]+'</option>';}).join('')+'</select></div></div>'+
     '<div class="field"><label>Client *</label><input class="input" name="client" value="'+esc(iv.client||'')+'" list="inv-clients" required placeholder="Who is being billed?"><datalist id="inv-clients">'+
       state.clients.map(function(c){return '<option value="'+esc(c.name)+'">';}).join('')+'</datalist></div>'+
     '<div class="field"><label>Description of work</label><input class="input" name="desc" value="'+esc(iv.desc||'')+'" placeholder="e.g. Website redesign — 50% deposit"></div>'+
-    '<div class="form-row-3"><div class="field"><label>Amount ('+esc(state.settings.currency)+') *</label><input class="input" type="number" step="any" min="0.01" name="amount" value="'+(iv.amount||'')+'" required></div>'+
+    '<div class="form-row-3"><div class="field"><label>Amount (<span id="inv-amt-sym">'+esc(FX_SYMBOLS[iv.currency||'PHP']||state.settings.currency)+'</span>) *</label><input class="input" type="number" step="any" min="0.01" name="amount" value="'+(iv.amount||'')+'" required></div>'+
     '<div class="field"><label>Issue date</label><input class="input" type="date" name="issueDate" value="'+esc(iv.issueDate)+'"></div>'+
     '<div class="field"><label>Due date</label><input class="input" type="date" name="dueDate" value="'+esc(iv.dueDate)+'"></div></div>'+
     (isEdit?'':'<p style="font-size:.75rem;color:var(--text-3)">Marking an invoice Paid later will automatically record the income in Finance.</p>');
@@ -3483,7 +3555,7 @@ function invoiceModal(iv){
     if(amount<=0){ toast('Enter an amount greater than zero.','error'); return false; }
     var id=fv(form,'id');
     var cur=fv(form,'currency')||'PHP';
-    var data={number:fv(form,'number')||nextInvoiceNumber(),client:client,desc:fv(form,'desc'),amount:amount,issueDate:fv(form,'issueDate')||todayISO(),dueDate:fv(form,'dueDate'),status:fv(form,'status'),currency:cur,fxRate:fxRateFor(cur),payMethod:fv(form,'ipayMethod')};
+    var data={number:fv(form,'number')||nextInvoiceNumber(),client:client,desc:fv(form,'desc'),amount:amount,issueDate:fv(form,'issueDate')||todayISO(),dueDate:fv(form,'dueDate'),status:fv(form,'status'),currency:cur,fxRate:fxRateFor(cur),payMethod:fv(form,'ipayMethod'),payDetails:form.elements['payDetails'].value,payQR:form.elements['invPayQR']?form.elements['invPayQR'].value:'',payQRPos:fv(form,'payQRPos')||'br'};
     if(id){
       var ex=state.invoices.find(function(x){return x.id===id;});
       if(ex){
@@ -3526,7 +3598,9 @@ function printDoc(html){
   setTimeout(function(){ window.print(); setTimeout(cleanup,1000); },60);
 }
 function printInvoice(iv){
-  var html='<div class="pr-doc">'+
+  var qr=iv.payQR!=null&&iv.payQR!==''?iv.payQR:(state.settings.payQR||'');
+  var pos=iv.payQRPos||'br';
+  var html='<div class="pr-doc qr-'+pos+'">'+
     '<h1>'+esc(state.settings.businessName)+'</h1>'+
     '<div class="pr-meta">Invoice '+esc(iv.number)+' · Issued '+fmtDate(iv.issueDate)+' · Due '+fmtDate(iv.dueDate)+'</div>'+
     '<h2>Billed to</h2><p>'+esc(iv.client)+'</p>'+
@@ -3537,8 +3611,9 @@ function printInvoice(iv){
     (iv.currency&&iv.currency!=='PHP'?'<tr><td>Equivalent in Philippine Peso (rate: ₱'+fmtNum(iv.fxRate||fxRateFor(iv.currency),2)+' per 1 '+iv.currency+')</td><td class="num">≈ ₱'+fmtNum(invPHP(iv),2)+'</td></tr>':'')+
     '</tbody></table>'+
     '<p style="margin-top:14px">Status: <b>'+esc(iv.status)+(iv.status==='Paid'&&iv.paidDate?' on '+fmtDate(iv.paidDate):'')+'</b></p>'+
-    payQRDocHTML()+
-    '<div class="pr-foot">Generated by '+esc(state.settings.businessName)+' · '+fmtDate(todayISO())+'</div>'+
+    (iv.payDetails?'<h2>Payment details</h2><p>'+esc(iv.payDetails).replace(/\n/g,'<br>')+'</p>':'')+
+    (qr?'<img class="pr-qr pr-qr-'+pos+'" src="'+qr+'" alt="Payment QR">':'')+
+    '<div class="pr-foot">'+esc(state.settings.businessName)+' · Thank you for your business! · '+fmtDate(todayISO())+'</div>'+
     '</div>';
   printDoc(html);
 }
@@ -3631,7 +3706,7 @@ function buildReportDoc(selected){
     '<h2>Expenses by category</h2>'+catTable('expense',d.expenses)+
     (clientKeys.length?'<h2>Top clients</h2><table><thead><tr><th>Client</th><th class="num">Revenue</th></tr></thead><tbody>'+
       clientKeys.map(function(k){return '<tr><td>'+esc(k)+'</td><td class="num">'+fmtMoney(byClient[k])+'</td></tr>';}).join('')+'</tbody></table>':'')+
-    '<div class="pr-foot">Generated by BizPilot · data as entered by the business owner</div>'+
+    '<div class="pr-foot">'+esc(state.settings.businessName)+' · prepared from the owner\'s records</div>'+
     '</div>';
 }
 
@@ -5863,7 +5938,7 @@ function buildYearReportDoc(year){
     '</tbody></table>'+
     (yd.topIncomeCats.length?'<h2>Top income sources</h2><table><tbody>'+yd.topIncomeCats.map(function(x){return '<tr><td>'+esc(x.label)+'</td><td class="num">'+fmtMoney(x.value)+'</td></tr>';}).join('')+'</tbody></table>':'')+
     (yd.topClients.length?'<h2>Top clients</h2><table><tbody>'+yd.topClients.map(function(x){return '<tr><td>'+esc(x.label)+'</td><td class="num">'+fmtMoney(x.value)+'</td></tr>';}).join('')+'</tbody></table>':'')+
-    '<div class="pr-foot">Generated by BizPilot</div></div>';
+    '<div class="pr-foot">'+esc(state.settings.businessName)+'</div></div>';
 }
 
 /* ---------- v11 wiring ---------- */
@@ -6388,6 +6463,302 @@ document.addEventListener('submit',function(e){
   });
   fx.auto=form.elements['fxauto'].checked;
   commit(); toast('Exchange rates saved.');
+});
+
+/* ============================================================
+   v17 additions: nav collapse, all-currency calculator,
+   invoice status wiring, multi-view task system
+   ============================================================ */
+
+/* ---------- sidebar section collapse ---------- */
+document.addEventListener('click',function(e){
+  var el=e.target.closest('[data-action="nav-sec-toggle"]');
+  if(!el) return;
+  var sec=el.getAttribute('data-sec');
+  var arr=state.settings.collapsedNav=state.settings.collapsedNav||[];
+  var i=arr.indexOf(sec);
+  if(i>=0) arr.splice(i,1); else arr.push(sec);
+  save(); renderSidebar();
+});
+
+/* ---------- all-currency comparison calculator (Calculators page) ---------- */
+function fxCompareCardHTML(){
+  var fx=state.settings.fx||{};
+  var from=ui.fxAllFrom||'PHP';
+  return '<div class="card" style="grid-column:1/-1"><div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">'+
+    '<span class="stat-icon">'+icon('cash')+'</span>'+
+    '<div style="flex:1;min-width:0"><b style="font-size:.94rem">Currency converter — compare all currencies</b>'+
+    '<div class="calc-desc">Rates '+(fx.updated?'as of '+fmtDate(fx.updated.slice(0,10)):'built-in')+' · auto-updated daily when online · editable in Settings</div></div></div>'+
+    '<div style="display:flex;gap:9px;align-items:flex-end;flex-wrap:wrap;margin-top:8px">'+
+      '<div class="field" style="margin-bottom:0;flex:1;min-width:130px"><label>Amount</label><input class="input" type="number" step="any" min="0" id="fxall-amt" value="'+(ui.fxAllAmt!=null?ui.fxAllAmt:1000)+'"></div>'+
+      '<div class="field" style="margin-bottom:0;width:auto"><label>From currency</label><select class="input" id="fxall-from" style="width:auto">'+
+        FX_CURRENCIES.map(function(c){return '<option value="'+c+'"'+(from===c?' selected':'')+'>'+c+' ('+FX_SYMBOLS[c]+')</option>';}).join('')+'</select></div></div>'+
+    '<div id="fxall-table" style="margin-top:12px">'+fxCompareTableHTML(ui.fxAllAmt!=null?ui.fxAllAmt:1000,from)+'</div></div>';
+}
+function fxCompareTableHTML(amt,from){
+  var a=num(amt);
+  if(!a) return '<p style="font-size:.82rem;color:var(--text-3)">Enter an amount to compare across all currencies.</p>';
+  var inPhp=a*fxRateFor(from);
+  var rows=FX_CURRENCIES.filter(function(c){return c!==from;}).map(function(c){
+    var v=c==='PHP'?inPhp:inPhp/fxRateFor(c);
+    return '<div style="display:flex;justify-content:space-between;gap:8px;padding:7px 11px;background:var(--bg-sunken);border-radius:9px">'+
+      '<span style="font-size:.82rem;color:var(--text-2)">'+c+'</span>'+
+      '<b class="num" style="font-size:.88rem">'+FX_SYMBOLS[c]+fmtNum(v,2)+'</b></div>';
+  }).join('');
+  return '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px">'+rows+'</div>';
+}
+function fxAllRefresh(){
+  var amtEl=byId('fxall-amt'), fromEl=byId('fxall-from'), out=byId('fxall-table');
+  if(!amtEl||!fromEl||!out) return;
+  ui.fxAllAmt=amtEl.value; ui.fxAllFrom=fromEl.value;
+  out.innerHTML=fxCompareTableHTML(amtEl.value,fromEl.value);
+}
+document.addEventListener('input',function(e){ if(e.target&&e.target.id==='fxall-amt') fxAllRefresh(); });
+document.addEventListener('change',function(e){ if(e.target&&e.target.id==='fxall-from') fxAllRefresh(); });
+
+/* ---------- inline status changes: invoices + clients + invoice currency symbol ---------- */
+document.addEventListener('change',function(e){
+  var el=e.target;
+  var act=el.getAttribute&&el.getAttribute('data-action-change');
+  if(act==='invoice-status'){
+    var iv=state.invoices.find(function(x){return x.id===el.getAttribute('data-id');});
+    if(!iv) return;
+    var newS=el.value;
+    if(newS==='Paid'&&iv.status!=='Paid'){
+      if(confirm('Mark '+iv.number+' ('+fmtInvAmt(iv)+(iv.currency&&iv.currency!=='PHP'?' ≈ '+fmtMoney(invPHP(iv)):'')+') as PAID? This records the income in Finance.')){
+        iv.status='Paid'; iv.paidDate=todayISO();
+        recordInvoiceIncome(iv);
+        commit(); toast('💰 '+fmtMoney(invPHP(iv))+' collected from '+iv.client+'.');
+      } else render();
+      return;
+    }
+    var wasPaid=iv.status==='Paid';
+    iv.status=newS;
+    commit();
+    toast(wasPaid&&newS!=='Paid'?'Status changed — note: the income already recorded stays in Finance.':'Invoice '+iv.number+' → '+newS+'.',wasPaid&&newS!=='Paid'?'warn':'good');
+    return;
+  }
+  if(act==='client-status'){
+    var c=state.clients.find(function(x){return x.id===el.getAttribute('data-id');});
+    if(c){ c.status=el.value; commit(); toast(c.name+' → '+c.status+'.'); }
+    return;
+  }
+  /* invoice modal: amount symbol follows the chosen currency */
+  if(el.name==='currency'&&el.closest('#modal-form')){
+    var sym=byId('inv-amt-sym');
+    if(sym) sym.textContent=FX_SYMBOLS[el.value]||el.value;
+    return;
+  }
+});
+
+/* ---------- multi-view task system ---------- */
+var TASK_COLORS=['','#6366f1','#0ea5e9','#10b981','#f59e0b','#ef4444','#ec4899','#8b5cf6','#64748b'];
+function taskLanes(){ var l=state.settings.taskLanes; return (l&&l.length>=2)?l:['To do','Doing','Done']; }
+function doneLane(){ var l=taskLanes(); return l[l.length-1]; }
+function setTaskStatus(t,status){
+  t.status=status;
+  var wasDone=t.done;
+  t.done=status===doneLane();
+  if(t.done&&!wasDone) t.completedAt=todayISO();
+  if(!t.done) t.completedAt=null;
+}
+function taskColorStyle(t){ return t.color?'border-left:3px solid '+t.color+';padding-left:9px;':''; }
+function taskViewSwitcherHTML(){
+  var v=ui.taskView||'list';
+  return '<div class="seg">'+[['list','List'],['board','Board'],['table','Table'],['calendar','Calendar']].map(function(x){
+    return '<button class="'+(v===x[0]?'active':'')+'" data-action="task-view" data-val="'+x[0]+'">'+x[1]+'</button>';
+  }).join('')+'</div>';
+}
+function taskBoardHTML(){
+  var lanes=taskLanes();
+  var html='<div class="kb-board mt" style="grid-template-columns:repeat('+Math.min(lanes.length,4)+',1fr)">';
+  lanes.forEach(function(lane,li){
+    var cards=state.tasks.filter(function(t){return (t.status||lanes[0])===lane;});
+    html+='<div class="kb-col" data-task-drop="'+esc(lane)+'"><h4><span style="display:flex;align-items:center;gap:5px">'+esc(lane)+
+      '<button class="btn-icon" style="width:18px;height:18px" data-action="task-lane-rename" data-lane="'+esc(lane)+'" title="Rename lane">'+icon('edit',10)+'</button>'+
+      (lanes.length>2&&li!==lanes.length-1?'<button class="btn-icon danger" style="width:18px;height:18px" data-action="task-lane-delete" data-lane="'+esc(lane)+'" title="Delete lane">'+icon('x',10)+'</button>':'')+
+      '</span><span>'+cards.length+'</span></h4>';
+    cards.forEach(function(t){
+      var d=daysUntil(t.deadline);
+      var late=!t.done&&d!=null&&d<0;
+      html+='<div class="kb-card" draggable="true" data-task-card="'+t.id+'" style="'+taskColorStyle(t)+'">'+
+        '<div style="font-weight:600;font-size:.86rem;'+(t.done?'text-decoration:line-through;color:var(--text-3)':'')+'">'+esc(t.title)+'</div>'+
+        '<div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap">'+
+          (t.deadline?'<span class="badge '+(late?'risk':'neutral')+'" style="font-size:.62rem">'+(late?Math.abs(d)+'d late':fmtDate(t.deadline))+'</span>':'')+
+          '<span class="badge '+({High:'risk',Medium:'warn',Low:'neutral'}[t.priority]||'neutral')+'" style="font-size:.62rem">'+esc(t.priority||'Medium')+'</span></div>'+
+        '<div style="display:flex;gap:4px;margin-top:7px;flex-wrap:wrap">'+
+          (li<lanes.length-1?'<button class="btn btn-sm btn-ghost" data-action="task-next-lane" data-id="'+t.id+'" style="padding:2px 8px;font-size:.66rem">→ '+esc(lanes[li+1])+'</button>':'')+
+          '<button class="btn btn-sm btn-ghost" data-action="edit-task" data-id="'+t.id+'" style="padding:2px 8px;font-size:.66rem">Edit</button></div></div>';
+    });
+    html+='</div>';
+  });
+  html+='</div><div style="display:flex;gap:8px;margin-top:10px;align-items:center">'+
+    '<button class="btn btn-ghost btn-sm" data-action="task-lane-add">'+icon('plus')+' Add lane</button>'+
+    '<span style="font-size:.72rem;color:var(--text-3)">Drag cards between lanes · the last lane ("'+esc(doneLane())+'") counts as completed · rename or add lanes to fit your flow.</span></div>';
+  return html;
+}
+function taskTableHTML(){
+  var lanes=taskLanes();
+  var list=state.tasks.slice().sort(function(a,b){
+    if(a.done!==b.done) return a.done?1:-1;
+    return (a.deadline||'9999').localeCompare(b.deadline||'9999');
+  });
+  if(!list.length) return '<div class="card mt">'+emptyState('tasks','No tasks yet','Add tasks with the quick-add bar above.')+'</div>';
+  var html='<div class="card mt"><div class="table-wrap"><table><thead><tr><th></th><th>Task</th><th>Status</th><th>Priority</th><th>Cadence</th><th>Due</th><th></th></tr></thead><tbody>';
+  list.forEach(function(t){
+    var d=daysUntil(t.deadline);
+    var late=!t.done&&d!=null&&d<0;
+    html+='<tr style="'+(t.color?'box-shadow:inset 3px 0 0 '+t.color:'')+'">'+
+      '<td><button class="task-check'+(t.done?' checked':'')+'" data-action="toggle-task" data-id="'+t.id+'">'+icon('check')+'</button></td>'+
+      '<td style="font-weight:600;'+(t.done?'text-decoration:line-through;color:var(--text-3)':'')+'">'+esc(t.title)+'</td>'+
+      '<td><select class="input" style="width:auto;padding:3px 26px 3px 8px;font-size:.74rem;font-weight:600" data-action-change="task-status" data-id="'+t.id+'">'+
+        lanes.map(function(l){return '<option'+((t.status||lanes[0])===l?' selected':'')+'>'+esc(l)+'</option>';}).join('')+'</select></td>'+
+      '<td><span class="badge '+({High:'risk',Medium:'warn',Low:'neutral'}[t.priority]||'neutral')+'">'+esc(t.priority||'Medium')+'</span></td>'+
+      '<td><span class="badge accent">'+esc(t.bucket||'weekly')+'</span></td>'+
+      '<td style="white-space:nowrap;'+(late?'color:var(--risk);font-weight:700':'')+'">'+(t.deadline?fmtDate(t.deadline)+(late?' · late':''):'—')+'</td>'+
+      '<td><div class="row-actions"><button class="btn-icon" data-action="edit-task" data-id="'+t.id+'">'+icon('edit')+'</button>'+
+      '<button class="btn-icon danger" data-action="delete-task" data-id="'+t.id+'">'+icon('trash')+'</button></div></td></tr>';
+  });
+  html+='</tbody></table></div></div>';
+  return html;
+}
+function taskCalendarHTML(){
+  var mk=ui.taskCalMonth||thisMonthKey();
+  var p=mk.split('-'); var y=+p[0], m=+p[1]-1;
+  var first=new Date(y,m,1);
+  var daysInM=new Date(y,m+1,0).getDate();
+  var startDow=first.getDay();
+  var byDay={};
+  state.tasks.forEach(function(t){
+    if(t.deadline&&monthKey(t.deadline)===mk) (byDay[+t.deadline.slice(8,10)]=byDay[+t.deadline.slice(8,10)]||[]).push(t);
+  });
+  var today=todayISO();
+  var html='<div class="card mt"><div class="card-head"><button class="btn-icon" data-action="task-cal-nav" data-dir="-1">‹</button>'+
+    '<h3 style="min-width:120px;text-align:center">'+monthLabel(mk)+'</h3>'+
+    '<button class="btn-icon" data-action="task-cal-nav" data-dir="1">›</button><span class="spacer"></span>'+
+    '<span class="sub">click a task to edit · colored by task color</span></div>'+
+    '<div class="cal-grid">'+['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(function(d){return '<div class="cal-dow">'+d+'</div>';}).join('');
+  for(var i=0;i<startDow;i++) html+='<div class="cal-cell cal-empty"></div>';
+  for(var day=1;day<=daysInM;day++){
+    var iso=mk+'-'+String(day).padStart(2,'0');
+    var isToday=iso===today;
+    var tasks=byDay[day]||[];
+    html+='<div class="cal-cell'+(isToday?' cal-today':'')+'"><div class="cal-num">'+day+'</div>'+
+      tasks.slice(0,3).map(function(t){
+        return '<button class="cal-chip" data-action="edit-task" data-id="'+t.id+'" style="background:'+(t.color||'var(--accent)')+'22;color:'+(t.color||'var(--accent)')+';'+(t.done?'text-decoration:line-through;opacity:.55':'')+'" title="'+esc(t.title)+'">'+esc(t.title)+'</button>';
+      }).join('')+
+      (tasks.length>3?'<div style="font-size:.62rem;color:var(--text-3)">+'+(tasks.length-3)+' more</div>':'')+'</div>';
+  }
+  html+='</div>';
+  var noDeadline=state.tasks.filter(function(t){return !t.deadline&&!t.done;});
+  if(noDeadline.length){
+    html+='<div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--border)"><b style="font-size:.8rem">No deadline ('+noDeadline.length+')</b><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">'+
+      noDeadline.slice(0,10).map(function(t){return '<button class="cal-chip" data-action="edit-task" data-id="'+t.id+'" style="background:'+(t.color||'var(--accent)')+'22;color:'+(t.color||'var(--accent)')+'">'+esc(t.title)+'</button>';}).join('')+'</div></div>';
+  }
+  html+='</div>';
+  return html;
+}
+/* drag & drop for task board */
+var dragTaskId=null;
+document.addEventListener('dragstart',function(e){
+  var card=e.target.closest&&e.target.closest('[data-task-card]');
+  if(!card) return;
+  dragTaskId=card.getAttribute('data-task-card');
+  card.classList.add('dragging');
+  if(e.dataTransfer){ e.dataTransfer.effectAllowed='move'; try{ e.dataTransfer.setData('text/plain',dragTaskId); }catch(_){} }
+});
+document.addEventListener('dragover',function(e){
+  var col=e.target.closest&&e.target.closest('[data-task-drop]');
+  if(col&&dragTaskId){ e.preventDefault(); col.classList.add('drag-over'); }
+});
+document.addEventListener('dragleave',function(e){
+  var col=e.target.closest&&e.target.closest('[data-task-drop]');
+  if(col) col.classList.remove('drag-over');
+});
+document.addEventListener('drop',function(e){
+  var col=e.target.closest&&e.target.closest('[data-task-drop]');
+  if(!col||!dragTaskId) return;
+  e.preventDefault();
+  var t=state.tasks.find(function(x){return x.id===dragTaskId;});
+  dragTaskId=null;
+  if(t){
+    setTaskStatus(t,col.getAttribute('data-task-drop'));
+    commit();
+    if(t.done) toast('Nice — task done.');
+  }
+});
+/* task view wiring */
+document.addEventListener('click',function(e){
+  var el=e.target.closest('[data-action]');
+  if(!el) return;
+  var action=el.getAttribute('data-action');
+  var id=el.getAttribute('data-id');
+  if(action==='task-view'){ ui.taskView=el.getAttribute('data-val'); render(); return; }
+  if(action==='task-cal-nav'){
+    ui.taskCalMonth=shiftMonth(ui.taskCalMonth||thisMonthKey(),parseInt(el.getAttribute('data-dir'),10));
+    render(); return;
+  }
+  if(action==='task-next-lane'){
+    var t=state.tasks.find(function(x){return x.id===id;});
+    if(t){
+      var lanes=taskLanes();
+      var i=lanes.indexOf(t.status||lanes[0]);
+      if(i<lanes.length-1){ setTaskStatus(t,lanes[i+1]); commit(); if(t.done) toast('Nice — task done.'); }
+    }
+    return;
+  }
+  if(action==='task-lane-add'){
+    var name=prompt('Name of the new lane: (it is inserted before "'+doneLane()+'")');
+    if(name&&name.trim()){
+      var lanes2=taskLanes().slice();
+      if(lanes2.indexOf(name.trim())>=0){ toast('That lane already exists.','warn'); return; }
+      lanes2.splice(lanes2.length-1,0,name.trim());
+      state.settings.taskLanes=lanes2;
+      commit(); toast('Lane "'+name.trim()+'" added.');
+    }
+    return;
+  }
+  if(action==='task-lane-rename'){
+    var oldName=el.getAttribute('data-lane');
+    var nn=prompt('Rename lane "'+oldName+'" to:',oldName);
+    if(nn&&nn.trim()&&nn.trim()!==oldName){
+      var lanes3=taskLanes().slice();
+      if(lanes3.indexOf(nn.trim())>=0){ toast('That lane name already exists.','warn'); return; }
+      lanes3[lanes3.indexOf(oldName)]=nn.trim();
+      state.settings.taskLanes=lanes3;
+      state.tasks.forEach(function(t){ if(t.status===oldName) t.status=nn.trim(); });
+      commit(); toast('Lane renamed.');
+    }
+    return;
+  }
+  if(action==='task-lane-delete'){
+    var lane=el.getAttribute('data-lane');
+    var lanes4=taskLanes().slice();
+    if(lanes4.length<=2){ toast('Keep at least two lanes.','warn'); return; }
+    if(confirm('Delete lane "'+lane+'"? Its tasks move to "'+lanes4[0]+'".')){
+      var moved=0;
+      state.tasks.forEach(function(t){ if(t.status===lane){ setTaskStatus(t,lanes4[0]); moved++; } });
+      state.settings.taskLanes=lanes4.filter(function(l){return l!==lane;});
+      commit(); toast('Lane deleted'+(moved?' — '+moved+' task(s) moved.':'.'));
+    }
+    return;
+  }
+  if(action==='task-color'){
+    var form=el.closest('form');
+    if(form&&form.elements['color']){
+      form.elements['color'].value=el.getAttribute('data-color')||'';
+      form.querySelectorAll('.color-dot').forEach(function(d){ d.classList.remove('active'); });
+      el.classList.add('active');
+    }
+    return;
+  }
+});
+document.addEventListener('change',function(e){
+  var el=e.target;
+  if(el.getAttribute&&el.getAttribute('data-action-change')==='task-status'){
+    var t=state.tasks.find(function(x){return x.id===el.getAttribute('data-id');});
+    if(t){ setTaskStatus(t,el.value); commit(); if(t.done) toast('Nice — task done.'); }
+  }
 });
 
 /* keyboard: Escape closes modal / sidebar */
