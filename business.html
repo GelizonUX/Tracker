@@ -722,7 +722,7 @@ var DEFAULT_STATE={
     sync:{ url:'https://love-notes-eae0b-default-rtdb.firebaseio.com', path:'bizpilot', enabled:false, lastSync:null },
     productCats:['Candle','Keychain','Gift Box'], productAttrs:['Scent','Color'],
     moduleLabels:{}, bizAddress:'', bizPhone:'', onboarded:false, lang:'en', payQR:'', payQRLabel:'',
-    collapsedNav:[], taskLanes:['To do','Doing','Done'],
+    collapsedNav:[], taskLanes:['To do','Doing','Done'], bizLogo:'', tourDone:false,
     fx:{ auto:true, updated:null, phpPer:{USD:58.5,EUR:63.5,GBP:74,AUD:38,CAD:42.5,SGD:43.5,AED:16,JPY:0.39} } },
   invoices:[],  // {id,number,client,desc,amount,issueDate,dueDate,status,paidDate,createdAt}
   recurring:[], // {id,type,amount,category,note,client,day,active,lastPosted,startMonth}
@@ -1311,7 +1311,11 @@ function render(){
 function renderSidebar(){
   var route=currentRoute();
   var openTasks=state.tasks.filter(function(t){ var d=daysUntil(t.deadline); return !t.done&&d!=null&&d<0; }).length;
-  var html='<div class="brand"><div class="brand-logo">'+icon('logo')+'</div><div><div class="brand-name">BizPilot</div><div class="brand-sub">Command Center</div></div></div><nav class="nav">';
+  var bl=state.settings.bizLogo;
+  var html='<div class="brand">'+
+    (bl?'<img src="'+bl+'" alt="" style="width:36px;height:36px;border-radius:10px;object-fit:cover;flex-shrink:0;box-shadow:0 4px 14px rgba(0,0,0,.35)">'
+       :'<div class="brand-logo">'+icon('logo')+'</div>')+
+    '<div><div class="brand-name" style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(state.settings.businessName||'BizPilot')+'</div><div class="brand-sub">Command Center</div></div></div><nav class="nav">';
   var labels=state.settings.moduleLabels||{};
   var collapsed=state.settings.collapsedNav||[];
   // group routes by section; a section containing the active route is always shown open
@@ -1342,7 +1346,10 @@ function renderSidebar(){
     });
     html+='<button class="nav-item" data-action="custom-module-new" style="opacity:.75">'+icon('plus')+'<span>'+esc(tr('New module…'))+'</span></button>';
   }
-  html+='</nav><div class="sidebar-foot"><div class="biz-chip"><div class="avatar">'+esc((state.settings.businessName||'B').charAt(0).toUpperCase())+'</div><div><b>'+esc(state.settings.businessName||'My Business')+'</b><span>Local data · private</span></div></div></div>';
+  html+='</nav><div class="sidebar-foot"><div class="biz-chip">'+
+    (bl?'<img src="'+bl+'" alt="" style="width:30px;height:30px;border-radius:8px;object-fit:cover;flex-shrink:0">'
+       :'<div class="avatar">'+esc((state.settings.businessName||'B').charAt(0).toUpperCase())+'</div>')+
+    '<div><b>'+esc(state.settings.businessName||'My Business')+'</b><span>Local data · private</span></div></div></div>';
   var sb=byId('sidebar');
   var navEl=sb.querySelector('.nav');
   var keepScroll=navEl?navEl.scrollTop:0;
@@ -2380,6 +2387,12 @@ function viewSettings(){
     '</select></div>'+
     '<div class="field"><label>Default tax rate (%)</label><input class="input" type="number" step="any" min="0" max="60" name="taxRate" value="'+esc(s.taxRate)+'"></div></div>'+
     '<div class="field"><label>Monthly revenue target ('+esc(s.currency)+')</label><input class="input" type="number" step="any" min="0" name="monthlyTarget" value="'+(s.monthlyTarget||'')+'" placeholder="e.g. 100000"><p style="font-size:.74rem;color:var(--text-3);margin-top:4px">Used on the dashboard and in insights to track each month’s pace.</p></div>'+
+    '<div class="field"><label>Business logo (sidebar, browser tab icon & favicon)</label><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'+
+      '<img class="img-thumb-lg img-prev" src="'+(s.bizLogo||'')+'" style="'+(s.bizLogo?'':'display:none')+'" alt="">'+
+      '<input type="file" accept="image/*" class="input img-input" style="flex:1;min-width:140px;padding:6px">'+
+      '<input type="hidden" name="bizLogo" value="'+esc(s.bizLogo||'')+'">'+
+      (s.bizLogo?'<button type="button" class="btn btn-sm btn-danger" data-action="img-clear">'+icon('x')+' Remove</button>':'')+
+    '</div><p style="font-size:.72rem;color:var(--text-3);margin-top:4px">Square images look best. Your logo replaces the BizPilot mark everywhere — your software, your brand.</p></div>'+
     '<div class="field"><label>Payment QR (GCash / Maya — shows on invoices, delivery slips & catalog)</label><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'+
       '<img class="img-thumb-lg img-prev" src="'+(s.payQR||'')+'" style="'+(s.payQR?'':'display:none')+'" alt="">'+
       '<input type="file" accept="image/*" class="input img-input" style="flex:1;min-width:140px;padding:6px">'+
@@ -2396,7 +2409,8 @@ function viewSettings(){
     '<button class="btn btn-primary" type="submit">'+icon('check')+' Save settings</button></form></div>';
   html+=fxCardHTML();
   html+='<div class="card"><div class="card-head"><h3>About</h3></div>'+
-    '<p style="font-size:.84rem;color:var(--text-2)">BizPilot is a single-file, local-first business command center. No accounts, no servers, no tracking — your numbers never leave this device unless you enable cloud sync. Works offline once loaded.</p></div>';
+    '<p style="font-size:.84rem;color:var(--text-2)">BizPilot is a single-file, local-first business command center. No accounts, no servers, no tracking — your numbers never leave this device unless you enable cloud sync. Works offline once loaded.</p>'+
+    '<button class="btn btn-ghost btn-sm" data-action="show-tour" style="margin-top:12px">'+icon('spark')+' Replay the welcome tour</button></div>';
   html+='</div>';
   return html;
 }
@@ -2965,6 +2979,15 @@ function loadSampleData(){
 /* ============================================================
    theme
    ============================================================ */
+function applyBrand(){
+  var s=state.settings;
+  document.title=(s.businessName&&s.businessName!=='My Business'?s.businessName+' — ':'')+'BizPilot';
+  if(s.bizLogo){
+    var link=document.querySelector('link[rel="icon"]');
+    if(!link){ link=document.createElement('link'); link.rel='icon'; document.head.appendChild(link); }
+    link.href=s.bizLogo;
+  }
+}
 function applyTheme(){
   var t=state.settings.theme;
   if(!t) t=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';
@@ -3297,6 +3320,8 @@ document.addEventListener('submit',function(e){
     state.settings.lang=fv(form,'lang')||'en';
     state.settings.payQR=form.elements['payQR']?form.elements['payQR'].value:'';
     state.settings.payQRLabel=fv(form,'payQRLabel');
+    state.settings.bizLogo=form.elements['bizLogo']?form.elements['bizLogo'].value:'';
+    applyBrand();
     commit(); toast(state.settings.lang==='tl'?'Na-save na! Taglish mode activated. 🇵🇭':'Settings saved.');
     return;
   }
@@ -5496,7 +5521,8 @@ function maybeOnboard(){
       state.settings.currency=fv(form,'currency')||'₱';
       state.settings.monthlyTarget=Math.max(0,num(fv(form,'target')));
       applyBizPreset(fv(form,'preset')||'general',true);
-      toast('You’re set up! Add your first product or income entry — or load sample data from Settings to explore.');
+      applyBrand();
+      setTimeout(showTour,400);
       return true;
     }});
   },600);
@@ -6901,6 +6927,51 @@ document.addEventListener('change',function(e){
   }
 });
 
+/* ============================================================
+   v20 additions: welcome tour
+   ============================================================ */
+var TOUR_STEPS=[
+  {icon:'logo',title:'Welcome to your command center',
+   text:'Everything a business owner needs in one place — money, products, orders, clients, goals — saved privately in this browser. No account, no subscription, works offline.'},
+  {icon:'bank',title:'Money that adds itself up',
+   text:'Log income and expenses in <b>Finance</b>, keep balances per bank/GCash in <b>Accounts</b>, and send <b>Invoices</b> (any currency — pesos are computed for you). Mark things paid and the books update automatically.'},
+  {icon:'box',title:'Sell things? It’s all connected',
+   text:'Add <b>Products</b> with your own custom fields, take <b>Orders</b> (stock depletes automatically, slips print with your payment QR), track raw <b>materials</b> with recipes, and run a <b>Customer Credit</b> list for "pay later" sukis.'},
+  {icon:'goals',title:'Stay on track without trying',
+   text:'The <b>Dashboard</b> greets you with a Today panel — deliveries, follow-ups, low stock. <b>Goals</b> track themselves from your numbers, <b>Insights</b> warn you early, and <b>Tasks</b> come as list, board, table or calendar.'},
+  {icon:'settings',title:'Make it completely yours',
+   text:'Upload your <b>logo</b>, pick colors, rename or hide sections, add custom product fields, even build whole new <b>modules</b> with their own tables. Start by loading <b>sample data</b> in Settings → Data to explore safely — reset anytime. Press <b>Ctrl+K</b> to search everything.'}
+];
+function showTour(step){
+  step=step||0;
+  state.settings.tourDone=true; save();
+  var s=TOUR_STEPS[step];
+  var root=byId('modal-root');
+  modalSubmitHandler=null;
+  root.innerHTML='<div class="modal-overlay">'+
+    '<div class="modal" role="dialog" aria-modal="true" style="max-width:460px;text-align:center">'+
+    '<div class="modal-body" style="padding:28px 26px 22px">'+
+    '<div class="stat-icon" style="width:52px;height:52px;border-radius:16px;margin:0 auto 14px;background:var(--accent-grad);color:#fff"><span style="display:inline-flex;width:24px;height:24px">'+icon(s.icon)+'</span></div>'+
+    '<h3 style="font-size:1.12rem;font-weight:800;margin-bottom:8px">'+s.title+'</h3>'+
+    '<p style="font-size:.88rem;color:var(--text-2);line-height:1.6">'+s.text+'</p>'+
+    '<div style="display:flex;justify-content:center;gap:6px;margin:18px 0 16px">'+
+      TOUR_STEPS.map(function(_,i){return '<span style="width:8px;height:8px;border-radius:50%;background:'+(i===step?'var(--accent)':'var(--border-2)')+';transition:background .2s"></span>';}).join('')+'</div>'+
+    '<div style="display:flex;gap:8px;justify-content:center">'+
+      (step>0?'<button class="btn btn-ghost" data-action="tour-step" data-step="'+(step-1)+'">Back</button>':'<button class="btn btn-ghost" data-action="tour-end">Skip</button>')+
+      (step<TOUR_STEPS.length-1
+        ?'<button class="btn btn-primary" data-action="tour-step" data-step="'+(step+1)+'">Next →</button>'
+        :'<button class="btn btn-primary" data-action="tour-end">Let’s go! 🚀</button>')+
+    '</div></div></div></div>';
+}
+document.addEventListener('click',function(e){
+  var el=e.target.closest('[data-action]');
+  if(!el) return;
+  var action=el.getAttribute('data-action');
+  if(action==='tour-step'){ showTour(parseInt(el.getAttribute('data-step'),10)); return; }
+  if(action==='tour-end'){ closeModal(); toast('You can replay the tour anytime from Settings → Business → About.'); return; }
+  if(action==='show-tour'){ showTour(0); return; }
+});
+
 /* keyboard: Escape closes modal / sidebar */
 document.addEventListener('keydown',function(e){
   if(e.key==='Escape'){
@@ -6918,6 +6989,7 @@ window.addEventListener('hashchange',render);
 loadState();
 processRecurring();
 applyTheme();
+applyBrand();
 render();
 probeStorage();
 autoBackupCheck();
