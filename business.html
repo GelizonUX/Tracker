@@ -567,6 +567,9 @@ body{background-image:radial-gradient(1100px 500px at 18% -8%,var(--accent-soft)
 .swatch:hover{transform:scale(1.15)}
 .swatch.active{border-color:var(--text);transform:scale(1.1)}
 @media print{
+  /* zero page margin removes the browser's own URL/date header & footer;
+     the document supplies its own padding instead */
+  @page{margin:0;size:auto}
   body.printing > .app,body.printing > .toast-root,body.printing > #modal-root{display:none !important}
   body.printing #print-area{display:block !important}
   #print-area{color:#000;background:#fff;font-family:Helvetica,Arial,sans-serif}
@@ -576,7 +579,7 @@ body{background-image:radial-gradient(1100px 500px at 18% -8%,var(--accent-soft)
   #print-area .pr-doc{position:relative}
   #print-area .pr-doc.qr-ul h1,#print-area .pr-doc.qr-ul .pr-meta{margin-left:124px}
   #print-area .pr-doc.qr-bl .pr-foot,#print-area .pr-doc.qr-br .pr-foot{min-height:80px}
-  #print-area .pr-doc{max-width:720px;margin:0 auto;padding:10px}
+  #print-area .pr-doc{max-width:720px;margin:0 auto;padding:16mm 14mm 14mm}
   #print-area h1{font-size:1.6rem;margin-bottom:2px}
   #print-area h2{font-size:1.05rem;margin:18px 0 8px;border-bottom:2px solid #000;padding-bottom:4px}
   #print-area .pr-meta{color:#444;font-size:.85rem;margin-bottom:14px}
