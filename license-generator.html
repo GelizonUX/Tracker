@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Business Tracker — Issue a License (seller tool)</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;--font:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif}
+html,body{height:100%}
+body{font-family:var(--font);color:#eef0fb;display:flex;align-items:flex-start;justify-content:center;padding:34px 16px;
+  background:linear-gradient(125deg,#0b0d1a,#171034,#0e1530,#241046,#0b0d1a);background-size:300% 300%;
+  animation:flow 18s ease infinite;overflow-x:hidden}
+@keyframes flow{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+body::before,body::after{content:'';position:fixed;border-radius:50%;filter:blur(80px);opacity:.45;pointer-events:none;z-index:0}
+body::before{width:460px;height:460px;background:radial-gradient(circle,#6366f1,transparent 70%);top:-140px;left:-100px;animation:orb1 14s ease-in-out infinite}
+body::after{width:420px;height:420px;background:radial-gradient(circle,#a855f7,transparent 70%);bottom:-160px;right:-90px;animation:orb2 17s ease-in-out infinite}
+@keyframes orb1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(60px,46px) scale(1.15)}}
+@keyframes orb2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-50px,-40px) scale(1.1)}}
+.wrap{position:relative;z-index:1;width:100%;max-width:404px}
+.card{background:rgba(20,22,40,.72);backdrop-filter:blur(22px) saturate(140%);-webkit-backdrop-filter:blur(22px) saturate(140%);
+  border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:24px 22px;margin-bottom:14px;
+  box-shadow:0 22px 60px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.07);animation:rise .6s cubic-bezier(.2,.8,.2,1) both}
+@keyframes rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+.logo{width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:1.35rem;margin:0 auto 12px;
+  background:linear-gradient(135deg,#6366f1,#a855f7);box-shadow:0 8px 22px rgba(124,92,246,.5);animation:pulse 3.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 8px 22px rgba(124,92,246,.45)}50%{box-shadow:0 8px 32px rgba(124,92,246,.7)}}
+h1{font-size:1.18rem;text-align:center;letter-spacing:-.02em;font-weight:800}
+.sub{text-align:center;font-size:.78rem;line-height:1.5;color:#aab0cf;margin:5px 0 0}
+.brief{font-size:.74rem;line-height:1.55;color:#9aa0c2;background:rgba(99,102,241,.1);border:1px solid rgba(124,124,246,.22);
+  border-radius:11px;padding:10px 12px;margin:16px 0 4px}
+.brief b{color:#d7dafc}
+.brief ol{margin:5px 0 0 16px;padding:0}
+.brief li{margin:2px 0}
+label{display:block;font-size:.68rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#9aa0c2;margin:14px 0 5px}
+input,select{width:100%;padding:11px 12px;border-radius:11px;border:1.5px solid rgba(255,255,255,.12);
+  background:rgba(10,12,24,.6);color:#fff;font-size:.92rem;font-family:var(--font);transition:border-color .2s,box-shadow .2s}
+input::placeholder{color:#6a7095}
+input:focus,select:focus{outline:none;border-color:#8b8cf6;box-shadow:0 0 0 3px rgba(124,124,246,.2)}
+.row{display:flex;gap:10px}.row>div{flex:1}
+.go{width:100%;margin-top:18px;padding:13px;border:none;border-radius:12px;cursor:pointer;
+  background:linear-gradient(135deg,#6366f1,#9333ea);color:#fff;font-size:.96rem;font-weight:800;font-family:var(--font);
+  box-shadow:0 10px 26px rgba(99,102,241,.42);transition:transform .12s,box-shadow .2s,opacity .2s}
+.go:hover{transform:translateY(-1px);box-shadow:0 14px 32px rgba(99,102,241,.55)}
+.go:active{transform:none}.go:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.warn{font-size:.7rem;color:#fca5a5;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:9px;padding:7px 10px;margin-top:14px;line-height:1.5}
+.result{display:none;margin-top:16px;text-align:center}
+.result.show{display:block;animation:rise .4s ease both}
+.keybox{font-family:var(--mono);font-size:1.5rem;font-weight:800;letter-spacing:.1em;color:#fff;margin:6px 0 4px;
+  background:linear-gradient(135deg,rgba(99,102,241,.25),rgba(168,85,247,.18));border:1px solid rgba(124,124,246,.4);
+  border-radius:13px;padding:14px;cursor:pointer;transition:transform .12s}
+.keybox:hover{transform:scale(1.02)}
+.saved{font-size:.74rem;color:#86efac;margin-bottom:10px}
+.saved.fail{color:#fca5a5}
+.rbtns{display:flex;gap:8px;margin-top:8px}
+.rbtns button{flex:1;padding:9px;border-radius:10px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.05);color:#cfd3ee;font-size:.78rem;font-weight:600;cursor:pointer;transition:.15s}
+.rbtns button:hover{border-color:#8b8cf6;color:#fff;background:rgba(124,124,246,.18)}
+details{margin-top:14px}
+summary{font-size:.72rem;color:#9aa0c2;cursor:pointer;user-select:none;font-weight:600}
+summary:hover{color:#cfd3ee}
+.muted{font-size:.68rem;color:#7b8099;margin-top:7px;line-height:1.5}
+.muted a{color:#aab0ff}
+.h2{font-size:.92rem;font-weight:700;margin-bottom:2px}
+table{width:100%;border-collapse:collapse;font-size:.72rem;margin-top:8px}
+th{text-align:left;color:#7b8099;font-size:.6rem;text-transform:uppercase;letter-spacing:.05em;padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.1)}
+td{padding:6px;border-bottom:1px solid rgba(255,255,255,.06);color:#aab0cf}
+td.k{font-family:var(--mono);color:#c4b5fd}
+.ledbtns{display:flex;gap:8px;margin-top:10px}
+.ledbtns button{flex:1;padding:7px;border-radius:8px;border:1px solid rgba(255,255,255,.14);background:transparent;color:#9aa0c2;font-size:.72rem;cursor:pointer}
+.ledbtns button:hover{border-color:#8b8cf6;color:#fff}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="logo">🔑</div>
+    <h1>New license</h1>
+    <p class="sub">Create a key for a buyer who paid.</p>
+
+    <label>Name</label>
+    <input type="text" id="bname" placeholder="Maria Santos" autocomplete="off">
+    <label>Email</label>
+    <input type="email" id="bemail" placeholder="maria@gmail.com" autocomplete="off">
+    <label>Devices</label>
+    <select id="blimit"><option value="1">1 device</option><option value="2" selected>2 devices</option><option value="3">3 devices</option><option value="5">5 devices</option></select>
+
+    <button class="go" id="go">Create key →</button>
+
+    <div class="result" id="result"></div>
+
+    <details>
+      <summary>⚙️ Cloud setup (one time)</summary>
+      <label>Firebase database secret <span style="text-transform:none;color:#7b8099;font-weight:500">(stored only here)</span></label>
+      <input type="text" id="secret" placeholder="leave blank if your rules are open" autocomplete="off">
+      <label>Your name / contact <span style="text-transform:none;color:#7b8099;font-weight:500">(shown to buyers)</span></label>
+      <input type="text" id="seller" placeholder="e.g. Hiraya Candles · 0917…" autocomplete="off">
+      <p class="muted">The secret lets this tool write keys to your Firebase. Get it in Firebase Console → Project Settings → Service accounts → Database secrets. Keep this file private.</p>
+
+      <div style="height:1px;background:rgba(255,255,255,.1);margin:16px 0"></div>
+      <div class="h2" style="font-size:.82rem">✉️ Auto-email (EmailJS)</div>
+      <p class="muted" style="margin-top:3px">Paste your 3 EmailJS IDs to email keys automatically. Leave blank to email manually. <a href="https://www.emailjs.com" target="_blank" rel="noopener">emailjs.com</a></p>
+      <label>Service ID</label>
+      <input type="text" id="ejsService" placeholder="service_xxxxxxx" autocomplete="off">
+      <label>Template ID</label>
+      <input type="text" id="ejsTemplate" placeholder="template_xxxxxxx" autocomplete="off">
+      <label>Public key</label>
+      <input type="text" id="ejsKey" placeholder="your EmailJS public key" autocomplete="off">
+      <p class="muted">Template variables to use: <span style="font-family:var(--mono);color:#c4b5fd">{{to_email}} {{to_name}} {{license_key}} {{device_limit}} {{seller}}</span></p>
+    </details>
+
+    <div class="warn">⚠️ <b>Seller tool — never share this file or your secret.</b> Anyone with it can mint free licenses.</div>
+  </div>
+
+  <div class="card">
+    <div class="h2">📒 Keys you've issued</div>
+    <table id="ledger"><thead><tr><th>Date</th><th>Name</th><th>Key</th><th></th></tr></thead><tbody></tbody></table>
+    <div class="ledbtns">
+      <button onclick="copyLedger()">Copy as CSV</button>
+      <button onclick="clearLedger()">Clear list</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* === key formula — MUST match licenseKeyFor() inside business.html === */
+function licHash(s){ var h=5381; for(var i=0;i<s.length;i++){ h=((h<<5)+h+s.charCodeAt(i))>>>0; } return h; }
+function licenseKeyFor(name,email){
+  var basis=(String(name).trim().toLowerCase()+'|'+String(email).trim().toLowerCase()+'|bizpilot-2026-hiraya');
+  var s=(licHash(basis).toString(36)+licHash(basis.split('').reverse().join('')).toString(36)).toUpperCase().replace(/[^A-Z0-9]/g,'');
+  while(s.length<12) s+='X';
+  return s.slice(0,4)+'-'+s.slice(4,8)+'-'+s.slice(8,12);
+}
+var FB_URL='https://love-notes-eae0b-default-rtdb.firebaseio.com';
+var FB_NODE='licenses';
+
+var $=function(id){return document.getElementById(id);};
+['secret','seller','ejsService','ejsTemplate','ejsKey'].forEach(function(id){
+  var v=localStorage.getItem('bizpilot.gen.'+id); if(v) $(id).value=v;
+  $(id).addEventListener('input',function(){ localStorage.setItem('bizpilot.gen.'+id,this.value); });
+});
+
+/* send the key by email via EmailJS REST (browser-safe; public key only).
+   Resolves to true on send, false on failure, null when not configured. */
+function emailKey(rec,key){
+  var sid=$('ejsService').value.trim(), tid=$('ejsTemplate').value.trim(), pk=$('ejsKey').value.trim();
+  if(!sid||!tid||!pk) return Promise.resolve(null);
+  var seller=$('seller').value.trim()||'the seller';
+  return fetch('https://api.emailjs.com/api/v1.0/email/send',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      service_id:sid, template_id:tid, user_id:pk,
+      template_params:{ to_email:rec.email, to_name:rec.name, license_key:key, device_limit:rec.deviceLimit, seller:seller }
+    })
+  }).then(function(r){ return r.ok ? true : r.text().then(function(t){ throw new Error(t||('HTTP '+r.status)); }); });
+}
+
+$('go').addEventListener('click',function(){
+  var name=$('bname').value.trim(), email=$('bemail').value.trim().toLowerCase(), limit=parseInt($('blimit').value,10);
+  if(!name||!email){ flash('Enter the buyer’s name and email.'); return; }
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ flash('That email doesn’t look right.'); return; }
+  var key=licenseKeyFor(name,email);
+  var secret=$('secret').value.trim();
+  var rec={name:name,email:email,status:'active',deviceLimit:limit,issued:new Date().toISOString().slice(0,10),devices:{}};
+  var url=FB_URL.replace(/\/+$/,'')+'/'+FB_NODE+'/'+encodeURIComponent(key)+'.json'+(secret?'?auth='+encodeURIComponent(secret):'');
+  var btn=this; btn.disabled=true; btn.innerHTML='<span class="spin"></span>Saving to cloud…';
+  fetch(url,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(rec)})
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(function(){
+      record(rec,key);
+      btn.innerHTML='<span class="spin"></span>Emailing buyer…';
+      return emailKey(rec,key).then(
+        function(es){ showResult(rec,key,true,null,es,null); },
+        function(err){ showResult(rec,key,true,null,false,err.message); }
+      );
+    })
+    .catch(function(e){ showResult(rec,key,false,e.message,null,null); record(rec,key); })
+    .then(function(){ btn.disabled=false; btn.innerHTML='Create key →'; });
+});
+
+function flash(msg){
+  var r=$('result'); r.className='result show';
+  r.innerHTML='<div class="saved fail">'+msg+'</div>';
+}
+function showResult(rec,key,saved,err,emailed,emailErr){
+  var seller=$('seller').value.trim()||'the seller';
+  var mailBody='Hi '+rec.name+',%0D%0A%0D%0AThanks for your purchase! Here is your Business Tracker license key:%0D%0A%0D%0A'+key+'%0D%0A%0D%0ATo activate: open Business Tracker, enter this key and your email ('+rec.email+'), and you are in. Works on up to '+rec.deviceLimit+' device(s).%0D%0A%0D%0A— '+seller;
+  var mail='mailto:'+encodeURIComponent(rec.email)+'?subject='+encodeURIComponent('Your Business Tracker license key')+'&body='+mailBody;
+  var emailLine='';
+  if(emailed===true) emailLine='<div class="saved">📧 Emailed to '+esc(rec.email)+' automatically.</div>';
+  else if(emailed===false) emailLine='<div class="saved fail">⚠ Auto-email failed ('+esc(emailErr||'error')+'). Use the buttons below to send it.</div>';
+  var r=$('result'); r.className='result show';
+  r.innerHTML=
+    (saved?'<div class="saved">✓ Saved to your cloud — this key now works.</div>'
+          :'<div class="saved fail">⚠ Could not save to cloud ('+esc(err||'error')+'). The key won’t activate until it’s saved — add your Firebase secret in Cloud setup and try again.</div>')+
+    emailLine+
+    '<div class="keybox" id="keybox" title="Click to copy">'+key+'</div>'+
+    '<div class="muted" style="margin-bottom:8px">'+esc(rec.name)+' · '+esc(rec.email)+' · '+rec.deviceLimit+' device(s)</div>'+
+    '<div class="rbtns"><button id="copykey">Copy key</button>'+
+      '<a href="'+mail+'" style="flex:1;text-decoration:none"><button style="width:100%">'+(emailed===true?'Re-send manually':'Email to buyer')+'</button></a></div>';
+  var kb=$('keybox'); if(kb) kb.addEventListener('click',function(){ copyKey(key); });
+  var ck=$('copykey'); if(ck) ck.addEventListener('click',function(){ copyKey(key); });
+}
+function copyKey(k){ navigator.clipboard.writeText(k).then(function(){ toast('Key copied'); },function(){}); }
+function toast(t){
+  var d=document.createElement('div'); d.textContent=t;
+  d.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#6366f1;color:#fff;padding:9px 18px;border-radius:10px;font-size:.82rem;font-weight:600;z-index:99;box-shadow:0 8px 24px rgba(99,102,241,.5)';
+  document.body.appendChild(d); setTimeout(function(){ d.remove(); },1400);
+}
+function esc(s){ return String(s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];}); }
+
+function record(rec,key){
+  var led=JSON.parse(localStorage.getItem('bizpilot.licenses')||'[]');
+  led.push({issued:rec.issued,name:rec.name,email:rec.email,key:key,limit:rec.deviceLimit});
+  localStorage.setItem('bizpilot.licenses',JSON.stringify(led)); renderLedger();
+}
+function renderLedger(){
+  var led=JSON.parse(localStorage.getItem('bizpilot.licenses')||'[]');
+  document.querySelector('#ledger tbody').innerHTML=led.slice().reverse().map(function(l){
+    return '<tr><td>'+(l.issued||'')+'</td><td>'+esc(l.name)+'</td><td class="k">'+l.key+'</td><td><button data-copy="'+l.key+'" style="background:none;border:none;color:#aab0ff;cursor:pointer;font-size:.72rem">copy</button></td></tr>';
+  }).join('')||'<tr><td colspan="4" style="color:#7b8099;text-align:center;padding:14px">Your first sale shows up here. 🚀</td></tr>';
+  Array.prototype.forEach.call(document.querySelectorAll('#ledger [data-copy]'),function(b){
+    b.addEventListener('click',function(){ copyKey(b.getAttribute('data-copy')); });
+  });
+}
+function copyLedger(){
+  var led=JSON.parse(localStorage.getItem('bizpilot.licenses')||'[]');
+  var csv='date,name,email,key,devices\n'+led.map(function(l){return [l.issued,l.name,l.email,l.key,l.limit].map(function(v){return '"'+String(v==null?'':v).replace(/"/g,'""')+'"';}).join(',');}).join('\n');
+  navigator.clipboard.writeText(csv).then(function(){ toast('CSV copied'); },function(){ alert('Copy failed.'); });
+}
+function clearLedger(){ if(confirm('Clear the local list? (Keys already in your cloud still work.)')){ localStorage.removeItem('bizpilot.licenses'); renderLedger(); } }
+renderLedger();
+</script>
+</body>
+</html>
