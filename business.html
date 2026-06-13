@@ -796,21 +796,22 @@ function licTag(){ var l=licenseInfo(); return l?' · Licensed to '+esc(l.name):
    Set GATE.enabled=false to ship an un-gated build. */
 var GATE={
   enabled:true,
-  url:'https://love-notes-eae0b-default-rtdb.firebaseio.com',
+  url:'https://trakora-30796-default-rtdb.firebaseio.com',
   node:'licenses',
   deviceLimit:2,                 // fallback if a license record has none
   sellerContact:'the seller'     // shown on the gate ("don't have a key?")
 };
 /* ---------- self-serve purchase (front-end; key is released by the payment
    backend into Firebase, never faked in the browser) ----------
-   Fill these in. checkoutUrl = your PayMongo (or other) hosted link; if blank,
-   the manual GCash / bank details below are shown instead. The claim screen
-   polls GATE.url + '/paid/<emailhash>' for the key your backend writes. */
+   checkoutUrl = your Lemon Squeezy hosted checkout. After payment, Lemon Squeezy
+   emails the key AND a Worker webhook writes it into Firebase, so the claim
+   screen (which polls GATE.url + '/paid/<emailhash>') reveals it automatically.
+   Leave checkoutUrl blank to fall back to manual GCash / bank details below. */
 var PAY={
   enabled:true,
   price:'₱499',
   oneTimeNote:'One-time payment · lifetime license · works on 2 devices',
-  checkoutUrl:'',                                 // e.g. 'https://pm.link/your-store/bizpilot'
+  checkoutUrl:'https://trakora.lemonsqueezy.com/checkout/buy/3eb39d93-d6bf-4cd2-b3c9-2c287c56e623',
   gcashName:'', gcashNumber:'',                   // e.g. 'Juan D.', '0917 123 4567'
   bankName:'', bankAccountName:'', bankAccountNumber:'',
   paidNode:'paid'                                 // backend writes /paid/<emailhash> = {key,...}
@@ -960,7 +961,7 @@ function renderBuy(){
     var email=byId('buy-email').value.trim();
     if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ var m=byId('buy-msg'); m.className='gate-msg show err'; m.textContent='Enter a valid email first — your key will be tied to it.'; return; }
     if(PAY.checkoutUrl){
-      var u=PAY.checkoutUrl+(PAY.checkoutUrl.indexOf('?')>-1?'&':'?')+'email='+encodeURIComponent(email);
+      var u=PAY.checkoutUrl+(PAY.checkoutUrl.indexOf('?')>-1?'&':'?')+'checkout[email]='+encodeURIComponent(email);
       window.open(u,'_blank','noopener');
       renderClaim(email);
     } else if((method==='ewallet'&&PAY.gcashNumber)||(method==='bank'&&PAY.bankAccountNumber)){
