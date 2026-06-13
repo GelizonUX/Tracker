@@ -604,24 +604,11 @@ body{background-image:radial-gradient(1100px 500px at 18% -8%,var(--accent-soft)
 /* ============ activation gate ============ */
 #gate-root:empty{display:none}
 .gate{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;
-  background:linear-gradient(125deg,#0b0d1a,#171034,#0e1530,#241046,#0b0d1a);background-size:300% 300%;
-  animation:gateflow 18s ease infinite;font-family:var(--font);overflow:hidden}
-@keyframes gateflow{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
-.gate::before,.gate::after{content:'';position:absolute;border-radius:50%;filter:blur(70px);opacity:.5;pointer-events:none}
-.gate::before{width:440px;height:440px;background:radial-gradient(circle,#6366f1,transparent 70%);top:-120px;left:-90px;animation:gateorb1 13s ease-in-out infinite}
-.gate::after{width:400px;height:400px;background:radial-gradient(circle,#a855f7,transparent 70%);bottom:-130px;right:-80px;animation:gateorb2 16s ease-in-out infinite}
-@keyframes gateorb1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(50px,40px) scale(1.15)}}
-@keyframes gateorb2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-44px,-36px) scale(1.1)}}
-.gate-card{position:relative;width:100%;max-width:372px;background:rgba(20,22,40,.72);
-  backdrop-filter:blur(22px) saturate(140%);-webkit-backdrop-filter:blur(22px) saturate(140%);
-  border:1px solid rgba(255,255,255,.1);border-radius:22px;padding:30px 26px 24px;color:#eef0fb;
-  box-shadow:0 24px 70px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.08);
-  animation:gaterise .6s cubic-bezier(.2,.8,.2,1) both}
-@keyframes gaterise{from{opacity:0;transform:translateY(22px) scale(.97)}to{opacity:1;transform:none}}
-.gate-logo{width:52px;height:52px;border-radius:15px;display:flex;align-items:center;justify-content:center;
-  background:linear-gradient(135deg,#6366f1,#a855f7);box-shadow:0 8px 24px rgba(124,92,246,.5);
-  margin:0 auto 14px;font-size:1.5rem;animation:gatepulse 3.5s ease-in-out infinite}
-@keyframes gatepulse{0%,100%{box-shadow:0 8px 24px rgba(124,92,246,.45)}50%{box-shadow:0 8px 34px rgba(124,92,246,.75)}}
+  background:#0d0f17;font-family:var(--font)}
+.gate-card{position:relative;width:100%;max-width:380px;background:#15171f;
+  border:1px solid #262a36;border-radius:18px;padding:32px 28px 26px;color:#eef0fb;
+  box-shadow:0 20px 60px rgba(0,0,0,.45);animation:gaterise .5s cubic-bezier(.2,.8,.2,1) both}
+@keyframes gaterise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 .gate-card h1{font-size:1.28rem;text-align:center;letter-spacing:-.02em;margin:0 0 5px;font-weight:800}
 .gate-sub{text-align:center;font-size:.82rem;line-height:1.5;color:#aab0cf;margin:0 0 20px}
 .gate-sub b{color:#d7dafc;font-weight:700}
@@ -632,10 +619,10 @@ body{background-image:radial-gradient(1100px 500px at 18% -8%,var(--accent-soft)
 .gate-input::placeholder{color:#6a7095}
 .gate-input:focus{outline:none;border-color:#8b8cf6;box-shadow:0 0 0 3px rgba(124,124,246,.22)}
 .gate-input.key{font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;text-align:center;font-size:1.05rem}
-.gate-btn{width:100%;margin-top:8px;padding:13px;border:none;border-radius:13px;cursor:pointer;
-  background:linear-gradient(135deg,#6366f1,#9333ea);color:#fff;font-size:.98rem;font-weight:800;font-family:var(--font);
-  letter-spacing:.01em;box-shadow:0 10px 26px rgba(99,102,241,.42);transition:transform .12s,box-shadow .2s,opacity .2s}
-.gate-btn:hover{transform:translateY(-1px);box-shadow:0 14px 32px rgba(99,102,241,.55)}
+.gate-btn{width:100%;margin-top:8px;padding:13px;border:none;border-radius:11px;cursor:pointer;
+  background:#6366f1;color:#fff;font-size:.98rem;font-weight:700;font-family:var(--font);
+  letter-spacing:.01em;transition:background .15s,transform .12s}
+.gate-btn:hover{background:#5457e6;transform:translateY(-1px)}
 .gate-btn:active{transform:translateY(0)}
 .gate-btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
 .gate-msg{font-size:.8rem;line-height:1.45;margin-top:13px;padding:10px 12px;border-radius:11px;display:none}
@@ -845,8 +832,7 @@ function renderGate(){
   if(!root) return;
   root.innerHTML=
     '<div class="gate"><div class="gate-card">'+
-      '<div class="gate-logo">🚀</div>'+
-      '<h1>Activate BizPilot</h1>'+
+      '<h1>Activate your Business Tracker</h1>'+
       '<p class="gate-sub">Enter the <b>license key</b> from your purchase to unlock your copy. One-time setup on this device.</p>'+
       '<div class="gate-steps"><span><i class="dot"></i>Enter key</span><span><i class="dot"></i>Verify</span><span><i class="dot"></i>You’re in</span></div>'+
       '<form id="gate-form" autocomplete="off">'+
