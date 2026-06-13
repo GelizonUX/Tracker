@@ -76,28 +76,17 @@ td.k{font-family:var(--mono);color:#c4b5fd}
 <div class="wrap">
   <div class="card">
     <div class="logo">🔑</div>
-    <h1>Issue a License</h1>
-    <p class="sub">Register a paid buyer's key so their copy of BizPilot can activate.</p>
+    <h1>New license</h1>
+    <p class="sub">Create a key for a buyer who paid.</p>
 
-    <div class="brief">
-      <b>How it works</b>
-      <ol>
-        <li>Buyer pays you.</li>
-        <li>Enter their name + email below → you get a <b>key</b>.</li>
-        <li>Send them the key. They open BizPilot, type the key + email, and they're in.</li>
-      </ol>
-    </div>
-
-    <label>Buyer's name</label>
-    <input type="text" id="bname" placeholder="Maria Santos / Maria's Candle Co." autocomplete="off">
-    <label>Buyer's email <span style="text-transform:none;color:#7b8099;font-weight:500">(they activate with this)</span></label>
+    <label>Name</label>
+    <input type="text" id="bname" placeholder="Maria Santos" autocomplete="off">
+    <label>Email</label>
     <input type="email" id="bemail" placeholder="maria@gmail.com" autocomplete="off">
-    <div class="row">
-      <div><label>Devices allowed</label>
-        <select id="blimit"><option value="1">1 device</option><option value="2" selected>2 devices</option><option value="3">3 devices</option><option value="5">5 devices</option></select></div>
-    </div>
+    <label>Devices</label>
+    <select id="blimit"><option value="1">1 device</option><option value="2" selected>2 devices</option><option value="3">3 devices</option><option value="5">5 devices</option></select>
 
-    <button class="go" id="go">Issue license key →</button>
+    <button class="go" id="go">Create key →</button>
 
     <div class="result" id="result"></div>
 
@@ -189,7 +178,7 @@ $('go').addEventListener('click',function(){
       );
     })
     .catch(function(e){ showResult(rec,key,false,e.message,null,null); record(rec,key); })
-    .then(function(){ btn.disabled=false; btn.innerHTML='Issue license key →'; });
+    .then(function(){ btn.disabled=false; btn.innerHTML='Create key →'; });
 });
 
 function flash(msg){
