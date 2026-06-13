@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BizPilot — Issue a License (seller tool)</title>
+<title>Business Tracker — Issue a License (seller tool)</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;--font:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif}
@@ -187,8 +187,8 @@ function flash(msg){
 }
 function showResult(rec,key,saved,err,emailed,emailErr){
   var seller=$('seller').value.trim()||'the seller';
-  var mailBody='Hi '+rec.name+',%0D%0A%0D%0AThanks for your purchase! Here is your BizPilot license key:%0D%0A%0D%0A'+key+'%0D%0A%0D%0ATo activate: open BizPilot, enter this key and your email ('+rec.email+'), and you are in. Works on up to '+rec.deviceLimit+' device(s).%0D%0A%0D%0A— '+seller;
-  var mail='mailto:'+encodeURIComponent(rec.email)+'?subject='+encodeURIComponent('Your BizPilot license key')+'&body='+mailBody;
+  var mailBody='Hi '+rec.name+',%0D%0A%0D%0AThanks for your purchase! Here is your Business Tracker license key:%0D%0A%0D%0A'+key+'%0D%0A%0D%0ATo activate: open Business Tracker, enter this key and your email ('+rec.email+'), and you are in. Works on up to '+rec.deviceLimit+' device(s).%0D%0A%0D%0A— '+seller;
+  var mail='mailto:'+encodeURIComponent(rec.email)+'?subject='+encodeURIComponent('Your Business Tracker license key')+'&body='+mailBody;
   var emailLine='';
   if(emailed===true) emailLine='<div class="saved">📧 Emailed to '+esc(rec.email)+' automatically.</div>';
   else if(emailed===false) emailLine='<div class="saved fail">⚠ Auto-email failed ('+esc(emailErr||'error')+'). Use the buttons below to send it.</div>';

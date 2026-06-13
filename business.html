@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="description" content="BizPilot — a local-first business command center: finance, goals, roadmap, tasks, notes, CRM, metrics and smart insights. All data stays in your browser.">
-<title>BizPilot — Business Command Center</title>
+<meta name="description" content="Business Tracker — a local-first business command center: finance, goals, roadmap, tasks, notes, CRM, metrics and smart insights. All data stays in your browser.">
+<title>Business Tracker — Business Command Center</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%236366f1'/%3E%3Cstop offset='1' stop-color='%238b5cf6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='8' fill='url(%23g)'/%3E%3Cpath d='M8 22l5-6 4 3 7-9' stroke='%23fff' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <style>
 /* ============================================================
-   BizPilot — design tokens
+   Business Tracker — design tokens
    ============================================================ */
 :root{
   --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -636,6 +636,24 @@ body{background-image:radial-gradient(1100px 500px at 18% -8%,var(--accent-soft)
 .gate-steps{display:flex;gap:7px;justify-content:center;margin:0 0 18px;font-size:.66rem;color:#8087aa}
 .gate-steps span{display:flex;align-items:center;gap:4px}
 .gate-steps .dot{width:5px;height:5px;border-radius:50%;background:#6366f1}
+.gate-link{background:none;border:none;color:#aab0ff;font-weight:600;font-size:.74rem;cursor:pointer;font-family:var(--font);padding:2px}
+.gate-link:hover{color:#c7ccff;text-decoration:underline}
+.gate-back{position:absolute;top:18px;left:18px;background:none;border:none;color:#9aa0c2;cursor:pointer;font-size:1.1rem;padding:4px 8px;border-radius:8px;line-height:1}
+.gate-back:hover{color:#fff;background:#222633}
+.gate-price{text-align:center;font-size:2rem;font-weight:800;color:#fff;letter-spacing:-.02em;margin:2px 0 1px}
+.gate-price-note{text-align:center;font-size:.72rem;color:#8087aa;margin-bottom:18px}
+.pay-methods{display:flex;gap:9px;margin-bottom:14px}
+.pay-method{flex:1;padding:13px 10px;border-radius:12px;border:1.5px solid #2a2f3d;background:#10131b;color:#cfd3ee;cursor:pointer;text-align:center;font-size:.82rem;font-weight:600;font-family:var(--font);transition:.15s}
+.pay-method:hover{border-color:#4348ff;color:#fff}
+.pay-method.sel{border-color:#6366f1;background:rgba(99,102,241,.14);color:#fff}
+.pay-method .big{display:block;font-size:1.3rem;margin-bottom:3px}
+.pay-info{background:#10131b;border:1px solid #262a36;border-radius:12px;padding:13px 15px;font-size:.82rem;color:#cfd3ee;line-height:1.55;margin-bottom:14px}
+.pay-info .row{display:flex;justify-content:space-between;gap:10px;padding:3px 0}
+.pay-info .row span:first-child{color:#8087aa}
+.pay-info .row b{color:#fff;font-family:var(--mono);user-select:all}
+.gate-reveal{text-align:center;margin:6px 0 4px}
+.gate-keybox{font-family:var(--mono);font-size:1.45rem;font-weight:800;letter-spacing:.1em;color:#fff;
+  background:rgba(99,102,241,.18);border:1px solid #4348ff;border-radius:12px;padding:14px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -653,7 +671,7 @@ body{background-image:radial-gradient(1100px 500px at 18% -8%,var(--accent-soft)
 <script>
 'use strict';
 /* ============================================================
-   BizPilot — single-file business command center
+   Business Tracker — single-file business command center
    All data lives in localStorage under one key. No backend.
    ============================================================ */
 
@@ -783,6 +801,22 @@ var GATE={
   deviceLimit:2,                 // fallback if a license record has none
   sellerContact:'the seller'     // shown on the gate ("don't have a key?")
 };
+/* ---------- self-serve purchase (front-end; key is released by the payment
+   backend into Firebase, never faked in the browser) ----------
+   Fill these in. checkoutUrl = your PayMongo (or other) hosted link; if blank,
+   the manual GCash / bank details below are shown instead. The claim screen
+   polls GATE.url + '/paid/<emailhash>' for the key your backend writes. */
+var PAY={
+  enabled:true,
+  price:'₱499',
+  oneTimeNote:'One-time payment · lifetime license · works on 2 devices',
+  checkoutUrl:'',                                 // e.g. 'https://pm.link/your-store/bizpilot'
+  gcashName:'', gcashNumber:'',                   // e.g. 'Juan D.', '0917 123 4567'
+  bankName:'', bankAccountName:'', bankAccountNumber:'',
+  paidNode:'paid'                                 // backend writes /paid/<emailhash> = {key,...}
+};
+function emailHash(email){ return licHash(String(email).trim().toLowerCase()).toString(36)+'_'+licHash(String(email).trim().toLowerCase().split('').reverse().join('')).toString(36); }
+function paidEndpoint(email){ return GATE.url.replace(/\/+$/,'')+'/'+PAY.paidNode+'/'+encodeURIComponent(emailHash(email))+'.json'; }
 var ACT_KEY='bizpilot.activation';
 function getActivation(){ try{ return JSON.parse(localStorage.getItem(ACT_KEY)||'null'); }catch(_){ return null; } }
 function setActivation(a){ try{ localStorage.setItem(ACT_KEY,JSON.stringify(a)); }catch(_){ } }
@@ -827,7 +861,7 @@ function verifyActivation(key,email){
     });
   });
 }
-function renderGate(){
+function renderGate(prefill){
   var root=byId('gate-root');
   if(!root) return;
   root.innerHTML=
@@ -843,7 +877,11 @@ function renderGate(){
         '<button class="gate-btn" id="gate-go" type="submit">Activate &amp; open →</button>'+
         '<div class="gate-msg" id="gate-msg"></div>'+
       '</form>'+
-      '<div class="gate-foot">Don’t have a key yet? Get one from '+esc(GATE.sellerContact)+'.<br>Your business data stays private on this device.</div>'+
+      '<div class="gate-foot">'+
+        (PAY.enabled?'<button type="button" class="gate-link" id="gate-buy">Don’t have a license yet? Get it →</button>'
+                    :'Don’t have a key yet? Get one from '+esc(GATE.sellerContact)+'.')+
+        '<div style="margin-top:9px">Your business data stays private on this device.</div>'+
+      '</div>'+
     '</div></div>';
   var keyEl=byId('gate-key'), emailEl=byId('gate-email'), btn=byId('gate-go'), msg=byId('gate-msg');
   // pretty-format the key as they type
@@ -869,10 +907,125 @@ function renderGate(){
       showMsg('✕ '+((err&&err.msg)||'Activation failed. Please try again.'),'err');
     });
   });
-  setTimeout(function(){ keyEl.focus(); },120);
+  if(prefill){ keyEl.value=prefill.key||''; emailEl.value=prefill.email||''; }
+  var buy=byId('gate-buy'); if(buy) buy.addEventListener('click',function(){ renderBuy(); });
+  setTimeout(function(){ (prefill?byId('gate-go'):keyEl).focus(); },120);
+}
+
+/* ---------- self-serve: choose how to pay ---------- */
+function renderBuy(){
+  var root=byId('gate-root');
+  var hasManual=PAY.gcashNumber||PAY.bankAccountNumber;
+  root.innerHTML=
+    '<div class="gate"><div class="gate-card">'+
+      '<button class="gate-back" id="buy-back" title="Back">←</button>'+
+      '<h1>Get your license</h1>'+
+      '<div class="gate-price">'+esc(PAY.price)+'</div>'+
+      '<div class="gate-price-note">'+esc(PAY.oneTimeNote)+'</div>'+
+      '<div class="gate-field"><label>Your email</label>'+
+        '<input class="gate-input" id="buy-email" type="email" placeholder="you@email.com" autocomplete="off"></div>'+
+      '<div class="gate-field"><label>Pay with</label>'+
+        '<div class="pay-methods">'+
+          '<button type="button" class="pay-method sel" data-pm="ewallet"><span class="big">📱</span>E-wallet<br>(GCash)</button>'+
+          '<button type="button" class="pay-method" data-pm="bank"><span class="big">🏦</span>Bank<br>transfer</button>'+
+        '</div></div>'+
+      '<div id="pay-info"></div>'+
+      '<button class="gate-btn" id="buy-go">Continue to payment →</button>'+
+      '<div class="gate-msg" id="buy-msg"></div>'+
+      '<div class="gate-foot"><button type="button" class="gate-link" id="buy-claim">Already paid? Get your key →</button></div>'+
+    '</div></div>';
+  var method='ewallet';
+  function paint(){
+    Array.prototype.forEach.call(root.querySelectorAll('.pay-method'),function(b){ b.classList.toggle('sel',b.getAttribute('data-pm')===method); });
+    var info=byId('pay-info');
+    if(PAY.checkoutUrl){
+      info.innerHTML='<div class="pay-info">You’ll be taken to a secure checkout to pay by '+(method==='ewallet'?'GCash / e-wallet':'bank / card')+'. After payment, come back and tap <b style="font-family:inherit">Already paid? Get your key</b> — your key is released automatically.</div>';
+    } else if(method==='ewallet'){
+      info.innerHTML='<div class="pay-info">'+(PAY.gcashNumber
+        ?'<div class="row"><span>GCash name</span><b>'+esc(PAY.gcashName||'—')+'</b></div><div class="row"><span>GCash number</span><b>'+esc(PAY.gcashNumber)+'</b></div><div class="row"><span>Amount</span><b>'+esc(PAY.price)+'</b></div><div style="margin-top:7px;color:#8087aa;font-size:.75rem">Send the exact amount, then tap “Already paid? Get your key”.</div>'
+        :'Online checkout isn’t set up yet. Please contact '+esc(GATE.sellerContact)+' to pay by GCash.')+'</div>';
+    } else {
+      info.innerHTML='<div class="pay-info">'+(PAY.bankAccountNumber
+        ?'<div class="row"><span>Bank</span><b>'+esc(PAY.bankName||'—')+'</b></div><div class="row"><span>Account name</span><b>'+esc(PAY.bankAccountName||'—')+'</b></div><div class="row"><span>Account no.</span><b>'+esc(PAY.bankAccountNumber)+'</b></div><div class="row"><span>Amount</span><b>'+esc(PAY.price)+'</b></div><div style="margin-top:7px;color:#8087aa;font-size:.75rem">Transfer the exact amount, then tap “Already paid? Get your key”.</div>'
+        :'Bank transfer isn’t set up yet. Please contact '+esc(GATE.sellerContact)+'.')+'</div>';
+    }
+  }
+  Array.prototype.forEach.call(root.querySelectorAll('.pay-method'),function(b){
+    b.addEventListener('click',function(){ method=b.getAttribute('data-pm'); paint(); });
+  });
+  paint();
+  byId('buy-back').addEventListener('click',function(){ renderGate(); });
+  byId('buy-claim').addEventListener('click',function(){ renderClaim(byId('buy-email').value.trim()); });
+  byId('buy-go').addEventListener('click',function(){
+    var email=byId('buy-email').value.trim();
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ var m=byId('buy-msg'); m.className='gate-msg show err'; m.textContent='Enter a valid email first — your key will be tied to it.'; return; }
+    if(PAY.checkoutUrl){
+      var u=PAY.checkoutUrl+(PAY.checkoutUrl.indexOf('?')>-1?'&':'?')+'email='+encodeURIComponent(email);
+      window.open(u,'_blank','noopener');
+      renderClaim(email);
+    } else if((method==='ewallet'&&PAY.gcashNumber)||(method==='bank'&&PAY.bankAccountNumber)){
+      renderClaim(email);
+    } else {
+      var m2=byId('buy-msg'); m2.className='gate-msg show err'; m2.innerHTML='Payment isn’t set up yet. Contact '+esc(GATE.sellerContact)+'.';
+    }
+  });
+  setTimeout(function(){ byId('buy-email').focus(); },120);
+}
+
+/* ---------- self-serve: claim the key after paying (polls Firebase;
+   key only appears if the payment backend actually wrote it) ---------- */
+function renderClaim(email){
+  var root=byId('gate-root');
+  email=email||'';
+  root.innerHTML=
+    '<div class="gate"><div class="gate-card">'+
+      '<button class="gate-back" id="claim-back" title="Back">←</button>'+
+      '<h1>Get your key</h1>'+
+      '<p class="gate-sub">Enter the email you paid with. Once your payment is confirmed, your key appears here.</p>'+
+      '<div class="gate-field"><label>Email used to pay</label>'+
+        '<input class="gate-input" id="claim-email" type="email" placeholder="you@email.com" value="'+esc(email)+'" autocomplete="off"></div>'+
+      '<button class="gate-btn" id="claim-go">Get my key</button>'+
+      '<div class="gate-msg" id="claim-msg"></div>'+
+      '<div id="claim-out"></div>'+
+      '<div class="gate-foot"><button type="button" class="gate-link" id="claim-back2">← Back</button></div>'+
+    '</div></div>';
+  var msg=byId('claim-msg'), out=byId('claim-out'), btn=byId('claim-go'), polls=0, timer=null;
+  function stop(){ if(timer){ clearTimeout(timer); timer=null; } }
+  function check(em){
+    fetch(paidEndpoint(em)).then(function(r){ return r.ok?r.json():null; }).then(function(rec){
+      if(rec&&rec.key){
+        stop(); btn.disabled=false; btn.textContent='Get my key';
+        msg.className='gate-msg show ok'; msg.innerHTML='✓ Payment confirmed. Here’s your key:';
+        out.innerHTML='<div class="gate-reveal"><div class="gate-keybox" id="claim-keybox" title="Tap to copy">'+esc(rec.key)+'</div></div>'+
+          '<div class="rbtns" style="display:flex;gap:8px;margin-top:8px"><button class="gate-btn" id="claim-copy" style="margin-top:0">Copy key</button>'+
+          '<button class="gate-btn" id="claim-activate" style="margin-top:0;background:#10b981">Activate now →</button></div>';
+        byId('claim-keybox').addEventListener('click',function(){ navigator.clipboard.writeText(rec.key); });
+        byId('claim-copy').addEventListener('click',function(){ navigator.clipboard.writeText(rec.key); btn.textContent='Copied ✓'; setTimeout(function(){btn.textContent='Get my key';},1200); });
+        byId('claim-activate').addEventListener('click',function(){ renderGate({key:rec.key,email:em}); });
+      } else if(polls<8){
+        polls++; msg.className='gate-msg show'; msg.style.color='#8087aa';
+        msg.innerHTML='<span class="gate-spin"></span>Waiting for your payment to confirm… (this can take a minute)';
+        timer=setTimeout(function(){ check(em); },4000);
+      } else {
+        btn.disabled=false; btn.textContent='Check again';
+        msg.className='gate-msg show err'; msg.innerHTML='No confirmed payment found for <b>'+esc(em)+'</b> yet. If you just paid, wait a moment and tap “Check again”, or contact '+esc(GATE.sellerContact)+'.';
+      }
+    }).catch(function(){
+      btn.disabled=false; btn.textContent='Check again';
+      msg.className='gate-msg show err'; msg.textContent='Couldn’t reach the server. Check your internet and try again.';
+    });
+  }
+  byId('claim-go').addEventListener('click',function(){
+    var em=byId('claim-email').value.trim();
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){ msg.className='gate-msg show err'; msg.textContent='Enter the email you paid with.'; return; }
+    stop(); polls=0; btn.disabled=true; out.innerHTML=''; check(em);
+  });
+  byId('claim-back').addEventListener('click',function(){ stop(); renderBuy(); });
+  byId('claim-back2').addEventListener('click',function(){ stop(); renderBuy(); });
+  setTimeout(function(){ byId('claim-email').focus(); },120);
 }
 function deactivateDevice(){
-  if(!confirm('Sign out this device?\n\nYou can re-activate anytime with the same key. This also frees a device slot so you can use BizPilot on another computer.')) return;
+  if(!confirm('Sign out this device?\n\nYou can re-activate anytime with the same key. This also frees a device slot so you can use Business Tracker on another computer.')) return;
   var a=getActivation();
   if(a&&a.key&&!a.unclaimed){
     fetch(gateEndpoint(a.key).replace('.json','/devices/'+encodeURIComponent(a.device||DEVICE_ID)+'.json'),{method:'DELETE'}).catch(function(){});
@@ -888,7 +1041,7 @@ var DEFAULT_STATE={
   settings:{ businessName:'My Business', currency:'₱', theme:null, taxRate:8, lastBackup:null, backupNudged:false, monthlyTarget:0,
     accent:'', autoBackupDays:0, lastAutoBackup:null, hiddenModules:[],
     customCats:{ income:[], expense:[] },
-    sync:{ url:'https://love-notes-eae0b-default-rtdb.firebaseio.com', path:'bizpilot', enabled:false, lastSync:null },
+    sync:{ url:'', path:'bizpilot', enabled:false, lastSync:null },
     productCats:['Candle','Keychain','Gift Box'], productAttrs:['Scent','Color'],
     moduleLabels:{}, bizAddress:'', bizPhone:'', onboarded:false, lang:'en', payQR:'', payQRLabel:'',
     collapsedNav:[], taskLanes:['To do','Doing','Done'], bizLogo:'', tourDone:false,
@@ -937,7 +1090,7 @@ function loadState(){
       state.meta.createdAt=todayISO();
     }
   }catch(e){
-    console.warn('BizPilot: could not parse saved data, starting fresh.',e);
+    console.warn('Business Tracker: could not parse saved data, starting fresh.',e);
     state=JSON.parse(JSON.stringify(DEFAULT_STATE));
     state.meta.createdAt=todayISO();
   }
@@ -1485,7 +1638,7 @@ function renderSidebar(){
   var html='<div class="brand">'+
     (bl?'<img src="'+bl+'" alt="" style="width:36px;height:36px;border-radius:10px;object-fit:cover;flex-shrink:0;box-shadow:0 4px 14px rgba(0,0,0,.35)">'
        :'<div class="brand-logo">'+icon('logo')+'</div>')+
-    '<div><div class="brand-name" style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(state.settings.businessName||'BizPilot')+'</div><div class="brand-sub">Command Center</div></div></div><nav class="nav">';
+    '<div><div class="brand-name" style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(state.settings.businessName||'Business Tracker')+'</div><div class="brand-sub">Command Center</div></div></div><nav class="nav">';
   var labels=state.settings.moduleLabels||{};
   var collapsed=state.settings.collapsedNav||[];
   // group routes by section; a section containing the active route is always shown open
@@ -2562,7 +2715,7 @@ function viewSettings(){
       '<input type="file" accept="image/*" class="input img-input" style="flex:1;min-width:140px;padding:6px">'+
       '<input type="hidden" name="bizLogo" value="'+esc(s.bizLogo||'')+'">'+
       (s.bizLogo?'<button type="button" class="btn btn-sm btn-danger" data-action="img-clear">'+icon('x')+' Remove</button>':'')+
-    '</div><p style="font-size:.72rem;color:var(--text-3);margin-top:4px">Square images look best. Your logo replaces the BizPilot mark everywhere — your software, your brand.</p></div>'+
+    '</div><p style="font-size:.72rem;color:var(--text-3);margin-top:4px">Square images look best. Your logo replaces the Business Tracker mark everywhere — your software, your brand.</p></div>'+
     '<div class="field"><label>Payment QR (GCash / Maya — shows on invoices, delivery slips & catalog)</label><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'+
       '<img class="img-thumb-lg img-prev" src="'+(s.payQR||'')+'" style="'+(s.payQR?'':'display:none')+'" alt="">'+
       '<input type="file" accept="image/*" class="input img-input" style="flex:1;min-width:140px;padding:6px">'+
@@ -2579,7 +2732,7 @@ function viewSettings(){
     '<button class="btn btn-primary" type="submit">'+icon('check')+' Save settings</button></form></div>';
   html+=fxCardHTML();
   html+='<div class="card"><div class="card-head"><h3>About</h3></div>'+
-    '<p style="font-size:.84rem;color:var(--text-2)">BizPilot is a single-file, local-first business command center. No accounts, no servers, no tracking — your numbers never leave this device unless you enable cloud sync. Works offline once loaded.</p>'+
+    '<p style="font-size:.84rem;color:var(--text-2)">Business Tracker is a single-file, local-first business command center. No accounts, no servers, no tracking — your numbers never leave this device unless you enable cloud sync. Works offline once loaded.</p>'+
     (function(){ var l=licenseInfo(); if(!l) return '';
       var act=getActivation();
       return '<div style="margin-top:12px;padding:11px 14px;border-radius:11px;background:var(--accent-soft);border-left:3px solid var(--accent)">'+
@@ -2915,7 +3068,7 @@ function importData(file){
   reader.onload=function(){
     try{
       var data=JSON.parse(reader.result);
-      if(!data||typeof data!=='object'||!data.settings||(!Array.isArray(data.finance))) throw new Error('This file is not a BizPilot backup.');
+      if(!data||typeof data!=='object'||!data.settings||(!Array.isArray(data.finance))) throw new Error('This file is not a Business Tracker backup.');
       state=deepMerge(JSON.parse(JSON.stringify(DEFAULT_STATE)),data);
       state.settings.onboarded=true;
       commit();
@@ -3159,7 +3312,7 @@ function loadSampleData(){
    ============================================================ */
 function applyBrand(){
   var s=state.settings;
-  document.title=(s.businessName&&s.businessName!=='My Business'?s.businessName+' — ':'')+'BizPilot';
+  document.title=(s.businessName&&s.businessName!=='My Business'?s.businessName+' — ':'')+'Business Tracker';
   if(s.bizLogo){
     var link=document.querySelector('link[rel="icon"]');
     if(!link){ link=document.createElement('link'); link.rel='icon'; document.head.appendChild(link); }
@@ -3585,7 +3738,7 @@ function financeRecurringHTML(){
   var html='<div class="card"><div class="card-head"><h3>Recurring entries</h3><span class="sub">retainers, subscriptions, rent — posted automatically each month</span><span class="spacer"></span>'+
     '<button class="btn btn-sm btn-primary" data-action="recurring-new">'+icon('plus')+' New rule</button></div>';
   if(!(state.recurring||[]).length){
-    html+=emptyState('refresh','No recurring rules yet','Set up income or expenses that repeat monthly (e.g. a retainer or a software subscription). BizPilot posts them for you on the right day — even for months you missed.','<button class="btn btn-sm btn-primary" data-action="recurring-new">'+icon('plus')+' Create first rule</button>')+'</div>';
+    html+=emptyState('refresh','No recurring rules yet','Set up income or expenses that repeat monthly (e.g. a retainer or a software subscription). Business Tracker posts them for you on the right day — even for months you missed.','<button class="btn btn-sm btn-primary" data-action="recurring-new">'+icon('plus')+' Create first rule</button>')+'</div>';
     return html;
   }
   var monthlyIn=sum(state.recurring.filter(function(r){return r.active&&r.type==='income';}),function(r){return r.amount;});
@@ -4072,7 +4225,7 @@ function cloudPull(){
       return r.json();
     })
     .then(function(data){
-      if(!data||typeof data!=='object'||!data.settings){ toast('No BizPilot data found in the cloud yet — push first.','warn'); return; }
+      if(!data||typeof data!=='object'||!data.settings){ toast('No Business Tracker data found in the cloud yet — push first.','warn'); return; }
       if(!confirm('Replace the data on THIS device with the cloud copy? Local changes not yet pushed will be lost.')) return;
       if(state.meta&&state.meta.updatedAt&&data.meta&&data.meta.updatedAt&&state.meta.updatedAt>data.meta.updatedAt){
         if(!confirm('Heads up: THIS device has newer changes than the cloud copy. Pulling will lose them. Continue?')) return;
@@ -4090,7 +4243,7 @@ function cloudSyncCardHTML(){
   var s=state.settings.sync||{};
   var html='<div class="card"><div class="card-head"><h3>'+icon('cloud',16)+' Cloud sync</h3><span class="spacer"></span>'+
     (s.enabled?'<span class="badge good">Auto-sync on</span>':'<span class="badge neutral">Off</span>')+'</div>'+
-    '<p style="font-size:.8rem;color:var(--text-2);margin-bottom:12px">Sync your data to your own Firebase Realtime Database so it survives browser resets and follows you across devices. '+
+    '<p style="font-size:.8rem;color:var(--text-2);margin-bottom:12px">Sync your data to your own cloud database so it survives browser resets and follows you across devices. '+
     (s.lastSync?'Last sync: <b>'+fmtDate(s.lastSync.slice(0,10))+'</b>.':'Never synced.')+'</p>'+
     '<form data-form="sync-settings">'+
     '<div class="field"><label>Realtime Database URL</label><input class="input" name="url" value="'+esc(s.url||'')+'" placeholder="https://your-project-default-rtdb.firebaseio.com"></div>'+
@@ -4377,7 +4530,7 @@ function productModal(p){
     ((state.materials||[]).length?'<div class="field"><label>Recipe — raw materials used per unit (optional)</label><div id="bom-rows">'+
       ((p.bom&&p.bom.length)?p.bom.map(bomRowHTML).join(''):'')+
       '</div><button type="button" class="btn btn-ghost btn-sm" data-action="bom-add">'+icon('plus')+' Add material</button>'+
-      '<p style="font-size:.72rem;color:var(--text-3);margin-top:5px">Materials deplete when you restock (make) this product — and BizPilot tells you how many more you can make.</p></div>'
+      '<p style="font-size:.72rem;color:var(--text-3);margin-top:5px">Materials deplete when you restock (make) this product — and Business Tracker tells you how many more you can make.</p></div>'
       :'<p style="font-size:.72rem;color:var(--text-3);margin-bottom:12px">Tip: add raw materials in Products → Materials tab to attach a recipe and track ingredient usage.</p>')+
     '<div class="field"><label>Product photo</label><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'+
       '<img class="img-thumb-lg img-prev" src="'+(p.photo||'')+'" style="'+(p.photo?'':'display:none')+'" alt="">'+
@@ -4533,7 +4686,7 @@ function viewOrders(){
   list=list.slice(0,oLimit);
   html+='<div class="card mt">';
   if(!list.length){
-    html+=emptyState('truck',orders.length?'No orders here':'No orders yet','Create an order: pick products, enter the delivery address, and BizPilot handles stock, totals and income for you.','<button class="btn btn-sm btn-primary" data-action="order-new">'+icon('plus')+' First order</button>');
+    html+=emptyState('truck',orders.length?'No orders here':'No orders yet','Create an order: pick products, enter the delivery address, and Business Tracker handles stock, totals and income for you.','<button class="btn btn-sm btn-primary" data-action="order-new">'+icon('plus')+' First order</button>');
   } else {
     list.forEach(function(o){
       var d=daysUntil(o.deliveryDate);
@@ -5408,7 +5561,7 @@ function viewMaterials(){
   '</div>';
   html+='<div class="card mt">';
   if(!mats.length){
-    html+=emptyState('box','No materials yet','Add your wax, wicks, jars, oils and packaging. Then attach a recipe to each product (edit product → Recipe) and BizPilot tracks ingredient usage automatically.','<button class="btn btn-sm btn-primary" data-action="material-new">'+icon('plus')+' Add first material</button>');
+    html+=emptyState('box','No materials yet','Add your wax, wicks, jars, oils and packaging. Then attach a recipe to each product (edit product → Recipe) and Business Tracker tracks ingredient usage automatically.','<button class="btn btn-sm btn-primary" data-action="material-new">'+icon('plus')+' Add first material</button>');
   } else {
     html+='<div class="table-wrap"><table><thead><tr><th>Material</th><th style="text-align:right">Cost / unit</th><th>Stock</th><th style="text-align:right">Value</th><th>Used in</th><th></th></tr></thead><tbody>';
     mats.forEach(function(m){
@@ -5730,7 +5883,7 @@ function openSetupWizard(){
       '<div class="field"><label>What do you sell?</label><select class="input" name="preset">'+
         Object.keys(BIZ_PRESETS).map(function(k){return '<option value="'+k+'">'+BIZ_PRESETS[k].label+'</option>';}).join('')+'</select>'+
       '<p style="font-size:.72rem;color:var(--text-3);margin-top:5px">This pre-builds your product categories and attributes (you can edit them anytime).</p></div>';
-    openModal('Welcome to BizPilot 👋',body,{submitLabel:'Set up my business',onSubmit:function(form){
+    openModal('Welcome — let’s set up your business 👋',body,{submitLabel:'Set up my business',onSubmit:function(form){
       var nm=fv(form,'bizname');
       if(nm) state.settings.businessName=nm;
       state.settings.currency=fv(form,'currency')||'₱';
@@ -6028,7 +6181,7 @@ function transferModal(){
 function reconcileModal(a){
   var bal=accountBalance(a);
   var body='<input type="hidden" name="id" value="'+a.id+'">'+
-    '<p style="font-size:.86rem;color:var(--text-2);margin-bottom:12px">BizPilot thinks <b>'+esc(a.name)+'</b> holds <b>'+fmtMoney(bal)+'</b>. Check the real balance in your bank app / wallet and enter it below — the difference is recorded as an adjustment so the numbers match reality.</p>'+
+    '<p style="font-size:.86rem;color:var(--text-2);margin-bottom:12px">Business Tracker thinks <b>'+esc(a.name)+'</b> holds <b>'+fmtMoney(bal)+'</b>. Check the real balance in your bank app / wallet and enter it below — the difference is recorded as an adjustment so the numbers match reality.</p>'+
     '<div class="field"><label>Actual balance right now ('+esc(state.settings.currency)+')</label><input class="input" type="number" step="any" name="actual" value="'+bal+'" required></div>';
   openModal('Reconcile — '+a.name,body,{submitLabel:'Reconcile',onSubmit:function(form){
     var acct=findAccount(fv(form,'id'));
@@ -7153,18 +7306,18 @@ document.addEventListener('change',function(e){
    v20 additions: welcome tour
    ============================================================ */
 var TOUR_STEPS=[
-  {sel:'.sidebar .brand',title:'Your command center',
-   text:'Everything your business needs lives here — money, products, orders, clients, goals — saved privately in this browser. Works offline, no account needed.'},
-  {sel:'.main',title:'The Dashboard',
-   text:'Every morning this greets you with a Today panel — deliveries due, payments to chase, low stock — plus your business health score, charts and smart insights.'},
-  {sel:'.sidebar [data-route="finance"]',title:'Money',
-   text:'Log income & expenses here. Accounts tracks your bank/GCash balances, Invoices bills clients in any currency, and Reports prints clean monthly summaries.'},
-  {sel:'.sidebar [data-route="products"]',title:'Selling',
-   text:'Products with your own custom fields, Orders that deplete stock automatically, raw-material recipes, and a Customer Credit list for “pay later” customers — all connected.'},
-  {sel:'.sidebar [data-route="goals"]',title:'Execution',
-   text:'Goals track themselves from your real numbers. Roadmaps plan your launches. Tasks come as list, board, table or calendar — your pick.'},
-  {sel:'.sidebar [data-route="settings"]',title:'Make it yours',
-   text:'Upload your logo, add custom fields and whole new modules, load sample data to explore safely, and back up or sync from here. Tip: press Ctrl+K to search everything.'}
+  {sel:'.sidebar .brand',title:'Welcome — this is your command center',
+   text:'Your whole business in one place: money, products, orders, customers and goals. It saves privately in this browser and works offline — no accounts, no monthly fees, nobody else can see your numbers.'},
+  {sel:'.main',title:'Dashboard — your morning briefing',
+   text:'Open this first each day. It tells you what needs you right now — deliveries due, payments to chase, low stock — and a health score that answers the only question that matters: am I actually making money? No spreadsheets, no math.'},
+  {sel:'.sidebar [data-route="finance"]',title:'Money — start here',
+   text:'Log every sale and expense. This is the engine of the whole app: your profit, your charts and every insight are built from it. The payoff — you finally see exactly where your money goes, and where it’s leaking.'},
+  {sel:'.sidebar [data-route="products"]',title:'Products & Orders — sell without losing track',
+   text:'Add what you sell with your own fields (scent, color, size — anything). Orders subtract stock automatically and surface your bestsellers, so you never oversell or run out at the worst time. Selling “pay later”? The Credit list keeps every utang from slipping through the cracks.'},
+  {sel:'.sidebar [data-route="goals"]',title:'Goals & Tasks — turn plans into done',
+   text:'Set a revenue or profit goal and it tracks itself from your real numbers — no updating by hand. Plan launches in Roadmaps and work your day as a list, board, calendar or table. This is how the big picture actually gets done.'},
+  {sel:'.sidebar [data-route="settings"]',title:'Make it yours in 60 seconds',
+   text:'Add your logo, rename sections, build whole new modules, and back up or sync your data so it follows you across devices. New here? Load sample data to explore safely first. Tip: press Ctrl+K to jump anywhere.'}
 ];
 var tourOpenedSidebar=false;
 function showTour(step){
