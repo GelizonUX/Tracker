@@ -600,6 +600,55 @@ body{background-image:radial-gradient(1100px 500px at 18% -8%,var(--accent-soft)
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important}
 }
+
+/* ============ activation gate ============ */
+#gate-root:empty{display:none}
+.gate{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;
+  background:linear-gradient(125deg,#0b0d1a,#171034,#0e1530,#241046,#0b0d1a);background-size:300% 300%;
+  animation:gateflow 18s ease infinite;font-family:var(--font);overflow:hidden}
+@keyframes gateflow{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+.gate::before,.gate::after{content:'';position:absolute;border-radius:50%;filter:blur(70px);opacity:.5;pointer-events:none}
+.gate::before{width:440px;height:440px;background:radial-gradient(circle,#6366f1,transparent 70%);top:-120px;left:-90px;animation:gateorb1 13s ease-in-out infinite}
+.gate::after{width:400px;height:400px;background:radial-gradient(circle,#a855f7,transparent 70%);bottom:-130px;right:-80px;animation:gateorb2 16s ease-in-out infinite}
+@keyframes gateorb1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(50px,40px) scale(1.15)}}
+@keyframes gateorb2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-44px,-36px) scale(1.1)}}
+.gate-card{position:relative;width:100%;max-width:372px;background:rgba(20,22,40,.72);
+  backdrop-filter:blur(22px) saturate(140%);-webkit-backdrop-filter:blur(22px) saturate(140%);
+  border:1px solid rgba(255,255,255,.1);border-radius:22px;padding:30px 26px 24px;color:#eef0fb;
+  box-shadow:0 24px 70px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.08);
+  animation:gaterise .6s cubic-bezier(.2,.8,.2,1) both}
+@keyframes gaterise{from{opacity:0;transform:translateY(22px) scale(.97)}to{opacity:1;transform:none}}
+.gate-logo{width:52px;height:52px;border-radius:15px;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,#6366f1,#a855f7);box-shadow:0 8px 24px rgba(124,92,246,.5);
+  margin:0 auto 14px;font-size:1.5rem;animation:gatepulse 3.5s ease-in-out infinite}
+@keyframes gatepulse{0%,100%{box-shadow:0 8px 24px rgba(124,92,246,.45)}50%{box-shadow:0 8px 34px rgba(124,92,246,.75)}}
+.gate-card h1{font-size:1.28rem;text-align:center;letter-spacing:-.02em;margin:0 0 5px;font-weight:800}
+.gate-sub{text-align:center;font-size:.82rem;line-height:1.5;color:#aab0cf;margin:0 0 20px}
+.gate-sub b{color:#d7dafc;font-weight:700}
+.gate-field{margin-bottom:12px}
+.gate-field label{display:block;font-size:.7rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#9aa0c2;margin:0 0 5px}
+.gate-input{width:100%;padding:12px 13px;border-radius:12px;border:1.5px solid rgba(255,255,255,.12);
+  background:rgba(10,12,24,.6);color:#fff;font-size:.95rem;font-family:var(--font);transition:border-color .2s,box-shadow .2s}
+.gate-input::placeholder{color:#6a7095}
+.gate-input:focus{outline:none;border-color:#8b8cf6;box-shadow:0 0 0 3px rgba(124,124,246,.22)}
+.gate-input.key{font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;text-align:center;font-size:1.05rem}
+.gate-btn{width:100%;margin-top:8px;padding:13px;border:none;border-radius:13px;cursor:pointer;
+  background:linear-gradient(135deg,#6366f1,#9333ea);color:#fff;font-size:.98rem;font-weight:800;font-family:var(--font);
+  letter-spacing:.01em;box-shadow:0 10px 26px rgba(99,102,241,.42);transition:transform .12s,box-shadow .2s,opacity .2s}
+.gate-btn:hover{transform:translateY(-1px);box-shadow:0 14px 32px rgba(99,102,241,.55)}
+.gate-btn:active{transform:translateY(0)}
+.gate-btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
+.gate-msg{font-size:.8rem;line-height:1.45;margin-top:13px;padding:10px 12px;border-radius:11px;display:none}
+.gate-msg.show{display:block;animation:gaterise .3s ease both}
+.gate-msg.err{background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.4);color:#fecaca}
+.gate-msg.ok{background:rgba(16,185,129,.14);border:1px solid rgba(16,185,129,.4);color:#bbf7d0}
+.gate-foot{text-align:center;font-size:.72rem;color:#7b8099;margin-top:18px;line-height:1.6}
+.gate-foot a{color:#aab0ff;text-decoration:none;font-weight:600}
+.gate-spin{display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:gatespin .7s linear infinite;vertical-align:-2px;margin-right:7px}
+@keyframes gatespin{to{transform:rotate(360deg)}}
+.gate-steps{display:flex;gap:7px;justify-content:center;margin:0 0 18px;font-size:.66rem;color:#8087aa}
+.gate-steps span{display:flex;align-items:center;gap:4px}
+.gate-steps .dot{width:5px;height:5px;border-radius:50%;background:#6366f1}
 </style>
 </head>
 <body>
@@ -612,6 +661,7 @@ body{background-image:radial-gradient(1100px 500px at 18% -8%,var(--accent-soft)
 <div class="toast-root" id="toast-root"></div>
 <div id="print-area"></div>
 <div id="lightbox-root"></div>
+<div id="gate-root"></div>
 <input type="file" id="import-file" accept=".json,application/json" style="display:none">
 <script>
 'use strict';
@@ -734,6 +784,116 @@ function licenseInfo(){
   return {name:l.name,email:l.email||'',key:l.key||'',valid:l.key===licenseKeyFor(l.name,l.email||'')};
 }
 function licTag(){ var l=licenseInfo(); return l?' · Licensed to '+esc(l.name):''; }
+
+/* ---------- activation gate (Firebase-verified paid key) ----------
+   Only keys the seller registers in Firebase can unlock the app.
+   Once a device activates, it works offline forever (re-verifies online when it can).
+   Set GATE.enabled=false to ship an un-gated build. */
+var GATE={
+  enabled:true,
+  url:'https://love-notes-eae0b-default-rtdb.firebaseio.com',
+  node:'licenses',
+  deviceLimit:2,                 // fallback if a license record has none
+  sellerContact:'the seller'     // shown on the gate ("don't have a key?")
+};
+var ACT_KEY='bizpilot.activation';
+function getActivation(){ try{ return JSON.parse(localStorage.getItem(ACT_KEY)||'null'); }catch(_){ return null; } }
+function setActivation(a){ try{ localStorage.setItem(ACT_KEY,JSON.stringify(a)); }catch(_){ } }
+function isActivated(){ if(!GATE.enabled) return true; var a=getActivation(); return !!(a&&a.key&&a.email); }
+function normKey(k){ return String(k||'').toUpperCase().replace(/[^A-Z0-9]/g,'').replace(/(.{4})(.{4})(.{4}).*/,'$1-$2-$3'); }
+function gateEndpoint(key){ return GATE.url.replace(/\/+$/,'')+'/'+GATE.node+'/'+encodeURIComponent(key)+'.json'; }
+/* once a key is verified, mirror it into the license stamp so documents carry the buyer name */
+function applyActivationStamp(){
+  var a=getActivation();
+  if(a&&a.name){ EMBEDDED_LICENSE={name:a.name,email:a.email||'',key:a.key||''}; }
+}
+/* verify a key+email against Firebase, claim a device slot, store activation locally */
+function verifyActivation(key,email){
+  key=normKey(key); email=String(email||'').trim().toLowerCase();
+  return fetch(gateEndpoint(key)).then(function(r){
+    if(!r.ok) throw {code:'net',msg:'Could not reach the activation server. Check your internet and try again.'};
+    return r.json();
+  }).then(function(lic){
+    if(!lic||typeof lic!=='object') throw {code:'nokey',msg:'That license key wasn’t found. Double-check the key from your purchase email.'};
+    if(lic.status&&lic.status!=='active') throw {code:'revoked',msg:'This license has been disabled. Please contact '+esc(GATE.sellerContact)+'.'};
+    if((lic.email||'').trim().toLowerCase()!==email) throw {code:'email',msg:'This key is registered to a different email address.'};
+    var devices=lic.devices||{};
+    var limit=lic.deviceLimit||GATE.deviceLimit;
+    var mine=DEVICE_ID;
+    if(!devices[mine] && Object.keys(devices).length>=limit){
+      throw {code:'limit',msg:'This license is already active on its maximum of '+limit+' device'+(limit>1?'s':'')+'. Contact '+esc(GATE.sellerContact)+' to move it.'};
+    }
+    // claim this device (create-only write under devices)
+    return fetch(gateEndpoint(key).replace('.json','/devices/'+encodeURIComponent(mine)+'.json'),{
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({at:Date.now(),ua:String(navigator.userAgent||'').slice(0,120)})
+    }).then(function(){
+      var act={key:key,email:email,name:lic.name||email,activatedAt:Date.now(),device:mine};
+      setActivation(act);
+      return act;
+    }).catch(function(){
+      // device-claim write failed (rules) — still let them in; we verified the key
+      var act={key:key,email:email,name:lic.name||email,activatedAt:Date.now(),device:mine,unclaimed:true};
+      setActivation(act);
+      return act;
+    });
+  });
+}
+function renderGate(){
+  var root=byId('gate-root');
+  if(!root) return;
+  root.innerHTML=
+    '<div class="gate"><div class="gate-card">'+
+      '<div class="gate-logo">🚀</div>'+
+      '<h1>Activate BizPilot</h1>'+
+      '<p class="gate-sub">Enter the <b>license key</b> from your purchase to unlock your copy. One-time setup on this device.</p>'+
+      '<div class="gate-steps"><span><i class="dot"></i>Enter key</span><span><i class="dot"></i>Verify</span><span><i class="dot"></i>You’re in</span></div>'+
+      '<form id="gate-form" autocomplete="off">'+
+        '<div class="gate-field"><label>License key</label>'+
+          '<input class="gate-input key" id="gate-key" placeholder="XXXX-XXXX-XXXX" maxlength="14" autocomplete="off" spellcheck="false"></div>'+
+        '<div class="gate-field"><label>Email used at purchase</label>'+
+          '<input class="gate-input" id="gate-email" type="email" placeholder="you@email.com" autocomplete="off"></div>'+
+        '<button class="gate-btn" id="gate-go" type="submit">Activate &amp; open →</button>'+
+        '<div class="gate-msg" id="gate-msg"></div>'+
+      '</form>'+
+      '<div class="gate-foot">Don’t have a key yet? Get one from '+esc(GATE.sellerContact)+'.<br>Your business data stays private on this device.</div>'+
+    '</div></div>';
+  var keyEl=byId('gate-key'), emailEl=byId('gate-email'), btn=byId('gate-go'), msg=byId('gate-msg');
+  // pretty-format the key as they type
+  keyEl.addEventListener('input',function(){
+    var c=this.selectionStart, raw=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,12);
+    var out=raw.replace(/(.{4})(.{4})(.{1,4})/,'$1-$2-$3').replace(/(.{4})(.{1,4})$/,function(m){return m;});
+    if(raw.length>4&&raw.length<=8) out=raw.slice(0,4)+'-'+raw.slice(4);
+    else if(raw.length>8) out=raw.slice(0,4)+'-'+raw.slice(4,8)+'-'+raw.slice(8);
+    else out=raw;
+    this.value=out;
+  });
+  function showMsg(text,kind){ msg.className='gate-msg show '+kind; msg.innerHTML=text; }
+  byId('gate-form').addEventListener('submit',function(e){
+    e.preventDefault();
+    var key=keyEl.value.trim(), email=emailEl.value.trim();
+    if(!key||!email){ showMsg('Enter both your license key and email.','err'); return; }
+    btn.disabled=true; msg.className='gate-msg'; btn.innerHTML='<span class="gate-spin"></span>Verifying…';
+    verifyActivation(key,email).then(function(act){
+      showMsg('✓ Welcome, <b>'+esc(act.name)+'</b>! Opening your dashboard…','ok');
+      setTimeout(function(){ root.innerHTML=''; applyActivationStamp(); bootApp(); },700);
+    }).catch(function(err){
+      btn.disabled=false; btn.innerHTML='Activate &amp; open →';
+      showMsg('✕ '+((err&&err.msg)||'Activation failed. Please try again.'),'err');
+    });
+  });
+  setTimeout(function(){ keyEl.focus(); },120);
+}
+function deactivateDevice(){
+  if(!confirm('Sign out this device?\n\nYou can re-activate anytime with the same key. This also frees a device slot so you can use BizPilot on another computer.')) return;
+  var a=getActivation();
+  if(a&&a.key&&!a.unclaimed){
+    fetch(gateEndpoint(a.key).replace('.json','/devices/'+encodeURIComponent(a.device||DEVICE_ID)+'.json'),{method:'DELETE'}).catch(function(){});
+  }
+  try{ localStorage.removeItem(ACT_KEY); }catch(_){}
+  location.reload();
+}
 
 /* ---------- state ---------- */
 var LS_KEY='bizpilot.v1';
@@ -2435,10 +2595,13 @@ function viewSettings(){
   html+='<div class="card"><div class="card-head"><h3>About</h3></div>'+
     '<p style="font-size:.84rem;color:var(--text-2)">BizPilot is a single-file, local-first business command center. No accounts, no servers, no tracking — your numbers never leave this device unless you enable cloud sync. Works offline once loaded.</p>'+
     (function(){ var l=licenseInfo(); if(!l) return '';
+      var act=getActivation();
       return '<div style="margin-top:12px;padding:11px 14px;border-radius:11px;background:var(--accent-soft);border-left:3px solid var(--accent)">'+
         '<b style="font-size:.84rem">🔑 Licensed to '+esc(l.name)+'</b>'+
         '<div style="font-size:.74rem;color:var(--text-2);margin-top:2px">'+esc(l.email)+' · key <span class="mono">'+esc(l.key)+'</span> '+(l.valid?'<span class="badge good" style="font-size:.6rem">valid</span>':'<span class="badge risk" style="font-size:.6rem">invalid key</span>')+'</div>'+
-        '<div style="font-size:.7rem;color:var(--text-3);margin-top:4px">This copy is registered to the name above — it appears on all printed documents.</div></div>'; })()+
+        (act?'<div style="font-size:.7rem;color:var(--good);margin-top:4px">✓ Activated on this device'+(act.activatedAt?' · '+fmtDate(new Date(act.activatedAt).toISOString().slice(0,10)):'')+'</div>':'')+
+        '<div style="font-size:.7rem;color:var(--text-3);margin-top:4px">This copy is registered to the name above — it appears on all printed documents.</div>'+
+        (act&&GATE.enabled?'<button class="btn btn-ghost btn-sm" data-action="deactivate-device" style="margin-top:9px">Sign out / move to another device</button>':'')+'</div>'; })()+
     '<button class="btn btn-ghost btn-sm" data-action="show-tour" style="margin-top:12px">'+icon('spark')+' Replay the welcome tour</button></div>';
   html+='</div>';
   return html;
@@ -3253,6 +3416,7 @@ document.addEventListener('click',function(e){
   if(action==='export-data'){ exportData(); return; }
   if(action==='import-data'){ byId('import-file').click(); return; }
   if(action==='reset-data'){ resetData(); return; }
+  if(action==='deactivate-device'){ deactivateDevice(); return; }
   if(action==='load-sample'){
     if(state.finance.length===0||confirm('Loading sample data replaces your current data. Continue?')) loadSampleData();
     return;
@@ -7078,19 +7242,20 @@ window.addEventListener('hashchange',render);
 /* ============================================================
    init
    ============================================================ */
-loadState();
-processRecurring();
-applyTheme();
-applyBrand();
-render();
-probeStorage();
-autoBackupCheck();
-maybeOnboard();
-storageWarnOnBoot();
-fxAutoUpdateCheck();
-
+function bootApp(){
+  processRecurring();
+  applyTheme();
+  applyBrand();
+  render();
+  probeStorage();
+  autoBackupCheck();
+  maybeOnboard();
+  storageWarnOnBoot();
+  fxAutoUpdateCheck();
+  backupReminder();
+}
 /* backup reminder — once per session if data exists and backup is stale */
-(function(){
+function backupReminder(){
   var records=state.finance.length+state.notes.length+state.goals.length+state.tasks.length;
   if(records<10) return;
   var lb=state.settings.lastBackup;
@@ -7100,7 +7265,16 @@ fxAutoUpdateCheck();
       toast(lb?'Your last backup was over a week ago — export a fresh one from Settings.':'Tip: your data lives only in this browser. Export a JSON backup from Settings & Data.','warn');
     },1800);
   }
-})();
+}
+
+loadState();
+applyActivationStamp();
+if(GATE.enabled && !isActivated()){
+  applyTheme();
+  renderGate();
+} else {
+  bootApp();
+}
 </script>
 </body>
 </html>

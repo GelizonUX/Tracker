@@ -3,63 +3,120 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BizPilot License Generator — SELLER TOOL, keep private</title>
+<title>BizPilot — Issue a License (seller tool)</title>
 <style>
-:root{--bg:#0c0e1a;--card:#151829;--text:#e8eaf6;--text2:#a4aac6;--text3:#6f7592;--border:#252a44;--accent:#818cf8;--good:#34d399;--risk:#f87171}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:40px 16px}
-.wrap{width:100%;max-width:560px}
-.card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:26px;margin-bottom:16px}
-h1{font-size:1.3rem;letter-spacing:-.02em}
-.sub{color:var(--text2);font-size:.86rem;margin-top:4px}
-.warn{background:rgba(248,113,113,.12);border:1px solid var(--risk);border-radius:12px;padding:10px 14px;font-size:.8rem;margin:16px 0;color:#fecaca}
-label{display:block;font-size:.78rem;font-weight:600;color:var(--text2);margin:14px 0 5px}
-input[type=text],input[type=email]{width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border);background:#1b1f33;color:var(--text);font-size:.95rem}
-input:focus{outline:none;border-color:var(--accent)}
-.file-drop{border:2px dashed var(--border);border-radius:12px;padding:18px;text-align:center;color:var(--text3);font-size:.85rem;cursor:pointer;transition:border-color .2s;margin-top:5px}
-.file-drop:hover{border-color:var(--accent);color:var(--text2)}
-.file-drop.loaded{border-color:var(--good);color:var(--good)}
-button.go{width:100%;margin-top:20px;padding:13px;border:none;border-radius:12px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:1rem;font-weight:700;cursor:pointer}
-button.go:disabled{opacity:.4;cursor:not-allowed}
-.result{display:none;margin-top:16px;background:rgba(52,211,153,.1);border:1px solid var(--good);border-radius:12px;padding:14px;font-size:.86rem}
-.result.show{display:block}
-.result .key{font-family:ui-monospace,Menlo,monospace;font-size:1.1rem;font-weight:700;color:var(--good)}
-table{width:100%;border-collapse:collapse;font-size:.8rem;margin-top:10px}
-th{text-align:left;color:var(--text3);font-size:.68rem;text-transform:uppercase;padding:6px 8px;border-bottom:1px solid var(--border)}
-td{padding:7px 8px;border-bottom:1px solid var(--border);color:var(--text2)}
-td.k{font-family:ui-monospace,Menlo,monospace;color:var(--accent)}
-.muted{color:var(--text3);font-size:.74rem;margin-top:10px;line-height:1.5}
-.rowbtns{display:flex;gap:8px;margin-top:10px}
-.rowbtns button{flex:1;padding:8px;border-radius:9px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:.78rem;cursor:pointer}
-.rowbtns button:hover{border-color:var(--accent);color:var(--accent)}
+:root{--mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;--font:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif}
+html,body{height:100%}
+body{font-family:var(--font);color:#eef0fb;display:flex;align-items:flex-start;justify-content:center;padding:34px 16px;
+  background:linear-gradient(125deg,#0b0d1a,#171034,#0e1530,#241046,#0b0d1a);background-size:300% 300%;
+  animation:flow 18s ease infinite;overflow-x:hidden}
+@keyframes flow{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+body::before,body::after{content:'';position:fixed;border-radius:50%;filter:blur(80px);opacity:.45;pointer-events:none;z-index:0}
+body::before{width:460px;height:460px;background:radial-gradient(circle,#6366f1,transparent 70%);top:-140px;left:-100px;animation:orb1 14s ease-in-out infinite}
+body::after{width:420px;height:420px;background:radial-gradient(circle,#a855f7,transparent 70%);bottom:-160px;right:-90px;animation:orb2 17s ease-in-out infinite}
+@keyframes orb1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(60px,46px) scale(1.15)}}
+@keyframes orb2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-50px,-40px) scale(1.1)}}
+.wrap{position:relative;z-index:1;width:100%;max-width:404px}
+.card{background:rgba(20,22,40,.72);backdrop-filter:blur(22px) saturate(140%);-webkit-backdrop-filter:blur(22px) saturate(140%);
+  border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:24px 22px;margin-bottom:14px;
+  box-shadow:0 22px 60px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.07);animation:rise .6s cubic-bezier(.2,.8,.2,1) both}
+@keyframes rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+.logo{width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:1.35rem;margin:0 auto 12px;
+  background:linear-gradient(135deg,#6366f1,#a855f7);box-shadow:0 8px 22px rgba(124,92,246,.5);animation:pulse 3.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 8px 22px rgba(124,92,246,.45)}50%{box-shadow:0 8px 32px rgba(124,92,246,.7)}}
+h1{font-size:1.18rem;text-align:center;letter-spacing:-.02em;font-weight:800}
+.sub{text-align:center;font-size:.78rem;line-height:1.5;color:#aab0cf;margin:5px 0 0}
+.brief{font-size:.74rem;line-height:1.55;color:#9aa0c2;background:rgba(99,102,241,.1);border:1px solid rgba(124,124,246,.22);
+  border-radius:11px;padding:10px 12px;margin:16px 0 4px}
+.brief b{color:#d7dafc}
+.brief ol{margin:5px 0 0 16px;padding:0}
+.brief li{margin:2px 0}
+label{display:block;font-size:.68rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#9aa0c2;margin:14px 0 5px}
+input,select{width:100%;padding:11px 12px;border-radius:11px;border:1.5px solid rgba(255,255,255,.12);
+  background:rgba(10,12,24,.6);color:#fff;font-size:.92rem;font-family:var(--font);transition:border-color .2s,box-shadow .2s}
+input::placeholder{color:#6a7095}
+input:focus,select:focus{outline:none;border-color:#8b8cf6;box-shadow:0 0 0 3px rgba(124,124,246,.2)}
+.row{display:flex;gap:10px}.row>div{flex:1}
+.go{width:100%;margin-top:18px;padding:13px;border:none;border-radius:12px;cursor:pointer;
+  background:linear-gradient(135deg,#6366f1,#9333ea);color:#fff;font-size:.96rem;font-weight:800;font-family:var(--font);
+  box-shadow:0 10px 26px rgba(99,102,241,.42);transition:transform .12s,box-shadow .2s,opacity .2s}
+.go:hover{transform:translateY(-1px);box-shadow:0 14px 32px rgba(99,102,241,.55)}
+.go:active{transform:none}.go:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.warn{font-size:.7rem;color:#fca5a5;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:9px;padding:7px 10px;margin-top:14px;line-height:1.5}
+.result{display:none;margin-top:16px;text-align:center}
+.result.show{display:block;animation:rise .4s ease both}
+.keybox{font-family:var(--mono);font-size:1.5rem;font-weight:800;letter-spacing:.1em;color:#fff;margin:6px 0 4px;
+  background:linear-gradient(135deg,rgba(99,102,241,.25),rgba(168,85,247,.18));border:1px solid rgba(124,124,246,.4);
+  border-radius:13px;padding:14px;cursor:pointer;transition:transform .12s}
+.keybox:hover{transform:scale(1.02)}
+.saved{font-size:.74rem;color:#86efac;margin-bottom:10px}
+.saved.fail{color:#fca5a5}
+.rbtns{display:flex;gap:8px;margin-top:8px}
+.rbtns button{flex:1;padding:9px;border-radius:10px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.05);color:#cfd3ee;font-size:.78rem;font-weight:600;cursor:pointer;transition:.15s}
+.rbtns button:hover{border-color:#8b8cf6;color:#fff;background:rgba(124,124,246,.18)}
+details{margin-top:14px}
+summary{font-size:.72rem;color:#9aa0c2;cursor:pointer;user-select:none;font-weight:600}
+summary:hover{color:#cfd3ee}
+.muted{font-size:.68rem;color:#7b8099;margin-top:7px;line-height:1.5}
+.muted a{color:#aab0ff}
+.h2{font-size:.92rem;font-weight:700;margin-bottom:2px}
+table{width:100%;border-collapse:collapse;font-size:.72rem;margin-top:8px}
+th{text-align:left;color:#7b8099;font-size:.6rem;text-transform:uppercase;letter-spacing:.05em;padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.1)}
+td{padding:6px;border-bottom:1px solid rgba(255,255,255,.06);color:#aab0cf}
+td.k{font-family:var(--mono);color:#c4b5fd}
+.ledbtns{display:flex;gap:8px;margin-top:10px}
+.ledbtns button{flex:1;padding:7px;border-radius:8px;border:1px solid rgba(255,255,255,.14);background:transparent;color:#9aa0c2;font-size:.72rem;cursor:pointer}
+.ledbtns button:hover{border-color:#8b8cf6;color:#fff}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>🔑 BizPilot License Generator</h1>
-    <div class="sub">Creates a personalized copy of BizPilot for each buyer — their name and key are burned into the file and printed on every document it produces.</div>
-    <div class="warn">⚠️ <b>SELLER TOOL — never share this file.</b> Anyone holding it can generate licenses. Keep it off your website and out of the product folder you sell from.</div>
+    <div class="logo">🔑</div>
+    <h1>Issue a License</h1>
+    <p class="sub">Register a paid buyer's key so their copy of BizPilot can activate.</p>
 
-    <label>1 · Buyer's name (appears on their invoices)</label>
-    <input type="text" id="bname" placeholder="e.g. Maria Santos / Maria's Candle Co.">
+    <div class="brief">
+      <b>How it works</b>
+      <ol>
+        <li>Buyer pays you.</li>
+        <li>Enter their name + email below → you get a <b>key</b>.</li>
+        <li>Send them the key. They open BizPilot, type the key + email, and they're in.</li>
+      </ol>
+    </div>
 
-    <label>2 · Buyer's email</label>
-    <input type="email" id="bemail" placeholder="e.g. maria@gmail.com">
+    <label>Buyer's name</label>
+    <input type="text" id="bname" placeholder="Maria Santos / Maria's Candle Co." autocomplete="off">
+    <label>Buyer's email <span style="text-transform:none;color:#7b8099;font-weight:500">(they activate with this)</span></label>
+    <input type="email" id="bemail" placeholder="maria@gmail.com" autocomplete="off">
+    <div class="row">
+      <div><label>Devices allowed</label>
+        <select id="blimit"><option value="1">1 device</option><option value="2" selected>2 devices</option><option value="3">3 devices</option><option value="5">5 devices</option></select></div>
+    </div>
 
-    <label>3 · Your master <b>business.html</b> file</label>
-    <div class="file-drop" id="drop" onclick="document.getElementById('mfile').click()">Click to choose the master file…</div>
-    <input type="file" id="mfile" accept=".html" style="display:none">
+    <button class="go" id="go">Issue license key →</button>
 
-    <button class="go" id="go" disabled>Generate licensed copy ⬇</button>
     <div class="result" id="result"></div>
-    <div class="muted">How it works: the buyer's details are injected into the file's license slot. Their copy shows “Licensed to NAME” in the sidebar, the About page, and on every printed invoice, delivery slip, report and catalog. The key is verifiable inside their app (About page shows <b>valid</b>).</div>
+
+    <details>
+      <summary>⚙️ Cloud setup (one time)</summary>
+      <label>Firebase database secret <span style="text-transform:none;color:#7b8099;font-weight:500">(stored only here)</span></label>
+      <input type="text" id="secret" placeholder="leave blank if your rules are open" autocomplete="off">
+      <label>Your name / contact <span style="text-transform:none;color:#7b8099;font-weight:500">(shown to buyers)</span></label>
+      <input type="text" id="seller" placeholder="e.g. Hiraya Candles · 0917…" autocomplete="off">
+      <p class="muted">The secret lets this tool write keys to your Firebase. Get it in Firebase Console → Project Settings → Service accounts → Database secrets. Keep this file private.</p>
+    </details>
+
+    <div class="warn">⚠️ <b>Seller tool — never share this file or your secret.</b> Anyone with it can mint free licenses.</div>
   </div>
 
   <div class="card">
-    <h1 style="font-size:1.05rem">📒 Licenses issued (saved on this device)</h1>
-    <table id="ledger"><thead><tr><th>Date</th><th>Name</th><th>Email</th><th>Key</th></tr></thead><tbody></tbody></table>
-    <div class="rowbtns">
+    <div class="h2">📒 Keys you've issued</div>
+    <table id="ledger"><thead><tr><th>Date</th><th>Name</th><th>Key</th><th></th></tr></thead><tbody></tbody></table>
+    <div class="ledbtns">
       <button onclick="copyLedger()">Copy as CSV</button>
       <button onclick="clearLedger()">Clear list</button>
     </div>
@@ -68,7 +125,7 @@ td.k{font-family:ui-monospace,Menlo,monospace;color:var(--accent)}
 
 <script>
 'use strict';
-/* === MUST match the formula inside business.html === */
+/* === key formula — MUST match licenseKeyFor() inside business.html === */
 function licHash(s){ var h=5381; for(var i=0;i<s.length;i++){ h=((h<<5)+h+s.charCodeAt(i))>>>0; } return h; }
 function licenseKeyFor(name,email){
   var basis=(String(name).trim().toLowerCase()+'|'+String(email).trim().toLowerCase()+'|bizpilot-2026-hiraya');
@@ -76,75 +133,78 @@ function licenseKeyFor(name,email){
   while(s.length<12) s+='X';
   return s.slice(0,4)+'-'+s.slice(4,8)+'-'+s.slice(8,12);
 }
+var FB_URL='https://love-notes-eae0b-default-rtdb.firebaseio.com';
+var FB_NODE='licenses';
 
-var masterText=null;
-var MARKER='var EMBEDDED_LICENSE=null;/*@LICENSE@*/';
-
-document.getElementById('mfile').addEventListener('change',function(){
-  var f=this.files[0];
-  if(!f) return;
-  var r=new FileReader();
-  r.onload=function(){
-    if(r.result.indexOf(MARKER)<0){
-      alert('This file has no license slot — use business.html v22 or newer (the version with the license system).');
-      return;
-    }
-    masterText=r.result;
-    var d=document.getElementById('drop');
-    d.textContent='✓ '+f.name+' loaded ('+Math.round(f.size/1024)+' KB)';
-    d.classList.add('loaded');
-    check();
-  };
-  r.readAsText(f);
+var $=function(id){return document.getElementById(id);};
+['secret','seller'].forEach(function(id){
+  var v=localStorage.getItem('bizpilot.gen.'+id); if(v) $(id).value=v;
+  $(id).addEventListener('input',function(){ localStorage.setItem('bizpilot.gen.'+id,this.value); });
 });
-['bname','bemail'].forEach(function(id){
-  document.getElementById(id).addEventListener('input',check);
-});
-function check(){
-  document.getElementById('go').disabled=!(masterText&&document.getElementById('bname').value.trim()&&document.getElementById('bemail').value.trim());
-}
 
-document.getElementById('go').addEventListener('click',function(){
-  var name=document.getElementById('bname').value.trim();
-  var email=document.getElementById('bemail').value.trim();
+$('go').addEventListener('click',function(){
+  var name=$('bname').value.trim(), email=$('bemail').value.trim().toLowerCase(), limit=parseInt($('blimit').value,10);
+  if(!name||!email){ flash('Enter the buyer’s name and email.'); return; }
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ flash('That email doesn’t look right.'); return; }
   var key=licenseKeyFor(name,email);
-  var lic={name:name,email:email,key:key,issued:new Date().toISOString().slice(0,10)};
-  var injected='var EMBEDDED_LICENSE='+JSON.stringify(lic)+';/*licensed*/';
-  var out=masterText.replace(MARKER,injected);
-  if(out===masterText){ alert('Injection failed — marker not found.'); return; }
-  var slug=name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'buyer';
-  var blob=new Blob([out],{type:'text/html'});
-  var a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='bizpilot-'+slug+'.html';
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(function(){ URL.revokeObjectURL(a.href); },2000);
-  // record
-  var led=JSON.parse(localStorage.getItem('bizpilot.licenses')||'[]');
-  led.push(lic);
-  localStorage.setItem('bizpilot.licenses',JSON.stringify(led));
-  renderLedger();
-  var res=document.getElementById('result');
-  res.innerHTML='✅ <b>bizpilot-'+slug+'.html</b> downloaded — send that file to the buyer.<br>License key: <span class="key">'+key+'</span><br><span style="color:var(--text3);font-size:.76rem">Keep the key with the sale record; the buyer sees it in Settings → About.</span>';
-  res.classList.add('show');
+  var secret=$('secret').value.trim();
+  var rec={name:name,email:email,status:'active',deviceLimit:limit,issued:new Date().toISOString().slice(0,10),devices:{}};
+  var url=FB_URL.replace(/\/+$/,'')+'/'+FB_NODE+'/'+encodeURIComponent(key)+'.json'+(secret?'?auth='+encodeURIComponent(secret):'');
+  var btn=this; btn.disabled=true; btn.innerHTML='<span class="spin"></span>Saving to cloud…';
+  fetch(url,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(rec)})
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(function(){ showResult(rec,key,true); record(rec,key); })
+    .catch(function(e){ showResult(rec,key,false,e.message); record(rec,key); })
+    .then(function(){ btn.disabled=false; btn.innerHTML='Issue license key →'; });
 });
 
+function flash(msg){
+  var r=$('result'); r.className='result show';
+  r.innerHTML='<div class="saved fail">'+msg+'</div>';
+}
+function showResult(rec,key,saved,err){
+  var seller=$('seller').value.trim()||'the seller';
+  var mailBody='Hi '+rec.name+',%0D%0A%0D%0AThanks for your purchase! Here is your BizPilot license key:%0D%0A%0D%0A'+key+'%0D%0A%0D%0ATo activate: open BizPilot, enter this key and your email ('+rec.email+'), and you are in. Works on up to '+rec.deviceLimit+' device(s).%0D%0A%0D%0A— '+seller;
+  var mail='mailto:'+encodeURIComponent(rec.email)+'?subject='+encodeURIComponent('Your BizPilot license key')+'&body='+mailBody;
+  var r=$('result'); r.className='result show';
+  r.innerHTML=
+    (saved?'<div class="saved">✓ Saved to your cloud — this key now works.</div>'
+          :'<div class="saved fail">⚠ Could not save to cloud ('+esc(err||'error')+'). The key won’t activate until it’s saved — add your Firebase secret in Cloud setup and try again.</div>')+
+    '<div class="keybox" id="keybox" title="Click to copy">'+key+'</div>'+
+    '<div class="muted" style="margin-bottom:8px">'+esc(rec.name)+' · '+esc(rec.email)+' · '+rec.deviceLimit+' device(s)</div>'+
+    '<div class="rbtns"><button id="copykey">Copy key</button>'+
+      '<a href="'+mail+'" style="flex:1;text-decoration:none"><button style="width:100%">Email to buyer</button></a></div>';
+  var kb=$('keybox'); if(kb) kb.addEventListener('click',function(){ copyKey(key); });
+  var ck=$('copykey'); if(ck) ck.addEventListener('click',function(){ copyKey(key); });
+}
+function copyKey(k){ navigator.clipboard.writeText(k).then(function(){ toast('Key copied'); },function(){}); }
+function toast(t){
+  var d=document.createElement('div'); d.textContent=t;
+  d.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#6366f1;color:#fff;padding:9px 18px;border-radius:10px;font-size:.82rem;font-weight:600;z-index:99;box-shadow:0 8px 24px rgba(99,102,241,.5)';
+  document.body.appendChild(d); setTimeout(function(){ d.remove(); },1400);
+}
+function esc(s){ return String(s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];}); }
+
+function record(rec,key){
+  var led=JSON.parse(localStorage.getItem('bizpilot.licenses')||'[]');
+  led.push({issued:rec.issued,name:rec.name,email:rec.email,key:key,limit:rec.deviceLimit});
+  localStorage.setItem('bizpilot.licenses',JSON.stringify(led)); renderLedger();
+}
 function renderLedger(){
   var led=JSON.parse(localStorage.getItem('bizpilot.licenses')||'[]');
   document.querySelector('#ledger tbody').innerHTML=led.slice().reverse().map(function(l){
-    return '<tr><td>'+(l.issued||'')+'</td><td>'+l.name.replace(/</g,'&lt;')+'</td><td>'+l.email.replace(/</g,'&lt;')+'</td><td class="k">'+l.key+'</td></tr>';
-  }).join('')||'<tr><td colspan="4" style="color:var(--text3)">None yet — your first sale goes here. 🚀</td></tr>';
+    return '<tr><td>'+(l.issued||'')+'</td><td>'+esc(l.name)+'</td><td class="k">'+l.key+'</td><td><button data-copy="'+l.key+'" style="background:none;border:none;color:#aab0ff;cursor:pointer;font-size:.72rem">copy</button></td></tr>';
+  }).join('')||'<tr><td colspan="4" style="color:#7b8099;text-align:center;padding:14px">Your first sale shows up here. 🚀</td></tr>';
+  Array.prototype.forEach.call(document.querySelectorAll('#ledger [data-copy]'),function(b){
+    b.addEventListener('click',function(){ copyKey(b.getAttribute('data-copy')); });
+  });
 }
 function copyLedger(){
   var led=JSON.parse(localStorage.getItem('bizpilot.licenses')||'[]');
-  var csv='date,name,email,key\n'+led.map(function(l){return [l.issued,l.name,l.email,l.key].map(function(v){return '"'+String(v).replace(/"/g,'""')+'"';}).join(',');}).join('\n');
-  navigator.clipboard.writeText(csv).then(function(){ alert('CSV copied.'); },function(){ alert('Copy failed — select manually.'); });
+  var csv='date,name,email,key,devices\n'+led.map(function(l){return [l.issued,l.name,l.email,l.key,l.limit].map(function(v){return '"'+String(v==null?'':v).replace(/"/g,'""')+'"';}).join(',');}).join('\n');
+  navigator.clipboard.writeText(csv).then(function(){ toast('CSV copied'); },function(){ alert('Copy failed.'); });
 }
-function clearLedger(){
-  if(confirm('Clear the issued-license list on this device? (Files already sent are unaffected.)')){
-    localStorage.removeItem('bizpilot.licenses'); renderLedger();
-  }
-}
+function clearLedger(){ if(confirm('Clear the local list? (Keys already in your cloud still work.)')){ localStorage.removeItem('bizpilot.licenses'); renderLedger(); } }
 renderLedger();
 </script>
 </body>
