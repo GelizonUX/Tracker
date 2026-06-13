@@ -108,6 +108,17 @@ td.k{font-family:var(--mono);color:#c4b5fd}
       <label>Your name / contact <span style="text-transform:none;color:#7b8099;font-weight:500">(shown to buyers)</span></label>
       <input type="text" id="seller" placeholder="e.g. Hiraya Candles · 0917…" autocomplete="off">
       <p class="muted">The secret lets this tool write keys to your Firebase. Get it in Firebase Console → Project Settings → Service accounts → Database secrets. Keep this file private.</p>
+
+      <div style="height:1px;background:rgba(255,255,255,.1);margin:16px 0"></div>
+      <div class="h2" style="font-size:.82rem">✉️ Auto-email (EmailJS)</div>
+      <p class="muted" style="margin-top:3px">Paste your 3 EmailJS IDs to email keys automatically. Leave blank to email manually. <a href="https://www.emailjs.com" target="_blank" rel="noopener">emailjs.com</a></p>
+      <label>Service ID</label>
+      <input type="text" id="ejsService" placeholder="service_xxxxxxx" autocomplete="off">
+      <label>Template ID</label>
+      <input type="text" id="ejsTemplate" placeholder="template_xxxxxxx" autocomplete="off">
+      <label>Public key</label>
+      <input type="text" id="ejsKey" placeholder="your EmailJS public key" autocomplete="off">
+      <p class="muted">Template variables to use: <span style="font-family:var(--mono);color:#c4b5fd">{{to_email}} {{to_name}} {{license_key}} {{device_limit}} {{seller}}</span></p>
     </details>
 
     <div class="warn">⚠️ <b>Seller tool — never share this file or your secret.</b> Anyone with it can mint free licenses.</div>
@@ -137,10 +148,26 @@ var FB_URL='https://love-notes-eae0b-default-rtdb.firebaseio.com';
 var FB_NODE='licenses';
 
 var $=function(id){return document.getElementById(id);};
-['secret','seller'].forEach(function(id){
+['secret','seller','ejsService','ejsTemplate','ejsKey'].forEach(function(id){
   var v=localStorage.getItem('bizpilot.gen.'+id); if(v) $(id).value=v;
   $(id).addEventListener('input',function(){ localStorage.setItem('bizpilot.gen.'+id,this.value); });
 });
+
+/* send the key by email via EmailJS REST (browser-safe; public key only).
+   Resolves to true on send, false on failure, null when not configured. */
+function emailKey(rec,key){
+  var sid=$('ejsService').value.trim(), tid=$('ejsTemplate').value.trim(), pk=$('ejsKey').value.trim();
+  if(!sid||!tid||!pk) return Promise.resolve(null);
+  var seller=$('seller').value.trim()||'the seller';
+  return fetch('https://api.emailjs.com/api/v1.0/email/send',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      service_id:sid, template_id:tid, user_id:pk,
+      template_params:{ to_email:rec.email, to_name:rec.name, license_key:key, device_limit:rec.deviceLimit, seller:seller }
+    })
+  }).then(function(r){ return r.ok ? true : r.text().then(function(t){ throw new Error(t||('HTTP '+r.status)); }); });
+}
 
 $('go').addEventListener('click',function(){
   var name=$('bname').value.trim(), email=$('bemail').value.trim().toLowerCase(), limit=parseInt($('blimit').value,10);
@@ -153,8 +180,15 @@ $('go').addEventListener('click',function(){
   var btn=this; btn.disabled=true; btn.innerHTML='<span class="spin"></span>Saving to cloud…';
   fetch(url,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(rec)})
     .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-    .then(function(){ showResult(rec,key,true); record(rec,key); })
-    .catch(function(e){ showResult(rec,key,false,e.message); record(rec,key); })
+    .then(function(){
+      record(rec,key);
+      btn.innerHTML='<span class="spin"></span>Emailing buyer…';
+      return emailKey(rec,key).then(
+        function(es){ showResult(rec,key,true,null,es,null); },
+        function(err){ showResult(rec,key,true,null,false,err.message); }
+      );
+    })
+    .catch(function(e){ showResult(rec,key,false,e.message,null,null); record(rec,key); })
     .then(function(){ btn.disabled=false; btn.innerHTML='Issue license key →'; });
 });
 
@@ -162,18 +196,22 @@ function flash(msg){
   var r=$('result'); r.className='result show';
   r.innerHTML='<div class="saved fail">'+msg+'</div>';
 }
-function showResult(rec,key,saved,err){
+function showResult(rec,key,saved,err,emailed,emailErr){
   var seller=$('seller').value.trim()||'the seller';
   var mailBody='Hi '+rec.name+',%0D%0A%0D%0AThanks for your purchase! Here is your BizPilot license key:%0D%0A%0D%0A'+key+'%0D%0A%0D%0ATo activate: open BizPilot, enter this key and your email ('+rec.email+'), and you are in. Works on up to '+rec.deviceLimit+' device(s).%0D%0A%0D%0A— '+seller;
   var mail='mailto:'+encodeURIComponent(rec.email)+'?subject='+encodeURIComponent('Your BizPilot license key')+'&body='+mailBody;
+  var emailLine='';
+  if(emailed===true) emailLine='<div class="saved">📧 Emailed to '+esc(rec.email)+' automatically.</div>';
+  else if(emailed===false) emailLine='<div class="saved fail">⚠ Auto-email failed ('+esc(emailErr||'error')+'). Use the buttons below to send it.</div>';
   var r=$('result'); r.className='result show';
   r.innerHTML=
     (saved?'<div class="saved">✓ Saved to your cloud — this key now works.</div>'
           :'<div class="saved fail">⚠ Could not save to cloud ('+esc(err||'error')+'). The key won’t activate until it’s saved — add your Firebase secret in Cloud setup and try again.</div>')+
+    emailLine+
     '<div class="keybox" id="keybox" title="Click to copy">'+key+'</div>'+
     '<div class="muted" style="margin-bottom:8px">'+esc(rec.name)+' · '+esc(rec.email)+' · '+rec.deviceLimit+' device(s)</div>'+
     '<div class="rbtns"><button id="copykey">Copy key</button>'+
-      '<a href="'+mail+'" style="flex:1;text-decoration:none"><button style="width:100%">Email to buyer</button></a></div>';
+      '<a href="'+mail+'" style="flex:1;text-decoration:none"><button style="width:100%">'+(emailed===true?'Re-send manually':'Email to buyer')+'</button></a></div>';
   var kb=$('keybox'); if(kb) kb.addEventListener('click',function(){ copyKey(key); });
   var ck=$('copykey'); if(ck) ck.addEventListener('click',function(){ copyKey(key); });
 }
